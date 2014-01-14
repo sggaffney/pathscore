@@ -145,15 +145,16 @@ class PathwaySummary():
                     GROUP BY patient_id HAVING count(*) <= {max_mutations}) p
                 LEFT JOIN
                 # pathway mutation counts above 0
-                (SELECT path_id, patient_id FROM
+                (SELECT patient_id FROM
                     # get distinct genes from patients
                     (SELECT DISTINCT patient_id, entrez_id FROM tcga.{table}) pg
                     # join to pathway genes
-                    INNER JOIN refs.pathway_gene_link pwg ON pwg.entrez_id = pg.entrez_id 
-                WHERE path_id = {path_id}
-                GROUP BY `patient_id`) g
+                        INNER JOIN 
+                    (SELECT entrez_id FROM refs.pathway_gene_link WHERE path_id = {path_id}) pwg 
+                    ON pwg.entrez_id = pg.entrez_id 
+                    GROUP BY `patient_id`) g
                 ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
-                max_mutations=self.max_mutations,table=tcga_table)    
+                max_mutations=self.max_mutations,table=tcga_table)
             
             try:
                 con = mdb.connect(**dbvars)
