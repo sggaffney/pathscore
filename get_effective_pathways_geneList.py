@@ -48,6 +48,7 @@ class PathwaySummary():
         # self._update_gene_coverage()
 
     def set_pathway_size(self):
+        """Lookup pathway size in DB. Save to data attribute."""
         pway_size = None
 
         # GET pway_size
@@ -74,14 +75,14 @@ class PathwaySummary():
         self.n_actual = int(pway_size[0])
 
     def populate_patient_info(self):
-
+        """Fetch info on all patients from DB, add to patients list."""
         if self.yale_proj_ids:
             self._append_yale_patients()
         if self.tcga_proj_abbrvs:
             self._append_tcga_patients()
 
     def _append_yale_patients(self):
-        """Gets patient-pathway gene overlap info from databse.
+        """Get patient-pathway gene overlap info from databse.
         # Returns tuple collection of row tuples.
         Row tuple: (PATIENT_ID, N_PATIENT, BOOL_MUTATED), e.g. (678L, 323L, 1L)
         """
@@ -90,24 +91,24 @@ class PathwaySummary():
         ## GET mutated boolean for genes in specified pathway for GOOD 
         #  patients (<max_mutations), even those without somatic mutation. 
         cmd2 = """SELECT p.patient_id, n_patient, g.patient_id IS NOT NULL AS mutated FROM
-            # good patients, mutation_count
+            # good patients for project, mutation_count
             (SELECT patient_id, count(DISTINCT entrez_gene_id) AS n_patient FROM 
                 mutations_tumor_normal NATURAL JOIN normals NATURAL JOIN patients 
             WHERE project_id IN ({projGroupStr})
             GROUP BY patient_id HAVING count(*) <= {max_mutations})  p 
         LEFT JOIN
-            # pathway mutation counts above 0
-            (SELECT path_id, patient_id FROM
-              # get distinct genes from patients
-              (SELECT DISTINCT patient_id, entrez_gene_id FROM 
-              mutations_tumor_normal m NATURAL JOIN normals NATURAL JOIN patients) pg
-              # join to pathway genes
-              INNER JOIN refs.pathway_gene_link pwg ON pwg.entrez_id=pg.entrez_gene_id 
-            WHERE path_id = {path_id}
-            GROUP BY `patient_id`) g
+            # patients in project with mutation in pathway
+            (SELECT patient_id FROM 
+                    (SELECT entrez_id FROM refs.`pathway_gene_link` pwg 
+                        WHERE path_id={path_id}) pwg 
+                INNER JOIN mutations_tumor_normal m ON pwg.entrez_id=m.entrez_gene_id 
+                NATURAL JOIN normals NATURAL JOIN patients 
+                WHERE project_id IN ({projGroupStr}) 
+                GROUP BY patient_id) g 
         ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
             max_mutations=self.max_mutations, 
             projGroupStr = ','.join(str(i) for i in self.yale_proj_ids))
+
         
         try:
             con = mdb.connect(**dbvars)
