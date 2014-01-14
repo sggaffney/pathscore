@@ -235,23 +235,27 @@ class PathwaySummary():
 
         # UNIQUE HUGO LISTS
         cmd = """SELECT DISTINCT symbols FROM
-        (
-            # PATIENT, HUGO PAIRS in pathway of interest.
+        (# PATIENT, HUGO PAIRS in pathway of interest.
             SELECT patient_id, group_concat(DISTINCT hugo_symbol ORDER BY hugo_symbol
-                 SEPARATOR ',') AS symbols
-            FROM mutations_tumor_normal m NATURAL JOIN normals NATURAL JOIN patients
-            # gene subset in pathway of interest
-            INNER JOIN refs.`pathway_gene_link` pgl ON m.entrez_gene_id = pgl.entrez_id
-            NATURAL JOIN
+                 SEPARATOR ',') AS symbols 
+            FROM 
+                # gene subset in pathway of interest            
+                (SELECT entrez_id FROM refs.`pathway_gene_link` WHERE path_id = {path_id}) pgl
+            INNER JOIN mutations_tumor_normal m 
+            ON m.entrez_gene_id = pgl.entrez_id
+            NATURAL JOIN normals 
+            NATURAL JOIN patients p
+            WHERE project_id IN ({projGroupStr})
+            GROUP BY patient_id
+        ) g
+        INNER JOIN
             #good patients
             (SELECT patient_id FROM mutations_tumor_normal NATURAL JOIN normals 
-                    NATURAL JOIN patients WHERE project_id IN ({projGroupStr})
-                    GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p
-            WHERE path_id = {path_id}
-            GROUP BY patient_id
-            ORDER BY patient_id
-        ) g;""".format(path_id=self.path_id,  max_mutations=self.max_mutations,
-        projGroupStr = ','.join(str(i) for i in projIdsTuple))
+                NATURAL JOIN patients WHERE project_id IN ({projGroupStr})
+                GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p2
+        ON g.patient_id = p2.patient_id;""".format(path_id=self.path_id,  
+            max_mutations=self.max_mutations,
+            projGroupStr = ','.join(str(i) for i in projIdsTuple))
 
         try:
             con = mdb.connect(**dbvars)
