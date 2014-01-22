@@ -775,7 +775,7 @@ class PathwayIdsFetcher():
         return all_path_ids
 
 
-def run_with_patient_subset():
+def main():
     """Arguments: projIds --patients patient_file."""
 
     parser = argparse.ArgumentParser()
@@ -841,7 +841,7 @@ def run_with_patient_subset():
 
 if __name__ == '__main__':
     dbvars = {'host':'localhost','db':'CancerDB','read_default_file':"~/.my.cnf"}
-    run_with_patient_subset()
+    main()
 
     
 
