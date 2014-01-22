@@ -6,6 +6,7 @@ from numpy import *
 from scipy import stats
 import timeit
 import sys
+import argparse
 # import pdb
 
 class NonSingleResult(Exception):
@@ -883,11 +884,47 @@ def runAll23():
     final_writer.write_detailed_file()
 
 
+def run_with_patient_subset():
+    """Arguments: projIds --patients patient_file."""
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("proj_ids", help="list of project identifiers", 
+        nargs="+") # ids are strings, e.g. ["1","22","LUSC"]
+    parser.add_argument("-p", "--patients", type=file, dest="patients_file",
+                        help="file containing patients to include")
+    args = parser.parse_args()
+    
+    # get patient list. maybe empty list.
+    patient_list = list()
+    if args.patients_file:
+        print('Using patients file.')
+        for line in patients_file:
+            patient_list.append(line.strip('\n'))
+    else:
+        print('No patients file provided. Using all patients.')
+
+    yale_proj_ids = list()
+    tcga_proj_abbrvs = list()
+    # split projIds into yale, tcga
+    for id in args.proj_ids:
+        if id.isdigit():
+            yale_proj_ids.append(id)
+        elif id.isalpha():
+            tcga_proj_abbrvs.append(id)
+        else:
+            raise Exception("Unrecognised project id in parameters.")
+
+    print("Yale projects: {}".format(str(yale_proj_ids)))
+    print("TCGA projects: {}".format(str(tcga_proj_abbrvs)))
+
+
+
 if __name__ == '__main__':
     dbvars = {'host':'localhost','db':'CancerDB','read_default_file':"~/.my.cnf"}
     # main()
     # main2()    
-    runAll23()
+    # runAll23()
+    run_with_patient_subset()
 
     
 
