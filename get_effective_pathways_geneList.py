@@ -892,6 +892,8 @@ def run_with_patient_subset():
         nargs="+") # ids are strings, e.g. ["1","22","LUSC"]
     parser.add_argument("-p", "--patients", type=file, dest="patients_file",
                         help="file containing patients to include")
+    parser.add_argument("-g", "--genes", nargs="+",
+                        help="file containing patients to include")
     args = parser.parse_args()
     
     # get patient list. maybe empty list.
@@ -903,19 +905,25 @@ def run_with_patient_subset():
     else:
         print('No patients file provided. Using all patients.')
 
-    yale_proj_ids = list()
-    tcga_proj_abbrvs = list()
-    # split projIds into yale, tcga
-    for id in args.proj_ids:
-        if id.isdigit():
-            yale_proj_ids.append(id)
-        elif id.isalpha():
-            tcga_proj_abbrvs.append(id)
-        else:
-            raise Exception("Unrecognised project id in parameters.")
+    # split projIds into yale, tcga    
+    yale_proj_ids = tuple(int(i) for i in args.proj_ids if i.isdigit())
+    tcga_proj_abbrvs = tuple(i for i in args.proj_ids if not i.isdigit())
 
     print("Yale projects: {}".format(str(yale_proj_ids)))
     print("TCGA projects: {}".format(str(tcga_proj_abbrvs)))
+
+    # get genes of interest, if any
+    if args.genes:
+        interest_genes = tuple(args.genes)
+    else:
+        interest_genes = tuple()
+
+    print("Interest genes: {}".format(str(interest_genes)))
+
+    # idFetcher = PathwayIdsFetcher(interest_genes)
+    # all_path_ids = idFetcher.fetchPathwayIds()
+
+    
 
 
 
