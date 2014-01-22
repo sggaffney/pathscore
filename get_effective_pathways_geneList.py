@@ -775,115 +775,6 @@ class PathwayIdsFetcher():
         return all_path_ids
 
 
-def main():        
-    """Calculate all effective pathway sizes and p-values for project(s) 
-    provided as list of tuples."""
-    proj_ids = eval(sys.argv[1])  # e.g. "(1,)" or "(1,2,'LUAD')"
-    interest_genes = eval(sys.argv[2])  # e.g. "('CBL',)"
-
-    # proj_ids = (22,'LUAD')
-    # interest_genes = ('CBL',)
-
-    yale_proj_ids = list()
-    tcga_proj_abbrvs = list() #empty list of no tcga arguments
-
-    for id in proj_ids:
-        if isinstance(id,int):
-            yale_proj_ids.append(id)
-        elif isinstance(id,str):
-            tcga_proj_abbrvs.append(id)
-        else:
-            raise Exception("Unrecognised project id in tuple.")
-
-    yale_proj_ids = tuple(yale_proj_ids)
-    tcga_proj_abbrvs = tuple(tcga_proj_abbrvs)
-
-    #all_path_ids = range(1,1321)
-    idFetcher = PathwayIdsFetcher(interest_genes)
-
-    all_path_ids = idFetcher.fetchPathwayIds()
-
-    #os.chdir('/Users/Stephen/Dropbox/Townsend/pathway_enrichment/')
-    # for projIds in groups:
-
-    for pathway_number in all_path_ids:
-
-        start = timeit.default_timer()
-        
-        pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs)
-        pway.set_pathway_size()
-        pway.populate_patient_info()
-        lcalc = LCalculator(pway)
-        lcalc.run()
-        
-        runtime = timeit.default_timer() - start
-        basicWriter = PathwayBasicFileWriter(yale_proj_ids,tcga_proj_abbrvs)
-        basicWriter.write_pvalue_file(lcalc, runtime)
-
-    # Gather all pathway stats from text file
-    assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs)
-    pway_list = assembler.get_ordered_pway_list()
-
-    # Rank pathways, gather extra stats and write to final file
-    final_writer = PathwayDetailedFileWriter(yale_proj_ids, 
-        tcga_proj_abbrvs, pway_list)
-    final_writer.write_detailed_file()
-
-def main2():        
-    """Calculate all effective pathway sizes and p-values for project(s) 
-    provided as list of tuples."""
-
-    yale_proj_ids = (23,)
-    tcga_proj_abbrvs = tuple()
-
-    #os.chdir('/Users/Stephen/Dropbox/Townsend/pathway_enrichment/')
-
-    # Gather all pathway stats from text file
-    assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs)
-    pway_list = assembler.get_ordered_pway_list()
-
-    # Rank pathways, gather extra stats and write to final file
-    final_writer = PathwayDetailedFileWriter(yale_proj_ids, 
-        tcga_proj_abbrvs, pway_list)
-    final_writer.write_detailed_file()
-
-def runAll23():
-
-    yale_proj_ids = (23,)
-    tcga_proj_abbrvs = tuple()
-    interest_genes = tuple()
-
-    idFetcher = PathwayIdsFetcher(interest_genes)
-
-    all_path_ids = idFetcher.fetchPathwayIds()
-
-    #os.chdir('/Users/Stephen/Dropbox/Townsend/pathway_enrichment/')
-    # for projIds in groups:
-
-    for pathway_number in all_path_ids:
-
-        start = timeit.default_timer()
-        
-        pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs)
-        pway.set_pathway_size()
-        pway.populate_patient_info()
-        lcalc = LCalculator(pway)
-        lcalc.run()
-        
-        runtime = timeit.default_timer() - start
-        basicWriter = PathwayBasicFileWriter(yale_proj_ids,tcga_proj_abbrvs)
-        basicWriter.write_pvalue_file(lcalc, runtime)
-
-    # Gather all pathway stats from text file
-    assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs)
-    pway_list = assembler.get_ordered_pway_list()
-
-    # Rank pathways, gather extra stats and write to final file
-    final_writer = PathwayDetailedFileWriter(yale_proj_ids, 
-        tcga_proj_abbrvs, pway_list)
-    final_writer.write_detailed_file()
-
-
 def run_with_patient_subset():
     """Arguments: projIds --patients patient_file."""
 
@@ -920,18 +811,36 @@ def run_with_patient_subset():
 
     print("Interest genes: {}".format(str(interest_genes)))
 
-    # idFetcher = PathwayIdsFetcher(interest_genes)
-    # all_path_ids = idFetcher.fetchPathwayIds()
+    idFetcher = PathwayIdsFetcher(interest_genes)
+    all_path_ids = idFetcher.fetchPathwayIds()
 
-    
+    for pathway_number in all_path_ids:
+
+        start = timeit.default_timer()
+        
+        pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs)
+        pway.set_pathway_size()
+        pway.populate_patient_info()
+        lcalc = LCalculator(pway)
+        lcalc.run()
+        
+        runtime = timeit.default_timer() - start
+        basicWriter = PathwayBasicFileWriter(yale_proj_ids,tcga_proj_abbrvs)
+        basicWriter.write_pvalue_file(lcalc, runtime)
+
+    # Gather all pathway stats from text file
+    assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs)
+    pway_list = assembler.get_ordered_pway_list()
+
+    # Rank pathways, gather extra stats and write to final file
+    final_writer = PathwayDetailedFileWriter(yale_proj_ids, 
+        tcga_proj_abbrvs, pway_list)
+    final_writer.write_detailed_file()
 
 
 
 if __name__ == '__main__':
     dbvars = {'host':'localhost','db':'CancerDB','read_default_file':"~/.my.cnf"}
-    # main()
-    # main2()    
-    # runAll23()
     run_with_patient_subset()
 
     
