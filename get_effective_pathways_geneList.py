@@ -782,9 +782,9 @@ def main():
     parser.add_argument("proj_ids", help="list of project identifiers", 
         nargs="+") # ids are strings, e.g. ["1","22","LUSC"]
     parser.add_argument("-p", "--patients", type=file, dest="patients_file",
-                        help="file containing patients to include")
+        help="file containing patients to include")
     parser.add_argument("-g", "--genes", nargs="+",
-                        help="file containing patients to include")
+        help="file containing patients to include")
     args = parser.parse_args()
     
     # get patient list. maybe empty list.
@@ -799,7 +799,6 @@ def main():
     # split projIds into yale, tcga    
     yale_proj_ids = tuple(int(i) for i in args.proj_ids if i.isdigit())
     tcga_proj_abbrvs = tuple(i for i in args.proj_ids if not i.isdigit())
-
     print("Yale projects: {}".format(str(yale_proj_ids)))
     print("TCGA projects: {}".format(str(tcga_proj_abbrvs)))
 
@@ -808,23 +807,21 @@ def main():
         interest_genes = tuple(args.genes)
     else:
         interest_genes = tuple()
-
     print("Interest genes: {}".format(str(interest_genes)))
 
     idFetcher = PathwayIdsFetcher(interest_genes)
     all_path_ids = idFetcher.fetchPathwayIds()
 
     for pathway_number in all_path_ids:
-
+        # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
-        
         pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs)
         pway.set_pathway_size()
         pway.populate_patient_info()
         lcalc = LCalculator(pway)
         lcalc.run()
-        
         runtime = timeit.default_timer() - start
+        # Write results to 'basic' file
         basicWriter = PathwayBasicFileWriter(yale_proj_ids,tcga_proj_abbrvs)
         basicWriter.write_pvalue_file(lcalc, runtime)
 
