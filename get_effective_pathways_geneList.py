@@ -790,9 +790,9 @@ def main():
     # get patient list. maybe empty list.
     patient_list = list()
     if args.patients_file:
-        print('Using patients file.')
-        for line in patients_file:
+        for line in args.patients_file:
             patient_list.append(line.strip('\n'))
+        print("Loaded {} patients.".format(len(patient_list)))
     else:
         print('No patients file provided. Using all patients.')
 
