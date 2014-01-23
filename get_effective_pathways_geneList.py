@@ -23,10 +23,11 @@ class Patient():
 
 class PathwaySummary():
     """Holds pathway information, and can fetch info from db."""
-    def __init__(self,pathway_number, yale_proj_ids, tcga_proj_abbrvs):
+    def __init__(self,pathway_number,yale_proj_ids,tcga_proj_abbrvs,patient_ids):
         self.path_id = pathway_number
         self.n_actual = None
         self.patients = list() # tuples. (patient_id, n_mutations, is_mutated)
+        self.filter_patient_ids = patient_ids;
         self.n_effective = None
         self.p_value = None
         self.max_mutations = 500
@@ -82,6 +83,23 @@ class PathwaySummary():
         if self.tcga_proj_abbrvs:
             self._append_tcga_patients()
 
+    def _build_patient_filter_str(self, form="WHERE"):
+        """build SQL substring to filter patients by ids in mutation lookup."""    
+        if form == 'WHERE':
+            prepend = "WHERE "
+        elif form == 'AND':
+            prepend = "AND "
+        else:
+            raise Exception("Category must be 'yale' or 'tcga'.")
+
+        if self.filter_patient_ids:
+            filter = (prepend + "patient_id IN " + 
+                str(self.filter_patient_ids).replace("[","(").replace("]",")"))
+        else:
+            filter = ""
+        return filter
+
+
     def _append_yale_patients(self):
         """Get patient-pathway gene overlap info from databse.
         # Returns tuple collection of row tuples.
@@ -96,6 +114,7 @@ class PathwaySummary():
             (SELECT patient_id, count(DISTINCT entrez_gene_id) AS n_patient FROM 
                 mutations_tumor_normal NATURAL JOIN normals NATURAL JOIN patients 
             WHERE project_id IN ({projGroupStr})
+            {patient_filter}
             GROUP BY patient_id HAVING count(*) <= {max_mutations})  p 
         LEFT JOIN
             # patients in project with mutation in pathway
@@ -108,9 +127,9 @@ class PathwaySummary():
                 GROUP BY patient_id) g 
         ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
             max_mutations=self.max_mutations, 
-            projGroupStr = ','.join(str(i) for i in self.yale_proj_ids))
+            projGroupStr = ','.join(str(i) for i in self.yale_proj_ids),
+            patient_filter = self._build_patient_filter_str(form="AND"))
 
-        
         try:
             con = mdb.connect(**dbvars)
             cur = con.cursor()
@@ -143,19 +162,22 @@ class PathwaySummary():
             cmd2 = """SELECT p.patient_id, n_patient, g.patient_id IS NOT NULL AS mutated FROM
                 # good patients, mutation_count
                 (SELECT patient_id, count(DISTINCT entrez_id) AS n_patient FROM tcga.{table} 
+                    {patient_filter}
                     GROUP BY patient_id HAVING count(*) <= {max_mutations}) p
                 LEFT JOIN
                 # pathway mutation counts above 0
                 (SELECT patient_id FROM
                     # get distinct genes from patients
-                    (SELECT DISTINCT patient_id, entrez_id FROM tcga.{table}) pg
+                    (SELECT DISTINCT patient_id, entrez_id FROM tcga.{table}
+                        {patient_filter}) pg
                     # join to pathway genes
                         INNER JOIN 
                     (SELECT entrez_id FROM refs.pathway_gene_link WHERE path_id = {path_id}) pwg 
                     ON pwg.entrez_id = pg.entrez_id 
                     GROUP BY `patient_id`) g
                 ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
-                max_mutations=self.max_mutations,table=tcga_table)
+                max_mutations=self.max_mutations,table=tcga_table,
+                patient_filter = self._build_patient_filter_str(form='WHERE'))
             
             try:
                 con = mdb.connect(**dbvars)
@@ -247,16 +269,19 @@ class PathwaySummary():
             NATURAL JOIN normals 
             NATURAL JOIN patients p
             WHERE project_id IN ({projGroupStr})
+            {patient_filter}
             GROUP BY patient_id
         ) g
         INNER JOIN
             #good patients
             (SELECT patient_id FROM mutations_tumor_normal NATURAL JOIN normals 
                 NATURAL JOIN patients WHERE project_id IN ({projGroupStr})
+                {patient_filter}
                 GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p2
         ON g.patient_id = p2.patient_id;""".format(path_id=self.path_id,  
             max_mutations=self.max_mutations,
-            projGroupStr = ','.join(str(i) for i in projIdsTuple))
+            projGroupStr = ','.join(str(i) for i in projIdsTuple),
+            patient_filter = self._build_patient_filter_str(form="AND"))
 
         try:
             con = mdb.connect(**dbvars)
@@ -294,11 +319,13 @@ class PathwaySummary():
                 NATURAL JOIN
                 #good patients
                 (SELECT patient_id, count(DISTINCT entrez_id) AS n_patient 
-                    FROM tcga.{table} GROUP BY patient_id HAVING count(*) <= {max_mutations}) p
+                    FROM tcga.{table} GROUP BY patient_id 
+                    {patient_filter}
+                    HAVING count(*) <= {max_mutations}) p
                 WHERE path_id = {path_id}
                 GROUP BY patient_id
             ) g;""".format(path_id=self.path_id, max_mutations=self.max_mutations,
-            table=tcga_table)
+            table=tcga_table, patient_filter = self._build_patient_filter_str(form="WHERE"))
 
             try:
                 con = mdb.connect(**dbvars)
@@ -357,9 +384,11 @@ class PathwaySummary():
         cmd1 = """SELECT count(DISTINCT patient_id) AS num_patients FROM 
             (SELECT patient_id FROM mutations_tumor_normal NATURAL JOIN normals 
             NATURAL JOIN patients WHERE project_id IN ({projGroupStr}) 
+            {patient_filter}
             GROUP BY patient_id HAVING count(*) <= {max_mutations} ) p2;""".format(
             max_mutations=self.max_mutations,
-            projGroupStr = ','.join(str(i) for i in projIdsTuple))
+            projGroupStr = ','.join(str(i) for i in projIdsTuple),
+            patient_filter = self._build_patient_filter_str(form="AND"))
 
         # HUGO LIST AND PATIENT COUNTS
         cmd2 = """SELECT hugo_symbol, count(DISTINCT patient_id) AS n_patients
@@ -370,12 +399,15 @@ class PathwaySummary():
             #good patients
             (SELECT patient_id FROM mutations_tumor_normal NATURAL JOIN normals 
                 NATURAL JOIN patients WHERE project_id IN ({projGroupStr})
+                {patient_filter}
                 GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p
             WHERE path_id = {path_id}
+            {patient_filter}
             GROUP BY hugo_symbol
             ORDER BY hugo_symbol;""".format(path_id=self.path_id,
                 max_mutations=self.max_mutations,
-                projGroupStr = ','.join(str(i) for i in projIdsTuple))
+                projGroupStr = ','.join(str(i) for i in projIdsTuple),
+                patient_filter = self._build_patient_filter_str(form="AND"))
         
         try:
             con = mdb.connect(**dbvars)
@@ -421,8 +453,10 @@ class PathwaySummary():
 
             cmd1 = """SELECT count(DISTINCT patient_id) AS n_patient FROM 
                 (SELECT patient_id FROM tcga.{table} 
+                {patient_filter}
                 GROUP BY patient_id HAVING count(*) <= {max_mutations}) p2;""".format(
-                max_mutations=self.max_mutations,table=tcga_table)
+                max_mutations=self.max_mutations,table=tcga_table,
+                patient_filter = self._build_patient_filter_str(form="WHERE"))
 
             # HUGO LIST AND PATIENT COUNTS
             cmd2 = """SELECT hugo_symbol, count(DISTINCT patient_id) AS n_patients
@@ -432,11 +466,15 @@ class PathwaySummary():
                 NATURAL JOIN
                 #good patients
                 (SELECT patient_id FROM tcga.{table} t
+                    {patient_filter1}
                     GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p
                 WHERE path_id = {path_id}
+                {patient_filter2}
                 GROUP BY hugo_symbol
                 ORDER BY hugo_symbol;""".format(path_id=self.path_id,
-                    max_mutations=self.max_mutations,table=tcga_table)
+                    max_mutations=self.max_mutations,table=tcga_table,
+                    patient_filter1 = self._build_patient_filter_str(form="WHERE"),
+                    patient_filter2 = self._build_patient_filter_str(form="AND"))
             
             try:
                 con = mdb.connect(**dbvars)
@@ -559,10 +597,11 @@ class LCalculator():
 class GenericPathwayFileProcessor():
     """Generic object that can convert yale_proj_ids and tcga_proj_abbrvs 
     to file_name."""
-    def __init__(self, yale_proj_ids, tcga_proj_abbrvs):
+    def __init__(self, yale_proj_ids, tcga_proj_abbrvs, filter_patient_ids):
         self.root_name = self._get_root_filename(yale_proj_ids, tcga_proj_abbrvs)
         self.yale_proj_ids = yale_proj_ids
         self.tcga_proj_abbrvs = tcga_proj_abbrvs
+        self.filter_patient_ids = filter_patient_ids
         
     def _get_root_filename(self,yale_proj_ids, tcga_proj_abbrvs):
         """Root file name for output files."""
@@ -611,7 +650,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.yale_proj_ids, 
-                    self.tcga_proj_abbrvs)
+                    self.tcga_proj_abbrvs, self.filter_patient_ids)
                 pway.set_up_from_file(pval,psize,peffect,runtime)
 
                 allPathways.append(pway)
@@ -791,7 +830,11 @@ def main():
     patient_list = list()
     if args.patients_file:
         for line in args.patients_file:
-            patient_list.append(line.strip('\n'))
+            temp_line = line.strip('\n')
+            if temp_line.isdigit():
+                patient_list.append(int(temp_line)) # integer if possible
+            else:
+                patient_list.append(temp_line) #strings for tcga projects
         print("Loaded {} patients.".format(len(patient_list)))
     else:
         print('No patients file provided. Using all patients.')
@@ -815,18 +858,21 @@ def main():
     for pathway_number in all_path_ids:
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
-        pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs)
+        pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs,
+            patient_list)
         pway.set_pathway_size()
         pway.populate_patient_info()
         lcalc = LCalculator(pway)
         lcalc.run()
         runtime = timeit.default_timer() - start
         # Write results to 'basic' file
-        basicWriter = PathwayBasicFileWriter(yale_proj_ids,tcga_proj_abbrvs)
+        basicWriter = PathwayBasicFileWriter(yale_proj_ids,tcga_proj_abbrvs,
+            patient_list)
         basicWriter.write_pvalue_file(lcalc, runtime)
 
     # Gather all pathway stats from text file
-    assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs)
+    assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs,
+        patient_list)
     pway_list = assembler.get_ordered_pway_list()
 
     # Rank pathways, gather extra stats and write to final file
