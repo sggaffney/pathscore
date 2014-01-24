@@ -5,9 +5,7 @@ from scipy.misc import comb
 from numpy import *
 from scipy import stats
 import timeit
-import sys
 import argparse
-# import pdb
 
 class NonSingleResult(Exception):
     pass
