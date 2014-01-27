@@ -21,7 +21,7 @@ class Patient():
 
 class PathwaySummary():
     """Holds pathway information, and can fetch info from db."""
-    def __init__(self,pathway_number,yale_proj_ids,tcga_proj_abbrvs,patient_ids):
+    def __init__(self,pathway_number,yale_proj_ids,tcga_proj_abbrvs,patient_ids=list()):
         self.path_id = pathway_number
         self.n_actual = None
         self.patients = list() # tuples. (patient_id, n_mutations, is_mutated)
@@ -595,11 +595,11 @@ class LCalculator():
 class GenericPathwayFileProcessor():
     """Generic object that can convert yale_proj_ids and tcga_proj_abbrvs 
     to file_name."""
-    def __init__(self, yale_proj_ids, tcga_proj_abbrvs, filter_patient_ids):
+    def __init__(self, yale_proj_ids, tcga_proj_abbrvs, patient_ids=list()):
         self.root_name = self._get_root_filename(yale_proj_ids, tcga_proj_abbrvs)
         self.yale_proj_ids = yale_proj_ids
         self.tcga_proj_abbrvs = tcga_proj_abbrvs
-        self.filter_patient_ids = filter_patient_ids
+        self.filter_patient_ids = patient_ids
         
     def _get_root_filename(self,yale_proj_ids, tcga_proj_abbrvs):
         """Root file name for output files."""
@@ -648,7 +648,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.yale_proj_ids, 
-                    self.tcga_proj_abbrvs, self.filter_patient_ids)
+                    self.tcga_proj_abbrvs, patient_ids=self.filter_patient_ids)
                 pway.set_up_from_file(pval,psize,peffect,runtime)
 
                 allPathways.append(pway)
@@ -669,9 +669,11 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
 
 class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
     """Writes detailed postprocessing file: pathway names, pvalues and gene info."""
-    def __init__(self, yale_proj_ids, tcga_proj_abbrvs, pway_object_list):
+    def __init__(self, yale_proj_ids, tcga_proj_abbrvs, pway_object_list, 
+        patient_ids=list()):
         # create self.root_name
-        GenericPathwayFileProcessor.__init__(self,yale_proj_ids, tcga_proj_abbrvs)
+        GenericPathwayFileProcessor.__init__(self,yale_proj_ids, tcga_proj_abbrvs,
+            patient_ids=patient_ids)
         self.allPathways = pway_object_list
         self.nameDict = self.getPathwayNameDict()
         self.outfile_name = self.root_name + '_pretty.txt'
@@ -857,7 +859,7 @@ def main():
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
         pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs,
-            patient_list)
+            patient_ids=patient_list)
         pway.set_pathway_size()
         pway.populate_patient_info()
         lcalc = LCalculator(pway)
@@ -870,12 +872,12 @@ def main():
 
     # Gather all pathway stats from text file
     assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs,
-        patient_list)
+        patient_ids=patient_list)
     pway_list = assembler.get_ordered_pway_list()
 
     # Rank pathways, gather extra stats and write to final file
     final_writer = PathwayDetailedFileWriter(yale_proj_ids, 
-        tcga_proj_abbrvs, pway_list)
+        tcga_proj_abbrvs, pway_list, patient_ids=patient_list)
     final_writer.write_detailed_file()
 
 
