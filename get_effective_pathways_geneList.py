@@ -515,9 +515,9 @@ class LCalculator():
     """Calculates likelihood of observing pathway mutations in patients, and 
     MLE pathway size from these observations. Takes a pathwaySummary object."""
 
-    def __init__(self, pway):
+    def __init__(self, pway, genome_size=18852):
 
-        self.G = 18852 # genes in genome
+        self.G = genome_size # genes in genome
         self.pway = pway
         self.likelihood = None
         self.ne = None
@@ -824,8 +824,24 @@ def main():
         help="file containing patients to include")
     parser.add_argument("-g", "--genes", nargs="+",
         help="file containing patients to include")
+    parser.add_argument("-gs", "--genome",default='no_pseudo',
+        help="limit genome size to protein-coding genes.",
+        choices=['no_pseudo','anything','protein-coding','inc_misc_chr'])
     args = parser.parse_args()
     
+    # genome_size
+    if args.genome == 'protein-coding':
+        genome_size = 20462
+    elif args.genome == 'no_pseudo':
+        genome_size = 28795
+    elif args.genome == 'all':
+        genome_size = 45466
+    elif args.genome == 'inc_misc_chr':
+        genome_size = 46286
+    else:
+        raise Exception("Unknown genome version")
+    print("Using genome version '{}': {} genes".format(args.genome,genome_size))
+
     # get patient list. maybe empty list.
     patient_list = list()
     if args.patients_file:
@@ -862,7 +878,7 @@ def main():
             patient_ids=patient_list)
         pway.set_pathway_size()
         pway.populate_patient_info()
-        lcalc = LCalculator(pway)
+        lcalc = LCalculator(pway,genome_size) #include optional genome_size
         lcalc.run()
         runtime = timeit.default_timer() - start
         # Write results to 'basic' file
