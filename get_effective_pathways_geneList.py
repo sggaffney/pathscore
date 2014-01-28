@@ -6,6 +6,7 @@ from numpy import *
 from scipy import stats
 import timeit
 import argparse
+import warnings
 
 class NonSingleResult(Exception):
     pass
@@ -561,7 +562,7 @@ class LCalculator():
         #improved = False
         ne = None
         #profile = list()
-
+        
         #check last 2 vals to check for decline:
         penult = self._get_pway_likelihood(pway_size=self.G - 500 - 1)
         ult = self._get_pway_likelihood(pway_size=self.G - 500)
@@ -570,7 +571,7 @@ class LCalculator():
             return (ne,ult)
 
         # at this stage, there will be a max before Genome size
-        for pway_size in range(1,self.G - 500):
+        for pway_size in xrange(1,self.G - 500):
             this_ll = self._get_pway_likelihood(pway_size=pway_size)
             #profile.append(this_ll)
             #if mod(pway_size,100)==0:
@@ -583,9 +584,11 @@ class LCalculator():
             #    pway_size >= self.pway_size):
             #    improved = True
                 
-            if this_ll < last_ll:
+            if this_ll < last_ll or this_ll == 0:
                 ne = pway_size - 1
-                
+                if this_ll == 0:
+                    warnings.warn("Premature stop for pway {}.".format(
+                        self.pway.path_id))
                 break
             
             last_ll = this_ll
