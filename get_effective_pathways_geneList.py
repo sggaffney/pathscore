@@ -318,8 +318,8 @@ class PathwaySummary():
                 NATURAL JOIN
                 #good patients
                 (SELECT patient_id, count(DISTINCT entrez_id) AS n_patient 
-                    FROM tcga.{table} GROUP BY patient_id 
-                    {patient_filter}
+                    FROM tcga.{table} {patient_filter} 
+                    GROUP BY patient_id 
                     HAVING count(*) <= {max_mutations}) p
                 WHERE path_id = {path_id}
                 GROUP BY patient_id
