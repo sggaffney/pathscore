@@ -563,6 +563,14 @@ class LCalculator():
         ne = None
         #profile = list()
         
+        # if all patients mutated, use ne=genome_size - 500
+        if False not in [patient.is_mutated for patient in self.pway.patients]:
+            ne = self.G
+            ult = float64(0)
+            warnings.warn("All patients have mutation in pathway {}. ".format(
+                self.pway.path_id) + "Effective size is full genome.")
+            return (ne,ult)
+
         #check last 2 vals to check for decline:
         penult = self._get_pway_likelihood(pway_size=self.G - 500 - 1)
         ult = self._get_pway_likelihood(pway_size=self.G - 500)
