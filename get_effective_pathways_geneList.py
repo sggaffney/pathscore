@@ -606,11 +606,12 @@ class LCalculator():
 class GenericPathwayFileProcessor():
     """Generic object that can convert yale_proj_ids and tcga_proj_abbrvs 
     to file_name."""
-    def __init__(self, yale_proj_ids, tcga_proj_abbrvs, patient_ids=list()):
-        self.root_name = self._get_root_filename(yale_proj_ids, tcga_proj_abbrvs)
+    def __init__(self,yale_proj_ids,tcga_proj_abbrvs,patient_ids=list(),name_suffix=None):
         self.yale_proj_ids = yale_proj_ids
         self.tcga_proj_abbrvs = tcga_proj_abbrvs
         self.filter_patient_ids = patient_ids
+        self.name_suffix = name_suffix
+        self.root_name = self._get_root_filename(yale_proj_ids, tcga_proj_abbrvs)
         
     def _get_root_filename(self,yale_proj_ids, tcga_proj_abbrvs):
         """Root file name for output files."""
@@ -624,6 +625,8 @@ class GenericPathwayFileProcessor():
         if tcga_proj_abbrvs:
             tcga_substr = '_' + tcga_substr
         root_name = base_str + yale_substr + tcga_substr
+        if self.name_suffix:
+            root_name += '_' + self.name_suffix
         return root_name
 
 
@@ -681,10 +684,10 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
 class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
     """Writes detailed postprocessing file: pathway names, pvalues and gene info."""
     def __init__(self, yale_proj_ids, tcga_proj_abbrvs, pway_object_list, 
-        patient_ids=list()):
+        patient_ids=list(),name_suffix=None):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self,yale_proj_ids, tcga_proj_abbrvs,
-            patient_ids=patient_ids)
+            patient_ids=patient_ids,name_suffix=name_suffix)
         self.allPathways = pway_object_list
         self.nameDict = self.getPathwayNameDict()
         self.outfile_name = self.root_name + '_pretty.txt'
@@ -838,6 +841,8 @@ def main():
     parser.add_argument("-gs", "--genome",default='no_pseudo',
         help="limit genome size to protein-coding genes.",
         choices=['no_pseudo','anything','protein-coding','inc_misc_chr'])
+    parser.add_argument("-s", "--suffix",
+        help="optional descriptive string to append to filenames.")
     args = parser.parse_args()
     
     # genome_size
@@ -894,17 +899,18 @@ def main():
         runtime = timeit.default_timer() - start
         # Write results to 'basic' file
         basicWriter = PathwayBasicFileWriter(yale_proj_ids,tcga_proj_abbrvs,
-            patient_list)
+            patient_ids=patient_list,name_suffix=args.suffix)
         basicWriter.write_pvalue_file(lcalc, runtime)
 
     # Gather all pathway stats from text file
     assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs,
-        patient_ids=patient_list)
+        patient_ids=patient_list,name_suffix=args.suffix)
     pway_list = assembler.get_ordered_pway_list()
 
     # Rank pathways, gather extra stats and write to final file
     final_writer = PathwayDetailedFileWriter(yale_proj_ids, 
-        tcga_proj_abbrvs, pway_list, patient_ids=patient_list)
+        tcga_proj_abbrvs, pway_list, patient_ids=patient_list,
+        name_suffix=args.suffix)
     final_writer.write_detailed_file()
 
 
