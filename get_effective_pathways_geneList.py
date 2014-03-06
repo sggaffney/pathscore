@@ -22,14 +22,15 @@ class Patient():
 
 class PathwaySummary():
     """Holds pathway information, and can fetch info from db."""
-    def __init__(self,pathway_number,yale_proj_ids,tcga_proj_abbrvs,patient_ids=list()):
+    def __init__(self,pathway_number,yale_proj_ids,tcga_proj_abbrvs,
+        patient_ids=list(),max_mutations=500):
         self.path_id = pathway_number
         self.n_actual = None
         self.patients = list() # tuples. (patient_id, n_mutations, is_mutated)
         self.filter_patient_ids = patient_ids;
         self.n_effective = None
         self.p_value = None
-        self.max_mutations = 500
+        self.max_mutations = max_mutations
         self.yale_proj_ids = yale_proj_ids
         self.tcga_proj_abbrvs = tcga_proj_abbrvs
         # populated during post-processing:
@@ -464,6 +465,7 @@ class LCalculator():
         self.ne_ll = None
         self.D = None
         self.pvalue = None
+        self.max_mutations = pway.max_mutations
     def run(self):
         """ Calculate likelihood and maximum likelihood estimate."""
         self.likelihood = self._get_pway_likelihood(self.pway.n_actual)
@@ -496,7 +498,7 @@ class LCalculator():
         #improved = False
         ne = None
         #profile = list()
-        # if all patients mutated, use ne=genome_size - 500
+        # if all patients mutated, use ne=genome_size - max_mutations
         if False not in [patient.is_mutated for patient in self.pway.patients]:
             ne = self.G
             ult = float64(0)
@@ -504,13 +506,13 @@ class LCalculator():
                 self.pway.path_id) + "Effective size is full genome.")
             return (ne,ult)
         #check last 2 vals to check for decline:
-        penult = self._get_pway_likelihood(pway_size=self.G - 500 - 1)
-        ult = self._get_pway_likelihood(pway_size=self.G - 500)
+        penult = self._get_pway_likelihood(pway_size=self.G - self.max_mutations - 1)
+        ult = self._get_pway_likelihood(pway_size=self.G - self.max_mutations)
         if ult > penult:
             ne = self.G
             return (ne,ult)
         # at this stage, there will be a max before Genome size
-        for pway_size in xrange(1,self.G - 500):
+        for pway_size in xrange(1,self.G - self.max_mutations):
             this_ll = self._get_pway_likelihood(pway_size=pway_size)
             #profile.append(this_ll)
             #if mod(pway_size,100)==0:
@@ -533,12 +535,14 @@ class LCalculator():
 class GenericPathwayFileProcessor():
     """Generic object that can convert yale_proj_ids and tcga_proj_abbrvs 
     to file_name."""
-    def __init__(self,yale_proj_ids,tcga_proj_abbrvs,patient_ids=list(),name_suffix=None):
+    def __init__(self,yale_proj_ids,tcga_proj_abbrvs,patient_ids=list(),
+        name_suffix=None,max_mutations=None):
         self.yale_proj_ids = yale_proj_ids
         self.tcga_proj_abbrvs = tcga_proj_abbrvs
         self.filter_patient_ids = patient_ids
         self.name_suffix = name_suffix
         self.root_name = self._get_root_filename(yale_proj_ids, tcga_proj_abbrvs)
+        self.max_mutations = max_mutations
     def _get_root_filename(self,yale_proj_ids, tcga_proj_abbrvs):
         """Root file name for output files."""
         
@@ -584,7 +588,8 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 runtime = float(row[4])
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.yale_proj_ids, 
-                    self.tcga_proj_abbrvs, patient_ids=self.filter_patient_ids)
+                    self.tcga_proj_abbrvs, patient_ids=self.filter_patient_ids, 
+                    max_mutations=self.max_mutations)
                 pway.set_up_from_file(pval,psize,peffect,runtime)
                 allPathways.append(pway)
         # sort pathways by effect_size : actual_size
@@ -602,10 +607,10 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
 class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
     """Writes detailed postprocessing file: pathway names, pvalues and gene info."""
     def __init__(self, yale_proj_ids, tcga_proj_abbrvs, pway_object_list, 
-        patient_ids=list(),name_suffix=None):
+        patient_ids=list(),name_suffix=None,max_mutations=None):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self,yale_proj_ids, tcga_proj_abbrvs,
-            patient_ids=patient_ids,name_suffix=name_suffix)
+            patient_ids=patient_ids,name_suffix=name_suffix,max_mutations=max_mutations)
         self.allPathways = pway_object_list
         self.nameDict = self.getPathwayNameDict()
         self.outfile_name = self.root_name + '_pretty.txt'
@@ -733,8 +738,13 @@ def main():
         choices=['no_pseudo','anything','protein-coding','inc_misc_chr'])
     parser.add_argument("-s", "--suffix",
         help="optional descriptive string to append to filenames.")
+    parser.add_argument("--cutoff",type=int,default=500,
+        help="maximum number of mutations allowed for sample inclusion.")
     args = parser.parse_args()
     
+    # max_mutations
+    max_mutations = args.cutoff
+
     # genome_size
     if args.genome == 'protein-coding':
         genome_size = 20462
@@ -781,7 +791,7 @@ def main():
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
         pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs,
-            patient_ids=patient_list)
+            patient_ids=patient_list,max_mutations=max_mutations)
         pway.set_pathway_size()
         pway.populate_patient_info()
         lcalc = LCalculator(pway,genome_size) #include optional genome_size
@@ -789,18 +799,18 @@ def main():
         runtime = timeit.default_timer() - start
         # Write results to 'basic' file
         basicWriter = PathwayBasicFileWriter(yale_proj_ids,tcga_proj_abbrvs,
-            patient_ids=patient_list,name_suffix=args.suffix)
+            patient_ids=patient_list,name_suffix=args.suffix,max_mutations=max_mutations)
         basicWriter.write_pvalue_file(lcalc, runtime)
 
     # Gather all pathway stats from text file
     assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs,
-        patient_ids=patient_list,name_suffix=args.suffix)
+        patient_ids=patient_list,name_suffix=args.suffix,max_mutations=max_mutations)
     pway_list = assembler.get_ordered_pway_list()
 
     # Rank pathways, gather extra stats and write to final file
     final_writer = PathwayDetailedFileWriter(yale_proj_ids, 
         tcga_proj_abbrvs, pway_list, patient_ids=patient_list,
-        name_suffix=args.suffix)
+        name_suffix=args.suffix, max_mutations=max_mutations)
     final_writer.write_detailed_file()
 
 
