@@ -381,6 +381,7 @@ class PathwaySummary():
             FROM mutations_tumor_normal m NATURAL JOIN normals NATURAL JOIN patients
             # gene subset in pathway of interest
             INNER JOIN refs.`pathway_gene_link` pgl ON m.entrez_gene_id = pgl.entrez_id
+            {expression_filter_pgl}
             NATURAL JOIN
             #good patients
             (SELECT patient_id FROM mutations_tumor_normal NATURAL JOIN normals 
@@ -393,7 +394,8 @@ class PathwaySummary():
             ORDER BY hugo_symbol;""".format(path_id=self.path_id,
                 max_mutations=self.max_mutations,
                 projGroupStr = ','.join(str(i) for i in projIdsTuple),
-                patient_filter = self._build_patient_filter_str(form="AND"))
+                patient_filter = self._build_patient_filter_str(form="AND"),
+                expression_filter_pgl = self._build_expressed_filter_str("pgl.entrez_id"))
         try:
             con = mdb.connect(**dbvars)
             cur = con.cursor()
@@ -437,6 +439,7 @@ class PathwaySummary():
                 FROM tcga.{table} t
                 # gene subset in pathway of interest
                 INNER JOIN refs.`pathway_gene_link` pgl ON t.entrez_id = pgl.entrez_id
+                {expression_filter_pgl}
                 NATURAL JOIN
                 #good patients
                 (SELECT patient_id FROM tcga.{table} t
@@ -448,7 +451,8 @@ class PathwaySummary():
                 ORDER BY hugo_symbol;""".format(path_id=self.path_id,
                     max_mutations=self.max_mutations,table=tcga_table,
                     patient_filter1 = self._build_patient_filter_str(form="WHERE"),
-                    patient_filter2 = self._build_patient_filter_str(form="AND"))
+                    patient_filter2 = self._build_patient_filter_str(form="AND"),
+                    expression_filter_pgl = self._build_expressed_filter_str("pgl.entrez_id"))
             try:
                 con = mdb.connect(**dbvars)
                 cur = con.cursor()
@@ -560,17 +564,13 @@ class LCalculator():
 class GenericPathwayFileProcessor():
     """Generic object that can convert yale_proj_ids and tcga_proj_abbrvs 
     to file_name."""
-    def __init__(self,yale_proj_ids,tcga_proj_abbrvs,patient_ids=list(),
-        name_suffix=None,max_mutations=None):
+    def __init__(self,yale_proj_ids,tcga_proj_abbrvs,name_suffix=None):
         self.yale_proj_ids = yale_proj_ids
         self.tcga_proj_abbrvs = tcga_proj_abbrvs
-        self.filter_patient_ids = patient_ids
         self.name_suffix = name_suffix
         self.root_name = self._get_root_filename(yale_proj_ids, tcga_proj_abbrvs)
-        self.max_mutations = max_mutations
     def _get_root_filename(self,yale_proj_ids, tcga_proj_abbrvs):
         """Root file name for output files."""
-        
         base_str = 'pathways_pvalues'
         yale_substr = str(yale_proj_ids).replace(',','').replace(' ','_').replace(
             '(','').replace(')','')
@@ -599,6 +599,14 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
 
 class PathwayListAssembler(GenericPathwayFileProcessor):
     """Builds ordered list of pathways from basic p-value file."""
+    def __init__(self, yale_proj_ids, tcga_proj_abbrvs, pway_object_list, 
+        patient_ids=list(),name_suffix=None,max_mutations=None,expressed_table=None):
+        # create self.root_name
+        GenericPathwayFileProcessor.__init__(self,yale_proj_ids, tcga_proj_abbrvs,
+            name_suffix=name_suffix)
+        self.patient_ids = patient_ids
+        self.max_mutations = max_mutations
+        self.expressed_table = expressed_table
     def get_ordered_pway_list(self):
         file_name = self.root_name + '.txt'
         #max_lookup_rows = 100
@@ -632,13 +640,14 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
 class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
     """Writes detailed postprocessing file: pathway names, pvalues and gene info."""
     def __init__(self, yale_proj_ids, tcga_proj_abbrvs, pway_object_list, 
-        patient_ids=list(),name_suffix=None,max_mutations=None):
+        patient_ids=list(),name_suffix=None,max_mutations=None,expressed_table=None):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self,yale_proj_ids, tcga_proj_abbrvs,
-            patient_ids=patient_ids,name_suffix=name_suffix,max_mutations=max_mutations)
+            name_suffix=name_suffix)
         self.allPathways = pway_object_list
         self.nameDict = self.getPathwayNameDict()
         self.outfile_name = self.root_name + '_pretty.txt'
+        self.expressed_table = expressed_table
     def getPathwayNameDict(self):
         """Gets name for all pathways, stored in dictionary: pathid -> pathname."""
         rows = None
@@ -798,8 +807,6 @@ def main():
     else:
         print('No patients file provided. Using all patients.')
 
-
-
     # split projIds into yale, tcga    
     yale_proj_ids = tuple(int(i) for i in args.proj_ids if i.isdigit())
     tcga_proj_abbrvs = tuple(i for i in args.proj_ids if not i.isdigit())
@@ -820,26 +827,27 @@ def main():
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
         pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs,
-            patient_ids=patient_list,max_mutations=max_mutations)
+            patient_ids=patient_list,max_mutations=max_mutations,expressed_table=args.expression)
         pway.set_pathway_size()
         pway.populate_patient_info()
         lcalc = LCalculator(pway,genome_size) #include optional genome_size
         lcalc.run()
         runtime = timeit.default_timer() - start
         # Write results to 'basic' file
-        basicWriter = PathwayBasicFileWriter(yale_proj_ids,tcga_proj_abbrvs,
-            patient_ids=patient_list,name_suffix=args.suffix,max_mutations=max_mutations)
+        basicWriter = PathwayBasicFileWriter(yale_proj_ids, tcga_proj_abbrvs,
+            name_suffix=args.suffix)
         basicWriter.write_pvalue_file(lcalc, runtime)
 
     # Gather all pathway stats from text file
     assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs,
-        patient_ids=patient_list,name_suffix=args.suffix,max_mutations=max_mutations)
+        patient_ids=patient_list,name_suffix=args.suffix,max_mutations=max_mutations,
+        expressed_table=args.expression)
     pway_list = assembler.get_ordered_pway_list()
 
     # Rank pathways, gather extra stats and write to final file
     final_writer = PathwayDetailedFileWriter(yale_proj_ids, 
-        tcga_proj_abbrvs, pway_list, patient_ids=patient_list,
-        name_suffix=args.suffix, max_mutations=max_mutations)
+        tcga_proj_abbrvs, pway_list, patient_ids=patient_list,name_suffix=args.suffix, 
+        max_mutations=max_mutations,expressed_table=args.expression)
     final_writer.write_detailed_file()
 
 
