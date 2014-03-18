@@ -23,11 +23,12 @@ class Patient():
 class PathwaySummary():
     """Holds pathway information, and can fetch info from db."""
     def __init__(self,pathway_number,yale_proj_ids,tcga_proj_abbrvs,
-        patient_ids=list(),max_mutations=500):
+        patient_ids=list(),max_mutations=500,expressed_table=None):
         self.path_id = pathway_number
         self.n_actual = None
         self.patients = list() # tuples. (patient_id, n_mutations, is_mutated)
         self.filter_patient_ids = patient_ids;
+        self.filter_expressed = expressed_table;
         self.n_effective = None
         self.p_value = None
         self.max_mutations = max_mutations
@@ -39,7 +40,7 @@ class PathwaySummary():
         self.cooccurring_genes = list()
         self.runtime = None  #only set up by file reader
     def set_up_from_file(self,pval,psize,peffect,runtime):
-        """Manually specify pathway summary properties."""
+        """Manually specify pathway summary properties (after running init)."""
         self.p_value = pval
         self.n_actual = psize
         self.n_effective = peffect
@@ -51,10 +52,12 @@ class PathwaySummary():
         """Lookup pathway size in DB. Save to data attribute."""
         pway_size = None
         # GET pway_size
-        cmd1 = """SELECT count(DISTINCT entrez_id) AS pway_size 
-        FROM refs.pathway_gene_link WHERE entrez_id IS NOT NULL 
-        AND path_id = {pathid} GROUP BY path_id;""".format(
-            pathid=self.path_id)  
+        cmd1 = """SELECT count(DISTINCT pgl.entrez_id) AS pway_size 
+        FROM refs.pathway_gene_link pgl
+        {expression_filter_pgl}
+        WHERE pgl.entrez_id IS NOT NULL 
+        AND path_id = {pathid} GROUP BY path_id;""".format(pathid=self.path_id,
+            expression_filter_pgl = self._build_expressed_filter_str('pgl.entrez_id'))  
         try:
             con = mdb.connect(**dbvars)
             cur = con.cursor()
@@ -83,28 +86,40 @@ class PathwaySummary():
         elif form == 'AND':
             prepend = "AND "
         else:
-            raise Exception("Category must be 'yale' or 'tcga'.")
+            raise Exception("Unrecognized form in patient filter.")
         if self.filter_patient_ids:
             filter = (prepend + "patient_id IN " + 
                 str(self.filter_patient_ids).replace("[","(").replace("]",")"))
         else:
             filter = ""
         return filter
+    def _build_expressed_filter_str(self, join_ref):
+        """build SQL substring to filter genes by entrez_id in mutation lookup.
+        join_ref is abbreviation of table and column to join to expression table,
+        e.g. m.entrez_id or pwg.entrez_gene_id.
+        Assumes expression table is in tcga database.
+        """    
+        if self.filter_expressed:
+            filter = "INNER JOIN tcga.{filter_expressed} e ON {join_abbrv} = e.entrez_id".format(
+                filter_expressed=self.filter_expressed, join_abbrv=join_abbrv)
+        else:
+            filter = ""
+        return filter
     def _append_yale_patients(self):
-        """Get patient-pathway gene overlap info from databse.
+        """Get patient-pathway gene overlap info from database.
         # Returns tuple collection of row tuples.
         Row tuple: (PATIENT_ID, N_PATIENT, BOOL_MUTATED), e.g. (678L, 323L, 1L)
         """
         rows = None
-        
         ## GET mutated boolean for genes in specified pathway for GOOD 
         #  patients (<max_mutations), even those without somatic mutation. 
         cmd2 = """SELECT p.patient_id, n_patient, g.patient_id IS NOT NULL AS mutated FROM
             # good patients for project, mutation_count
-            (SELECT patient_id, count(DISTINCT entrez_gene_id) AS n_patient FROM 
-                mutations_tumor_normal NATURAL JOIN normals NATURAL JOIN patients 
-            WHERE project_id IN ({projGroupStr})
-            {patient_filter}
+            (SELECT patient_id, count(DISTINCT m.entrez_gene_id) AS n_patient FROM 
+                mutations_tumor_normal m NATURAL JOIN normals NATURAL JOIN patients 
+                {expression_filter_m}
+                WHERE project_id IN ({projGroupStr})
+                {patient_filter}
             GROUP BY patient_id HAVING count(*) <= {max_mutations})  p 
         LEFT JOIN
             # patients in project with mutation in pathway
@@ -112,13 +127,15 @@ class PathwaySummary():
                     (SELECT entrez_id FROM refs.`pathway_gene_link` pwg 
                         WHERE path_id={path_id}) pwg 
                 INNER JOIN mutations_tumor_normal m ON pwg.entrez_id=m.entrez_gene_id 
-                NATURAL JOIN normals NATURAL JOIN patients 
+                NATURAL JOIN normals NATURAL JOIN patients
+                {expression_filter_m} 
                 WHERE project_id IN ({projGroupStr}) 
                 GROUP BY patient_id) g 
         ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
             max_mutations=self.max_mutations, 
             projGroupStr = ','.join(str(i) for i in self.yale_proj_ids),
-            patient_filter = self._build_patient_filter_str(form="AND"))
+            patient_filter = self._build_patient_filter_str(form="AND"),
+            expression_filter_m = self._build_expressed_filter_str('m.entrez_gene_id'))
         try:
             con = mdb.connect(**dbvars)
             cur = con.cursor()
@@ -137,7 +154,7 @@ class PathwaySummary():
             patient = Patient(patient_id, n_mutated, is_mutated, is_yale)
             self.patients.append(patient)
     def _append_tcga_patients(self):
-        """Gets patient-pathway gene overlap info from databse.
+        """Gets patient-pathway gene overlap info from database.
         # Returns tuple collection of row tuples.
         Row tuple: (PATIENT_ID, N_PATIENT, BOOL_MUTATED), e.g. (678L, 323L, 1L)
         """
@@ -147,7 +164,8 @@ class PathwaySummary():
             #  patients (<max_mutations), even those without somatic mutation. 
             cmd2 = """SELECT p.patient_id, n_patient, g.patient_id IS NOT NULL AS mutated FROM
                 # good patients, mutation_count
-                (SELECT patient_id, count(DISTINCT entrez_id) AS n_patient FROM tcga.{table} 
+                (SELECT patient_id, count(DISTINCT entrez_id) AS n_patient FROM tcga.{table} m
+                    {expression_filter_m}
                     {patient_filter}
                     GROUP BY patient_id HAVING count(*) <= {max_mutations}) p
                 LEFT JOIN
@@ -158,12 +176,16 @@ class PathwaySummary():
                         {patient_filter}) pg
                     # join to pathway genes
                         INNER JOIN 
-                    (SELECT entrez_id FROM refs.pathway_gene_link WHERE path_id = {path_id}) pwg 
+                    (SELECT entrez_id FROM refs.pathway_gene_link pgl 
+                        {expression_filter_pgl}
+                        WHERE path_id = {path_id}) pwg 
                     ON pwg.entrez_id = pg.entrez_id 
                     GROUP BY `patient_id`) g
                 ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
                 max_mutations=self.max_mutations,table=tcga_table,
-                patient_filter = self._build_patient_filter_str(form='WHERE'))
+                patient_filter = self._build_patient_filter_str(form='WHERE'),
+                expression_filter_m = self._build_expressed_filter_str('m.entrez_id'),
+                expression_filter_pgl = self._build_expressed_filter_str('pgl.entrez_id'))
             try:
                 con = mdb.connect(**dbvars)
                 cur = con.cursor()
@@ -188,7 +210,8 @@ class PathwaySummary():
         self._populate_exclusive_cooccurring()
         self._update_gene_coverage()
     def _populate_exclusive_cooccurring(self):
-        """ Postprocessing step. Look up gene combinations hit, sort into sets."""
+        """ Postprocessing step. Look up gene combinations hit 
+        (via _get_gene_combs_hit_yale and _get_gene_combs_hit_tcga), sort into sets."""
         gene_combs_list = list()
         all_hit_genes_set = set()
         exclusive_gene_set = set()
@@ -238,7 +261,9 @@ class PathwaySummary():
                  SEPARATOR ',') AS symbols 
             FROM 
                 # gene subset in pathway of interest            
-                (SELECT entrez_id FROM refs.`pathway_gene_link` WHERE path_id = {path_id}) pgl
+                (SELECT pgl.entrez_id FROM refs.`pathway_gene_link` pgl
+                    {expression_filter_pgl}
+                    WHERE path_id = {path_id}) pgl
             INNER JOIN mutations_tumor_normal m 
             ON m.entrez_gene_id = pgl.entrez_id
             NATURAL JOIN normals 
@@ -256,7 +281,8 @@ class PathwaySummary():
         ON g.patient_id = p2.patient_id;""".format(path_id=self.path_id,  
             max_mutations=self.max_mutations,
             projGroupStr = ','.join(str(i) for i in projIdsTuple),
-            patient_filter = self._build_patient_filter_str(form="AND"))
+            patient_filter = self._build_patient_filter_str(form="AND"),
+            expression_filter_pgl = self._build_expressed_filter_str("pgl.entrez_id"))
         try:
             con = mdb.connect(**dbvars)
             cur = con.cursor()
@@ -286,16 +312,17 @@ class PathwaySummary():
                 FROM tcga.{table} t
                 # gene subset in pathway of interest
                 INNER JOIN refs.`pathway_gene_link` pgl ON t.entrez_id = pgl.entrez_id
+                {expression_filter_pgl}
                 NATURAL JOIN
                 #good patients
-                (SELECT patient_id, count(DISTINCT entrez_id) AS n_patient 
-                    FROM tcga.{table} {patient_filter} 
+                (SELECT patient_id FROM tcga.{table} {patient_filter} 
                     GROUP BY patient_id 
                     HAVING count(*) <= {max_mutations}) p
                 WHERE path_id = {path_id}
                 GROUP BY patient_id
             ) g;""".format(path_id=self.path_id, max_mutations=self.max_mutations,
-            table=tcga_table, patient_filter = self._build_patient_filter_str(form="WHERE"))
+            table=tcga_table, patient_filter = self._build_patient_filter_str(form="WHERE"),
+            expression_filter_pgl = self._build_expressed_filter_str("pgl.entrez_id"))
             try:
                 con = mdb.connect(**dbvars)
                 cur = con.cursor()
@@ -311,7 +338,7 @@ class PathwaySummary():
             geneLists.extend(temp_geneLists)
         return geneLists
     def _update_gene_coverage(self):
-        """ Populate object's gene_coverage dictionary."""
+        """Populate object's gene_coverage dictionary."""
         t_patients = 0  # will hold total number of patients
         gene_coverage = dict()
         if self.yale_proj_ids:
@@ -336,7 +363,7 @@ class PathwaySummary():
         self.gene_coverage = gene_coverage
         return
     def _get_gene_counts_yale(self):
-        """ Fetch dictionary: gene -> (int) number of patients with mutation. 
+        """Fetch dictionary: gene -> (int) number of patients with mutation. 
         Dictionary may be empty if no pathway genes were mutated."""
         t_patients = None
         count_dict = dict()
@@ -391,7 +418,6 @@ class PathwaySummary():
             gene = geneRow[0]
             coverage = int(geneRow[1])
             count_dict[gene] = coverage
-
         return t_patients, count_dict
     def _get_gene_counts_tcga(self):
         """ Fetch dictionary: gene -> (int) percentage of patients with mutation. 
@@ -456,7 +482,6 @@ class PathwaySummary():
 class LCalculator():
     """Calculates likelihood of observing pathway mutations in patients, and 
     MLE pathway size from these observations. Takes a pathwaySummary object."""
-
     def __init__(self, pway, genome_size=18852):
         self.G = genome_size # genes in genome
         self.pway = pway
@@ -740,6 +765,8 @@ def main():
         help="optional descriptive string to append to filenames.")
     parser.add_argument("--cutoff",type=int,default=500,
         help="maximum number of mutations allowed for sample inclusion.")
+    parser.add_argument("--expression", nargs=1,
+        help="name of table containing entrez_id for expressed genes.")
     args = parser.parse_args()
     
     # max_mutations
@@ -770,6 +797,8 @@ def main():
         print("Loaded {} patients.".format(len(patient_list)))
     else:
         print('No patients file provided. Using all patients.')
+
+
 
     # split projIds into yale, tcga    
     yale_proj_ids = tuple(int(i) for i in args.proj_ids if i.isdigit())
