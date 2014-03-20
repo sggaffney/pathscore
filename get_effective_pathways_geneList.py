@@ -623,7 +623,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.yale_proj_ids, 
                     self.tcga_proj_abbrvs, patient_ids=self.filter_patient_ids, 
-                    max_mutations=self.max_mutations)
+                    max_mutations=self.max_mutations,expressed_table=self.expressed_table)
                 pway.set_up_from_file(pval,psize,peffect,runtime)
                 allPathways.append(pway)
         # sort pathways by effect_size : actual_size
