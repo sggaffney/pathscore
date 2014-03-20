@@ -64,8 +64,9 @@ class PathwaySummary():
             cur.execute(cmd1)
             rowCount = cur.rowcount
             if not rowCount == 1:
-                raise NonSingleResult("Result contains %g rows Ids for pathway %s." 
-                    % (rowCount, pathway_number))
+                print "Result contains {} rows Ids for pathway {}.".format(rowCount, self.path_id)
+                self.n_actual = 0
+                return
             pway_size = cur.fetchone()
         except mdb.Error as e:
             print "Error %d: %s" % (e.args[0],e.args[1])
@@ -100,8 +101,8 @@ class PathwaySummary():
         Assumes expression table is in tcga database.
         """    
         if self.filter_expressed:
-            filter = "INNER JOIN tcga.{filter_expressed} e ON {join_abbrv} = e.entrez_id".format(
-                filter_expressed=self.filter_expressed, join_abbrv=join_abbrv)
+            filter = "INNER JOIN tcga.{filter_expressed} e ON {join_ref} = e.entrez_id".format(
+                filter_expressed=self.filter_expressed, join_ref=join_ref)
         else:
             filter = ""
         return filter
@@ -164,7 +165,7 @@ class PathwaySummary():
             #  patients (<max_mutations), even those without somatic mutation. 
             cmd2 = """SELECT p.patient_id, n_patient, g.patient_id IS NOT NULL AS mutated FROM
                 # good patients, mutation_count
-                (SELECT patient_id, count(DISTINCT entrez_id) AS n_patient FROM tcga.{table} m
+                (SELECT patient_id, count(DISTINCT m.entrez_id) AS n_patient FROM tcga.{table} m
                     {expression_filter_m}
                     {patient_filter}
                     GROUP BY patient_id HAVING count(*) <= {max_mutations}) p
@@ -176,7 +177,7 @@ class PathwaySummary():
                         {patient_filter}) pg
                     # join to pathway genes
                         INNER JOIN 
-                    (SELECT entrez_id FROM refs.pathway_gene_link pgl 
+                    (SELECT pgl.entrez_id FROM refs.pathway_gene_link pgl 
                         {expression_filter_pgl}
                         WHERE path_id = {path_id}) pwg 
                     ON pwg.entrez_id = pg.entrez_id 
@@ -599,12 +600,12 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
 
 class PathwayListAssembler(GenericPathwayFileProcessor):
     """Builds ordered list of pathways from basic p-value file."""
-    def __init__(self, yale_proj_ids, tcga_proj_abbrvs, pway_object_list, 
-        patient_ids=list(),name_suffix=None,max_mutations=None,expressed_table=None):
+    def __init__(self, yale_proj_ids, tcga_proj_abbrvs, patient_ids=list(),
+        name_suffix=None,max_mutations=None,expressed_table=None):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self,yale_proj_ids, tcga_proj_abbrvs,
             name_suffix=name_suffix)
-        self.patient_ids = patient_ids
+        self.filter_patient_ids = patient_ids
         self.max_mutations = max_mutations
         self.expressed_table = expressed_table
     def get_ordered_pway_list(self):
@@ -626,7 +627,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 pway.set_up_from_file(pval,psize,peffect,runtime)
                 allPathways.append(pway)
         # sort pathways by effect_size : actual_size
-        allPathways.sort(key=lambda pway: float(pway.n_effective)/pway.n_actual,
+        allPathways.sort(key=lambda pway: self._get_size_ratio(pway.n_effective,pway.n_actual),
             reverse=True)
         # sort pathways by p-value
         allPathways.sort(key=lambda pway: pway.p_value,reverse=False)
@@ -635,19 +636,24 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
         #     if pway.p_value < 0.1:
         #         pway.update_exclusive_cooccurring_coverage()
         return allPathways
+    def _get_size_ratio(self,n_effective,n_actual):
+        """Ratio used for initial sorting. >1 if large effective. 0<r<1 if small_effective. 0 if n_actual is 0."""
+        if n_actual:
+            return float(n_effective)/n_actual
+        else:
+            return 0
 
 
 class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
     """Writes detailed postprocessing file: pathway names, pvalues and gene info."""
     def __init__(self, yale_proj_ids, tcga_proj_abbrvs, pway_object_list, 
-        patient_ids=list(),name_suffix=None,max_mutations=None,expressed_table=None):
+        name_suffix=None):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self,yale_proj_ids, tcga_proj_abbrvs,
             name_suffix=name_suffix)
         self.allPathways = pway_object_list
         self.nameDict = self.getPathwayNameDict()
         self.outfile_name = self.root_name + '_pretty.txt'
-        self.expressed_table = expressed_table
     def getPathwayNameDict(self):
         """Gets name for all pathways, stored in dictionary: pathid -> pathname."""
         rows = None
@@ -756,6 +762,49 @@ class PathwayIdsFetcher():
             all_path_ids.append(int(id[0]))
         return all_path_ids
 
+class BackgroundGenomeFetcher():
+    def __init__(self,genome_str,expressed_table=None):
+        """Specifying an expressed table will result in a genome size equal to 
+        the number of expressed genes, unless a genome_str is specified. The 
+        default genome_str for runs without expression data is no_pseudo."""
+        if not genome_str and not expressed_table:
+            genome_str ='no_pseudo'
+        self.genome_size = self._fetch_genome_size(genome_str,expressed_table)
+    def _fetch_genome_size(self,genome_str,expressed_table):
+        # genome_size
+        if genome_str == 'protein-coding':
+            genome_size = 20462
+        elif genome_str == 'no_pseudo':
+            genome_size = 28795
+        elif genome_str == 'all':
+            genome_size = 45466
+        elif genome_str == 'inc_misc_chr':
+            genome_size = 46286
+        elif expressed_table:
+            genome_size = self._fetch_expressed_genome_size(expressed_table)
+        else:
+            raise Exception("Unknown genome version")
+        print("Using genome version '{}': {} genes".format(genome_str,genome_size))
+        return genome_size
+    def _fetch_expressed_genome_size(self,expressed_table):
+        """Count genes via SQL query: assumes row count equals gene count."""
+        cmd1 = """SELECT count(*) FROM tcga.{table_name};""".format(
+            table_name=expressed_table)
+        try:
+            con = mdb.connect(**dbvars)
+            cur = con.cursor()
+            cur.execute(cmd1)
+            rowCount = cur.rowcount
+            if not rowCount or rowCount>1:
+                raise Exception("Expressed genome size db-lookup failed.")
+            rows = cur.fetchall()
+        except mdb.Error as e:
+            print "Error %d: %s" % (e.args[0],e.args[1])
+        finally:    
+            if con: 
+                con.close()
+        return int(rows[0][0])
+
 
 def main():
     """Arguments: projIds --patients patient_file."""
@@ -767,7 +816,7 @@ def main():
         help="file containing patients to include")
     parser.add_argument("-g", "--genes", nargs="+",
         help="file containing patients to include")
-    parser.add_argument("-gs", "--genome",default='no_pseudo',
+    parser.add_argument("-gs", "--genome",
         help="limit genome size to protein-coding genes.",
         choices=['no_pseudo','anything','protein-coding','inc_misc_chr'])
     parser.add_argument("-s", "--suffix",
@@ -781,18 +830,10 @@ def main():
     # max_mutations
     max_mutations = args.cutoff
 
-    # genome_size
-    if args.genome == 'protein-coding':
-        genome_size = 20462
-    elif args.genome == 'no_pseudo':
-        genome_size = 28795
-    elif args.genome == 'all':
-        genome_size = 45466
-    elif args.genome == 'inc_misc_chr':
-        genome_size = 46286
-    else:
-        raise Exception("Unknown genome version")
-    print("Using genome version '{}': {} genes".format(args.genome,genome_size))
+    if args.expression:
+        args.expression = args.expression[0]
+    
+    genome_size = BackgroundGenomeFetcher(args.genome,args.expression).genome_size
 
     # get patient list. maybe empty list.
     patient_list = list()
@@ -846,8 +887,7 @@ def main():
 
     # Rank pathways, gather extra stats and write to final file
     final_writer = PathwayDetailedFileWriter(yale_proj_ids, 
-        tcga_proj_abbrvs, pway_list, patient_ids=patient_list,name_suffix=args.suffix, 
-        max_mutations=max_mutations,expressed_table=args.expression)
+        tcga_proj_abbrvs, pway_list, name_suffix=args.suffix)
     final_writer.write_detailed_file()
 
 
