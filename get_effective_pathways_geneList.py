@@ -376,6 +376,7 @@ class PathwaySummary():
         t_patients = None
         count_dict = dict()
         projIdsTuple = self.yale_proj_ids
+        cmd0 = """SET SESSION group_concat_max_len = 30000;"""
         cmd1 = """SELECT count(DISTINCT patient_id) AS num_patients FROM 
             (SELECT patient_id FROM mutations_tumor_normal NATURAL JOIN normals 
             NATURAL JOIN patients WHERE project_id IN ({projGroupStr}) 
@@ -407,6 +408,7 @@ class PathwaySummary():
         try:
             con = mdb.connect(**dbvars)
             cur = con.cursor()
+            cur.execute(cmd0)
             cur.execute(cmd1)
             rowCount = cur.rowcount
             if not rowCount == 1:
