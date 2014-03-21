@@ -7,6 +7,7 @@ from scipy import stats
 import timeit
 import argparse
 import warnings
+from collections import OrderedDict
 
 class NonSingleResult(Exception):
     pass
@@ -35,7 +36,7 @@ class PathwaySummary():
         self.yale_proj_ids = yale_proj_ids
         self.tcga_proj_abbrvs = tcga_proj_abbrvs
         # populated during post-processing:
-        self.gene_coverage = dict()
+        self.gene_coverage = OrderedDict()
         self.exclusive_genes = list()
         self.cooccurring_genes = list()
         self.runtime = None  #only set up by file reader
@@ -358,6 +359,12 @@ class PathwaySummary():
                     gene_coverage[gene] += counts_temp[gene]
                 else:
                     gene_coverage[gene] = counts_temp[gene]
+        
+        coverage_tuple = [tuple([gene, gene_coverage[gene]]) for gene in gene_coverage]
+        coverage_tuple.sort(lambda x:x[0])  # alphabeticize
+        coverage_tuple.sort(lambda x:x[1], reverse=True)  # sort by n_patients
+        gene_coverage = OrderedDict(coverage_tuple)
+
         # convert to coverage by dividing by number of patients
         for gene in gene_coverage:
             gene_coverage[gene] = float(gene_coverage[gene])/t_patients*100
