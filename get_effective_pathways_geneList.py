@@ -277,20 +277,21 @@ class PathwaySummary():
             for gene in geneList:
                 all_hit_genes_set.add(gene)
         cooccurring_gene_set = all_hit_genes_set.difference(exclusive_gene_set)
-        onlyPairedWithExclusive = dict(zip(cooccurring_gene_set,
-            [True for i in cooccurring_gene_set]))
-        for geneList in gene_combs_list:
-            if not exclusive_gene_set.intersection(set(geneList)):
-                for gene in geneList:
-                    onlyPairedWithExclusive[gene] = False
-        tagAlongGenes = [gene for gene in cooccurring_gene_set 
-            if onlyPairedWithExclusive[gene]]
-        coExclusiveGenes = [gene for gene in cooccurring_gene_set if not 
-            onlyPairedWithExclusive[gene]]
-        for gene in coExclusiveGenes:
-            exclusive_gene_set.add(gene)
+        # onlyPairedWithExclusive = dict(zip(cooccurring_gene_set,
+        #     [True for i in cooccurring_gene_set]))
+        # for geneList in gene_combs_list:
+        #     if not exclusive_gene_set.intersection(set(geneList)):
+        #         for gene in geneList:
+        #             onlyPairedWithExclusive[gene] = False
+        # tagAlongGenes = [gene for gene in cooccurring_gene_set 
+        #     if onlyPairedWithExclusive[gene]]
+        # coExclusiveGenes = [gene for gene in cooccurring_gene_set if not 
+        #     onlyPairedWithExclusive[gene]]
+        # for gene in coExclusiveGenes:
+        #     exclusive_gene_set.add(gene)
         self.exclusive_genes = sorted(list(exclusive_gene_set))
-        self.cooccurring_genes = sorted(tagAlongGenes)
+        # self.cooccurring_genes = sorted(tagAlongGenes)
+        self.cooccurring_genes = sorted(list(cooccurring_gene_set))
         return
     def _get_gene_combs_hit_yale(self):
         """Gets patient-pathway gene overlap info from databse.
