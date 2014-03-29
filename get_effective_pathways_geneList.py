@@ -8,6 +8,7 @@ import timeit
 import argparse
 import warnings
 from collections import OrderedDict
+import os
 
 class NonSingleResult(Exception):
     pass
@@ -19,6 +20,46 @@ class Patient():
         self.n_mutated = n_mutated
         self.is_mutated = is_mutated
         self.is_yale = is_yale
+
+
+class GeneMatrix():
+    """Holds patient-gene matrix info for a single pathway."""
+    def __init__(self):
+        self.genePatientDict = dict()
+    def addGenePatients(self,gene,patientList):
+        """Add gene-patientList pairs into dictionary."""
+        if gene in self.genePatientDict:
+            self.genePatientDict.extend(patientList)
+        else:
+            self.genePatientDict[gene] = patientList
+    def exportMatrix(self,outfile, exclusive_genes):
+        """Writes tab-separated matrix file for patient/gene pairs in pathway."""
+        # sort genes alphabetically then by exclusive-status then by patient counts
+        genesOrdered = [gene for gene in self.genePatientDict]
+        genesOrdered.sort()  # sort alphabetically
+        genesOrdered.sort(key=lambda gene: gene in exclusive_genes, reverse=True)
+        genesOrdered.sort(key=lambda gene: len(self.genePatientDict[gene]),reverse=True)
+        # get set of patients and count genes hit for each patient
+        patient_set = set.union(*[set(i) for i in self.genePatientDict.values()])
+        patient_counts = dict(zip(list(patient_set),[0 for i in range(len(patient_set))]))
+        for patient in patient_set:
+            for gene in genesOrdered:
+                if patient in self.genePatientDict[gene]:
+                    patient_counts[patient] += 1
+        patient_list = list(patient_set)
+        patient_list.sort()  # sort alphabetically        
+        patient_list.sort(key=lambda patient:patient_counts[patient],reverse=True)
+        outfile.write("\t".join(['GENE'] + patient_list) + '\n')
+        for gene in genesOrdered:
+            if gene in exclusive_genes:
+                outfile.write('*')
+            outfile.write(gene)
+            for patient in patient_list:
+                if patient in self.genePatientDict[gene]:
+                    outfile.write('\t1')
+                else:
+                    outfile.write('\t0')
+            outfile.write('\n')
 
 
 class PathwaySummary():
@@ -39,6 +80,7 @@ class PathwaySummary():
         self.gene_coverage = OrderedDict()
         self.exclusive_genes = list()
         self.cooccurring_genes = list()
+        self.geneMatrix = None  # set during _populate_exclusive_cooccurring_coverage()
         self.runtime = None  #only set up by file reader
     def set_up_from_file(self,pval,psize,peffect,runtime):
         """Manually specify pathway summary properties (after running init)."""
@@ -209,6 +251,7 @@ class PathwaySummary():
                 self.patients.append(patient)
     def update_exclusive_cooccurring_coverage(self):
         """ POSTPROCESSING. Gather pathway gene info and write detailed output."""
+        self.geneMatrix = GeneMatrix()  # populated during update_gene_coverage
         self._populate_exclusive_cooccurring()
         self._update_gene_coverage()
     def _populate_exclusive_cooccurring(self):
@@ -341,19 +384,19 @@ class PathwaySummary():
         return geneLists
     def _update_gene_coverage(self):
         """Populate object's gene_coverage dictionary."""
-        t_patients = 0  # will hold total number of patients
+        total_patients = 0  # will hold total number of patients
         gene_coverage = dict()
         if self.yale_proj_ids:
-            (t_temp, counts_temp) = self._get_gene_counts_yale()
-            t_patients += t_temp
+            (total_temp, counts_temp) = self._get_gene_counts_yale()
+            total_patients += total_temp
             for gene in counts_temp.iterkeys():
                 if gene_coverage.has_key(gene):
                     gene_coverage[gene] += counts_temp[gene]
                 else:
                     gene_coverage[gene] = counts_temp[gene]
         if self.tcga_proj_abbrvs:
-            (t_temp, counts_temp) = self._get_gene_counts_tcga()
-            t_patients += t_temp
+            (total_temp, counts_temp) = self._get_gene_counts_tcga()
+            total_patients += total_temp
             for gene in counts_temp.iterkeys():
                 if gene_coverage.has_key(gene):
                     gene_coverage[gene] += counts_temp[gene]
@@ -361,19 +404,20 @@ class PathwaySummary():
                     gene_coverage[gene] = counts_temp[gene]
         
         coverage_tuple = [tuple([gene, gene_coverage[gene]]) for gene in gene_coverage]
-        coverage_tuple.sort(lambda x:x[0])  # alphabeticize
-        coverage_tuple.sort(lambda x:x[1], reverse=True)  # sort by n_patients
+        coverage_tuple.sort(key=lambda x:x[0])  # alphabeticize
+        coverage_tuple.sort(key=lambda x:x[1], reverse=True)  # sort by n_patients
         gene_coverage = OrderedDict(coverage_tuple)
 
         # convert to coverage by dividing by number of patients
         for gene in gene_coverage:
-            gene_coverage[gene] = float(gene_coverage[gene])/t_patients*100
+            gene_coverage[gene] = float(gene_coverage[gene])/total_patients*100
         self.gene_coverage = gene_coverage
         return
     def _get_gene_counts_yale(self):
         """Fetch dictionary: gene -> (int) number of patients with mutation. 
+        Also appends patient names for each gene to geneMatrix object.
         Dictionary may be empty if no pathway genes were mutated."""
-        t_patients = None
+        total_patients = None
         count_dict = dict()
         projIdsTuple = self.yale_proj_ids
         cmd0 = """SET SESSION group_concat_max_len = 30000;"""
@@ -386,7 +430,8 @@ class PathwaySummary():
             projGroupStr = ','.join(str(i) for i in projIdsTuple),
             patient_filter = self._build_patient_filter_str(form="AND"))
         # HUGO LIST AND PATIENT COUNTS
-        cmd2 = """SELECT hugo_symbol, count(DISTINCT patient_id) AS n_patients
+        cmd2 = """SELECT hugo_symbol, count(DISTINCT patient_id) AS n_patients, 
+            GROUP_CONCAT(DISTINCT patient_id) AS patients
             FROM mutations_tumor_normal m NATURAL JOIN normals NATURAL JOIN patients
             # gene subset in pathway of interest
             INNER JOIN refs.`pathway_gene_link` pgl ON m.entrez_gene_id = pgl.entrez_id
@@ -414,12 +459,12 @@ class PathwaySummary():
             if not rowCount == 1:
                 raise NonSingleResult("Result contains %g rows Ids for pathway %s."
                      % (rowCount, pathway_number))
-            t_patients = int(cur.fetchone()[0])
+            total_patients = int(cur.fetchone()[0])
             cur.execute(cmd2)
             rowCount = cur.rowcount
             if not rowCount:
                 # NO GENES MUTATED. n_effective < n_pathway
-                return t_patients, count_dict
+                return total_patients, count_dict
             rows = cur.fetchall()
         except mdb.Error as e:
             print "Error %d: %s" % (e.args[0],e.args[1])
@@ -429,15 +474,21 @@ class PathwaySummary():
         for geneRow in rows:
             gene = geneRow[0]
             coverage = int(geneRow[1])
+            patient_names = geneRow[2].split(',')
+            if not len(patient_names) == coverage:
+                raise Exception("Pathway coverage query gives inconsistent " + 
+                    "patient counts and patient names.")
+            self.geneMatrix.addGenePatients(gene,patient_names)
             count_dict[gene] = coverage
-        return t_patients, count_dict
+        return total_patients, count_dict
     def _get_gene_counts_tcga(self):
         """ Fetch dictionary: gene -> (int) percentage of patients with mutation. 
         Dictionary may be empty if no pathway genes were mutated."""
-        t_patients = 0  # will increase as inspect tables
+        total_patients = 0  # will increase as inspect tables
         count_dict = dict()
         rows = None
         for tcga_table in self.tcga_proj_abbrvs:
+            cmd0 = """SET SESSION group_concat_max_len = 30000;"""
             cmd1 = """SELECT count(DISTINCT patient_id) AS n_patient FROM 
                 (SELECT patient_id FROM tcga.{table} 
                 {patient_filter}
@@ -445,7 +496,8 @@ class PathwaySummary():
                 max_mutations=self.max_mutations,table=tcga_table,
                 patient_filter = self._build_patient_filter_str(form="WHERE"))
             # HUGO LIST AND PATIENT COUNTS
-            cmd2 = """SELECT hugo_symbol, count(DISTINCT patient_id) AS n_patients
+            cmd2 = """SELECT hugo_symbol, count(DISTINCT patient_id) AS n_patients, 
+                GROUP_CONCAT(DISTINCT patient_id) AS patients
                 FROM tcga.{table} t
                 # gene subset in pathway of interest
                 INNER JOIN refs.`pathway_gene_link` pgl ON t.entrez_id = pgl.entrez_id
@@ -466,17 +518,18 @@ class PathwaySummary():
             try:
                 con = mdb.connect(**dbvars)
                 cur = con.cursor()
+                cur.execute(cmd0)
                 cur.execute(cmd1)
                 rowCount = cur.rowcount
                 if not rowCount == 1:
                     raise NonSingleResult("Result contains %g rows Ids for pathway %s."
                          % (rowCount, pathway_number))
-                t_patients += int(cur.fetchone()[0])
+                total_patients += int(cur.fetchone()[0])
                 cur.execute(cmd2)
                 rowCount = cur.rowcount
                 if not rowCount:
                     # NO GENES MUTATED. n_effective < n_pathway
-                    return t_patients, count_dict
+                    return total_patients, count_dict
                 rows = cur.fetchall()
             except mdb.Error as e:
                 print "Error %d: %s" % (e.args[0],e.args[1])
@@ -486,11 +539,16 @@ class PathwaySummary():
             for geneRow in rows:
                 gene = geneRow[0]
                 coverage = int(geneRow[1])
+                patient_names = geneRow[2].split(',')
+                if not len(patient_names) == coverage:
+                    raise Exception("Pathway coverage query gives inconsistent " + 
+                        "patient counts and patient names.")
+                self.geneMatrix.addGenePatients(gene,patient_names)
                 if count_dict.has_key(gene):
                     count_dict[gene] += coverage; 
                 else:    
                     count_dict[gene] = coverage
-        return t_patients, count_dict
+        return total_patients, count_dict
 
 
 class LCalculator():
@@ -663,6 +721,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
         self.allPathways = pway_object_list
         self.nameDict = self.getPathwayNameDict()
         self.outfile_name = self.root_name + '_pretty.txt'
+        self.matrix_folder = 'matrix_txt'
     def getPathwayNameDict(self):
         """Gets name for all pathways, stored in dictionary: pathid -> pathname."""
         rows = None
@@ -714,6 +773,9 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                 # Get extra info, if p_value is low
                 if pway.p_value < 0.1:
                     pway.update_exclusive_cooccurring_coverage()
+                    if pway.gene_coverage:  # if genes are hit...
+                        if pway.n_effective > pway.n_actual:
+                            self.write_matrix_files(pway)
                 path_name = self.nameDict[pway.path_id]
                 coverage_string = self.dictToStructure(pway.gene_coverage)
                 pway.exclusive_genes.sort(key=lambda 
@@ -730,7 +792,14 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                     coverage_string=coverage_string,n_actual=pway.n_actual,
                     n_effective=pway.n_effective,p_value=pway.p_value,
                     runtime=pway.runtime, exclusive_string=exclusive_string,
-                    cooccurring_string=cooccurring_string))        
+                    cooccurring_string=cooccurring_string))
+    def write_matrix_files(self,pway):
+        """Write text file containing presence matrix for patient-gene pair."""
+        if not os.path.exists(self.matrix_folder):
+            os.mkdir(self.matrix_folder)
+        matrix_filename = self.matrix_folder + os.sep + self.root_name + '_matrix' + str(pway.path_id) + '.txt'
+        with open(matrix_filename,'w') as outfile:
+            pway.geneMatrix.exportMatrix(outfile, pway.exclusive_genes)
 
 
 class PathwayIdsFetcher():
@@ -770,6 +839,7 @@ class PathwayIdsFetcher():
         for id in rows:
             all_path_ids.append(int(id[0]))
         return all_path_ids
+
 
 class BackgroundGenomeFetcher():
     def __init__(self,genome_str,expressed_table=None):
