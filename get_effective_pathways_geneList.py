@@ -178,7 +178,7 @@ class PathwaySummary():
                 mutations_tumor_normal m NATURAL JOIN normals NATURAL JOIN patients 
                 {expression_filter_m}
                 WHERE project_id IN ({projGroupStr})
-                {patient_filter}
+                {patient_filter} {ignore_gene_filter}
             GROUP BY patient_id HAVING count(*) <= {max_mutations})  p 
         LEFT JOIN
             # patients in project with mutation in pathway
@@ -188,12 +188,13 @@ class PathwaySummary():
                 INNER JOIN mutations_tumor_normal m ON pwg.entrez_id=m.entrez_gene_id 
                 NATURAL JOIN normals NATURAL JOIN patients
                 {expression_filter_m} 
-                WHERE project_id IN ({projGroupStr}) 
+                WHERE project_id IN ({projGroupStr} {ignore_gene_filter}) 
                 GROUP BY patient_id) g 
         ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
             max_mutations=self.max_mutations, 
             projGroupStr = ','.join(str(i) for i in self.yale_proj_ids),
             patient_filter = self._build_patient_filter_str(form="AND"),
+            ignore_gene_filter = self._build_ignore_gene_filter_str(form="AND"),
             expression_filter_m = self._build_expressed_filter_str('m.entrez_gene_id'))
         try:
             con = mdb.connect(**dbvars)
@@ -217,6 +218,11 @@ class PathwaySummary():
         # Returns tuple collection of row tuples.
         Row tuple: (PATIENT_ID, N_PATIENT, BOOL_MUTATED), e.g. (678L, 323L, 1L)
         """
+        # in case of genes in ignore list, choose prefix for sql snippet
+        if self.filter_patient_ids:
+            ignore_gene_prefix = "AND"
+        else:
+            ignore_gene_prefix = "WHERE"
         for tcga_table in self.tcga_proj_abbrvs:
             rows = None
             ## GET mutated boolean for genes in specified pathway for GOOD 
@@ -225,7 +231,7 @@ class PathwaySummary():
                 # good patients, mutation_count
                 (SELECT patient_id, count(DISTINCT m.entrez_id) AS n_patient FROM tcga.{table} m
                     {expression_filter_m}
-                    {patient_filter}
+                    {patient_filter} {ignore_gene_filter1}
                     GROUP BY patient_id HAVING count(*) <= {max_mutations}) p
                 LEFT JOIN
                 # pathway mutation counts above 0
@@ -237,12 +243,14 @@ class PathwaySummary():
                         INNER JOIN 
                     (SELECT pgl.entrez_id FROM refs.pathway_gene_link pgl 
                         {expression_filter_pgl}
-                        WHERE path_id = {path_id}) pwg 
+                        WHERE path_id = {path_id} {ignore_gene_filter2}) pwg 
                     ON pwg.entrez_id = pg.entrez_id 
                     GROUP BY `patient_id`) g
                 ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
                 max_mutations=self.max_mutations,table=tcga_table,
                 patient_filter = self._build_patient_filter_str(form='WHERE'),
+                ignore_gene_filter1 = self._build_ignore_gene_filter_str(form=ignore_gene_prefix),
+                ignore_gene_filter2 = self._build_ignore_gene_filter_str(form="AND"),
                 expression_filter_m = self._build_expressed_filter_str('m.entrez_id'),
                 expression_filter_pgl = self._build_expressed_filter_str('pgl.entrez_id'))
             try:
