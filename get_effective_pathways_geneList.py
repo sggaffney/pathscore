@@ -65,12 +65,13 @@ class GeneMatrix():
 class PathwaySummary():
     """Holds pathway information, and can fetch info from db."""
     def __init__(self,pathway_number,yale_proj_ids,tcga_proj_abbrvs,
-        patient_ids=list(),max_mutations=500,expressed_table=None):
+        patient_ids=list(),max_mutations=500,expressed_table=None,ignore_genes=list()):
         self.path_id = pathway_number
         self.n_actual = None
         self.patients = list() # tuples. (patient_id, n_mutations, is_mutated)
-        self.filter_patient_ids = patient_ids;
-        self.filter_expressed = expressed_table;
+        self.filter_patient_ids = patient_ids
+        self.filter_expressed = expressed_table
+        self.ignore_genes = ignore_genes
         self.n_effective = None
         self.p_value = None
         self.max_mutations = max_mutations
@@ -693,13 +694,14 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
 class PathwayListAssembler(GenericPathwayFileProcessor):
     """Builds ordered list of pathways from basic p-value file."""
     def __init__(self, yale_proj_ids, tcga_proj_abbrvs, patient_ids=list(),
-        name_suffix=None,max_mutations=None,expressed_table=None):
+        name_suffix=None,max_mutations=None,expressed_table=None,ignore_genes=list()):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self,yale_proj_ids, tcga_proj_abbrvs,
             name_suffix=name_suffix)
         self.filter_patient_ids = patient_ids
         self.max_mutations = max_mutations
         self.expressed_table = expressed_table
+        self.ignore_genes = ignore_genes
     def get_ordered_pway_list(self):
         file_name = self.root_name + '.txt'
         #max_lookup_rows = 100
@@ -715,7 +717,8 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.yale_proj_ids, 
                     self.tcga_proj_abbrvs, patient_ids=self.filter_patient_ids, 
-                    max_mutations=self.max_mutations,expressed_table=self.expressed_table)
+                    max_mutations=self.max_mutations,expressed_table=self.expressed_table,
+                    ignore_genes=self.ignore_genes)
                 pway.set_up_from_file(pval,psize,peffect,runtime)
                 allPathways.append(pway)
         # sort pathways by effect_size : actual_size
@@ -919,7 +922,7 @@ def main():
     parser.add_argument("-p", "--patients", type=file, dest="patients_file",
         help="file containing patients to include")
     parser.add_argument("-g", "--genes", nargs="+",
-        help="file containing patients to include")
+        help="ignore pathways that don't contain these genes (given by hugo symbol)")
     parser.add_argument("-gs", "--genome",
         help="limit genome size to protein-coding genes.",
         choices=['no_pseudo','anything','protein-coding','inc_misc_chr'])
@@ -929,6 +932,8 @@ def main():
         help="maximum number of mutations allowed for sample inclusion.")
     parser.add_argument("--expression", nargs=1,
         help="name of table containing entrez_id for expressed genes.")
+    parser.add_argument("--ignore", nargs="+",
+        help="list of genes (by hugo symbol) to ignore when calculating p-values (and looking up pathway sizes).")
     args = parser.parse_args()
     
     # max_mutations
@@ -972,7 +977,8 @@ def main():
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
         pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs,
-            patient_ids=patient_list,max_mutations=max_mutations,expressed_table=args.expression)
+            patient_ids=patient_list,max_mutations=max_mutations,expressed_table=args.expression,
+            ignore_genes=ignore_genes)
         pway.set_pathway_size()
         pway.populate_patient_info()
         lcalc = LCalculator(pway,genome_size) #include optional genome_size
@@ -986,7 +992,7 @@ def main():
     # Gather all pathway stats from text file
     assembler = PathwayListAssembler(yale_proj_ids, tcga_proj_abbrvs,
         patient_ids=patient_list,name_suffix=args.suffix,max_mutations=max_mutations,
-        expressed_table=args.expression)
+        expressed_table=args.expression,ignore_genes=ignore_genes)
     pway_list = assembler.get_ordered_pway_list()
 
     # Rank pathways, gather extra stats and write to final file
