@@ -137,6 +137,21 @@ class PathwaySummary():
         else:
             filter = ""
         return filter
+    def _build_ignore_gene_filter_str(self, form="WHERE"):
+        """build SQL substring to filter genes in mutation lookup.
+        e.g. (WHERE/AND) hugo_symbol in ('BRAF')"""    
+        if form == 'WHERE':
+            prepend = "WHERE "
+        elif form == 'AND':
+            prepend = "AND "
+        else:
+            raise Exception("Unrecognized form in 'ignore gene' filter.")
+        if self.ignore_genes:
+            filter = (prepend + "hugo_symbol IN " + 
+                str(self.ignore_genes).replace("[","(").replace("]",")"))
+        else:
+            filter = ""
+        return filter
     def _build_expressed_filter_str(self, join_ref):
         """build SQL substring to filter genes by entrez_id in mutation lookup.
         join_ref is abbreviation of table and column to join to expression table,
