@@ -98,9 +98,10 @@ class PathwaySummary():
         cmd1 = """SELECT count(DISTINCT pgl.entrez_id) AS pway_size 
         FROM refs.pathway_gene_link pgl
         {expression_filter_pgl}
-        WHERE pgl.entrez_id IS NOT NULL 
+        WHERE pgl.entrez_id IS NOT NULL {ignore_gene_filter}
         AND path_id = {pathid} GROUP BY path_id;""".format(pathid=self.path_id,
-            expression_filter_pgl = self._build_expressed_filter_str('pgl.entrez_id'))  
+            expression_filter_pgl = self._build_expressed_filter_str('pgl.entrez_id'),
+            ignore_gene_filter = self._build_ignore_gene_filter_str(form="AND"))  
         try:
             con = mdb.connect(**dbvars)
             cur = con.cursor()
