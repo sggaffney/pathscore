@@ -94,15 +94,20 @@ class PathwaySummary():
         # self._update_gene_coverage()
     def set_pathway_size(self):
         """Lookup pathway size in DB. Save to data attribute."""
+        if self.ignore_genes:
+            gene_filter = self._build_ignore_gene_filter_str(form="AND").replace("hugo_symbol","symbol")
+        else:
+            gene_filter = ""
         pway_size = None
         # GET pway_size
         cmd1 = """SELECT count(DISTINCT pgl.entrez_id) AS pway_size 
         FROM refs.pathway_gene_link pgl
+        INNER JOIN refs.ncbi_entrez n ON pgl.entrez_id = n.geneId
         {expression_filter_pgl}
         WHERE pgl.entrez_id IS NOT NULL {ignore_gene_filter}
         AND path_id = {pathid} GROUP BY path_id;""".format(pathid=self.path_id,
             expression_filter_pgl = self._build_expressed_filter_str('pgl.entrez_id'),
-            ignore_gene_filter = self._build_ignore_gene_filter_str(form="AND"))  
+            ignore_gene_filter = gene_filter)  
         try:
             con = mdb.connect(**dbvars)
             cur = con.cursor()
@@ -149,7 +154,7 @@ class PathwaySummary():
         else:
             raise Exception("Unrecognized form in 'ignore gene' filter.")
         if self.ignore_genes:
-            filter = (prepend + "hugo_symbol IN " + 
+            filter = (prepend + "NOT hugo_symbol IN " + 
                 str(self.ignore_genes).replace("[","(").replace("]",")"))
         else:
             filter = ""
@@ -240,19 +245,19 @@ class PathwaySummary():
                 (SELECT patient_id FROM
                     # get distinct genes from patients
                     (SELECT DISTINCT patient_id, entrez_id FROM tcga.{table}
-                        {patient_filter}) pg
+                        {patient_filter} {ignore_gene_filter2}) pg
                     # join to pathway genes
                         INNER JOIN 
                     (SELECT pgl.entrez_id FROM refs.pathway_gene_link pgl 
                         {expression_filter_pgl}
-                        WHERE path_id = {path_id} {ignore_gene_filter2}) pwg 
+                        WHERE path_id = {path_id}) pwg 
                     ON pwg.entrez_id = pg.entrez_id 
                     GROUP BY `patient_id`) g
                 ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
                 max_mutations=self.max_mutations,table=tcga_table,
                 patient_filter = self._build_patient_filter_str(form='WHERE'),
                 ignore_gene_filter1 = self._build_ignore_gene_filter_str(form=ignore_gene_prefix),
-                ignore_gene_filter2 = self._build_ignore_gene_filter_str(form="AND"),
+                ignore_gene_filter2 = self._build_ignore_gene_filter_str(form=ignore_gene_prefix),
                 expression_filter_m = self._build_expressed_filter_str('m.entrez_id'),
                 expression_filter_pgl = self._build_expressed_filter_str('pgl.entrez_id'))
             try:
@@ -941,6 +946,8 @@ def main():
 
     if args.expression:
         args.expression = args.expression[0]
+
+    ignore_genes = args.ignore
     
     genome_size = BackgroundGenomeFetcher(args.genome,args.expression).genome_size
 
