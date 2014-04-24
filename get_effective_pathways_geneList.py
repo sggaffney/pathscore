@@ -1,5 +1,7 @@
 #!/Users/Stephen/Library/Enthought/Canopy_64bit/User/bin/python
 
+"""Runs pathway pipeline on CancerDB tables or TCGA tables."""
+
 import MySQLdb as mdb
 from scipy.misc import comb
 from numpy import *
@@ -184,7 +186,7 @@ class PathwaySummary():
             (SELECT patient_id, count(DISTINCT m.entrez_gene_id) AS n_patient FROM 
                 mutations_tumor_normal m NATURAL JOIN normals NATURAL JOIN patients 
                 {expression_filter_m}
-                WHERE project_id IN ({projGroupStr})
+                WHERE project_id IN ({projGroupStr}) AND `Variant_Classification` <> 'Silent'
                 {patient_filter} {ignore_gene_filter}
             GROUP BY patient_id HAVING count(*) <= {max_mutations})  p 
         LEFT JOIN
@@ -195,7 +197,7 @@ class PathwaySummary():
                 INNER JOIN mutations_tumor_normal m ON pwg.entrez_id=m.entrez_gene_id 
                 NATURAL JOIN normals NATURAL JOIN patients
                 {expression_filter_m} 
-                WHERE project_id IN ({projGroupStr} {ignore_gene_filter}) 
+                WHERE project_id IN ({projGroupStr}  AND `Variant_Classification` <> 'Silent' {ignore_gene_filter}) 
                 GROUP BY patient_id) g 
         ON p.patient_id = g.patient_id;""".format(path_id=self.path_id, 
             max_mutations=self.max_mutations, 
@@ -230,6 +232,10 @@ class PathwaySummary():
             ignore_gene_prefix = "AND"
         else:
             ignore_gene_prefix = "WHERE"
+        if self.ignore_genes or self.filter_patient_ids:
+            variant_WHERE_AND = "AND"
+        else:
+            variant_WHERE_AND = "WHERE"
         for tcga_table in self.tcga_proj_abbrvs:
             rows = None
             ## GET mutated boolean for genes in specified pathway for GOOD 
@@ -239,6 +245,7 @@ class PathwaySummary():
                 (SELECT patient_id, count(DISTINCT m.entrez_id) AS n_patient FROM tcga.{table} m
                     {expression_filter_m}
                     {patient_filter} {ignore_gene_filter1}
+                    {variant_WHERE_AND} `Variant_Classification` <> 'Silent'
                     GROUP BY patient_id HAVING count(*) <= {max_mutations}) p
                 LEFT JOIN
                 # pathway mutation counts above 0
@@ -259,7 +266,8 @@ class PathwaySummary():
                 ignore_gene_filter1 = self._build_ignore_gene_filter_str(form=ignore_gene_prefix),
                 ignore_gene_filter2 = self._build_ignore_gene_filter_str(form=ignore_gene_prefix),
                 expression_filter_m = self._build_expressed_filter_str('m.entrez_id'),
-                expression_filter_pgl = self._build_expressed_filter_str('pgl.entrez_id'))
+                expression_filter_pgl = self._build_expressed_filter_str('pgl.entrez_id'),
+                variant_WHERE_AND=variant_WHERE_AND)
             try:
                 con = mdb.connect(**dbvars)
                 cur = con.cursor()
@@ -345,14 +353,14 @@ class PathwaySummary():
             NATURAL JOIN normals 
             NATURAL JOIN patients p
             WHERE project_id IN ({projGroupStr})
-            {patient_filter}
+            {patient_filter} AND `Variant_Classification` <> 'Silent'
             GROUP BY patient_id
         ) g
         INNER JOIN
             #good patients
             (SELECT patient_id FROM mutations_tumor_normal NATURAL JOIN normals 
                 NATURAL JOIN patients WHERE project_id IN ({projGroupStr})
-                {patient_filter}
+                {patient_filter} AND `Variant_Classification` <> 'Silent'
                 GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p2
         ON g.patient_id = p2.patient_id;""".format(path_id=self.path_id,  
             max_mutations=self.max_mutations,
@@ -391,13 +399,13 @@ class PathwaySummary():
                 {expression_filter_pgl}
                 NATURAL JOIN
                 #good patients
-                (SELECT patient_id FROM tcga.{table} {patient_filter} 
+                (SELECT patient_id FROM tcga.{table} WHERE `Variant_Classification` <> 'Silent' {patient_filter} 
                     GROUP BY patient_id 
                     HAVING count(*) <= {max_mutations}) p
-                WHERE path_id = {path_id}
+                WHERE path_id = {path_id} AND `Variant_Classification` <> 'Silent'
                 GROUP BY patient_id
             ) g;""".format(path_id=self.path_id, max_mutations=self.max_mutations,
-            table=tcga_table, patient_filter = self._build_patient_filter_str(form="WHERE"),
+            table=tcga_table, patient_filter = self._build_patient_filter_str(form="AND"),
             expression_filter_pgl = self._build_expressed_filter_str("pgl.entrez_id"))
             try:
                 con = mdb.connect(**dbvars)
@@ -455,7 +463,7 @@ class PathwaySummary():
         cmd1 = """SELECT count(DISTINCT patient_id) AS num_patients FROM 
             (SELECT patient_id FROM mutations_tumor_normal NATURAL JOIN normals 
             NATURAL JOIN patients WHERE project_id IN ({projGroupStr}) 
-            {patient_filter}
+            {patient_filter} AND `Variant_Classification` <> 'Silent'
             GROUP BY patient_id HAVING count(*) <= {max_mutations} ) p2;""".format(
             max_mutations=self.max_mutations,
             projGroupStr = ','.join(str(i) for i in projIdsTuple),
@@ -471,9 +479,9 @@ class PathwaySummary():
             #good patients
             (SELECT patient_id FROM mutations_tumor_normal NATURAL JOIN normals 
                 NATURAL JOIN patients WHERE project_id IN ({projGroupStr})
-                {patient_filter}
+                {patient_filter} AND `Variant_Classification` <> 'Silent'
                 GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p
-            WHERE path_id = {path_id}
+            WHERE path_id = {path_id} AND `Variant_Classification` <> 'Silent'
             {patient_filter}
             GROUP BY hugo_symbol
             ORDER BY hugo_symbol;""".format(path_id=self.path_id,
@@ -522,10 +530,10 @@ class PathwaySummary():
             cmd0 = """SET SESSION group_concat_max_len = 30000;"""
             cmd1 = """SELECT count(DISTINCT patient_id) AS n_patient FROM 
                 (SELECT patient_id FROM tcga.{table} 
-                {patient_filter}
+                WHERE `Variant_Classification` <> 'Silent' {patient_filter}
                 GROUP BY patient_id HAVING count(*) <= {max_mutations}) p2;""".format(
                 max_mutations=self.max_mutations,table=tcga_table,
-                patient_filter = self._build_patient_filter_str(form="WHERE"))
+                patient_filter = self._build_patient_filter_str(form="AND"))
             # HUGO LIST AND PATIENT COUNTS
             cmd2 = """SELECT hugo_symbol, count(DISTINCT patient_id) AS n_patients, 
                 GROUP_CONCAT(DISTINCT patient_id) AS patients
@@ -536,15 +544,14 @@ class PathwaySummary():
                 NATURAL JOIN
                 #good patients
                 (SELECT patient_id FROM tcga.{table} t
-                    {patient_filter1}
+                    WHERE `Variant_Classification` <> 'Silent' {patient_filter}
                     GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p
-                WHERE path_id = {path_id}
-                {patient_filter2}
+                WHERE path_id = {path_id} AND `Variant_Classification` <> 'Silent'
+                {patient_filter}
                 GROUP BY hugo_symbol
                 ORDER BY hugo_symbol;""".format(path_id=self.path_id,
                     max_mutations=self.max_mutations,table=tcga_table,
-                    patient_filter1 = self._build_patient_filter_str(form="WHERE"),
-                    patient_filter2 = self._build_patient_filter_str(form="AND"),
+                    patient_filter = self._build_patient_filter_str(form="AND"),
                     expression_filter_pgl = self._build_expressed_filter_str("pgl.entrez_id"))
             try:
                 con = mdb.connect(**dbvars)
