@@ -619,8 +619,12 @@ class LCalculator():
         for patient in self.pway.patients:
             n_patient = patient.n_mutated
             mutated = patient.is_mutated
-            p_no_mut = exp(math.log(comb(self.G - pway_size, n_patient, 
-                exact=True)) - math.log(comb(self.G, n_patient, exact=True)))
+            # if there are fewer out-of-pathway genes than there are genes mutated, p_no_mut is zero
+            if self.G - pway_size < n_patient:
+                p_no_mut = float64(0)
+            else:
+                p_no_mut = exp(math.log(comb(self.G - pway_size, n_patient, 
+                    exact=True)) - math.log(comb(self.G, n_patient, exact=True)))
             if mutated:
                 p = 1-p_no_mut
             else:
@@ -633,6 +637,12 @@ class LCalculator():
         #improved = False
         ne = None
         #profile = list()
+        # if pathway_size is zero, effective size is zero.
+        if not self.pway.n_actual:
+            ne = 0
+            ult = float64(0)
+            warnings.warn("Pathway {} contains zero genes. ".format(self.pway.path_id))
+            return (ne,ult)
         # if all patients mutated, use ne=genome_size - max_mutations
         if False not in [patient.is_mutated for patient in self.pway.patients]:
             ne = self.G
@@ -641,13 +651,13 @@ class LCalculator():
                 self.pway.path_id) + "Effective size is full genome.")
             return (ne,ult)
         #check last 2 vals to check for decline:
-        penult = self._get_pway_likelihood(pway_size=self.G - self.max_mutations - 1)
-        ult = self._get_pway_likelihood(pway_size=self.G - self.max_mutations)
+        penult = self._get_pway_likelihood(pway_size=self.G - 2) # WAS self.G - self.max_mutations - 1
+        ult = self._get_pway_likelihood(pway_size=self.G-1)  # WAS self.G - self.max_mutations
         if ult > penult:
             ne = self.G
             return (ne,ult)
         # at this stage, there will be a max before Genome size
-        for pway_size in xrange(1,self.G - self.max_mutations):
+        for pway_size in xrange(1,self.G):  # WAS xrange(1,self.G - self.max_mutations):
             this_ll = self._get_pway_likelihood(pway_size=pway_size)
             #profile.append(this_ll)
             #if mod(pway_size,100)==0:
@@ -991,8 +1001,8 @@ def main():
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
         pway = PathwaySummary(pathway_number,yale_proj_ids,tcga_proj_abbrvs,
-            patient_ids=patient_list,max_mutations=max_mutations,expressed_table=args.expression,
-            ignore_genes=ignore_genes)
+            patient_ids=patient_list,max_mutations=max_mutations,
+            expressed_table=args.expression,ignore_genes=ignore_genes)
         pway.set_pathway_size()
         pway.populate_patient_info()
         lcalc = LCalculator(pway,genome_size) #include optional genome_size
