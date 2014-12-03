@@ -39,7 +39,8 @@ class GeneMatrix():
             self.genePatientDict[gene] = patientList
 
     def export_matrix(self, outfile, exclusive_genes):
-        """Writes tab-separated matrix file for patient/gene pairs in pathway."""
+        """Writes tab-separated matrix file for patient/gene
+        pairs in pathway."""
         # sort genes alphabetically then by exclusive-status then patient counts
         genesOrdered = [gene for gene in self.genePatientDict]
         genesOrdered.sort()  # sort alphabetically
@@ -131,6 +132,7 @@ class PathwaySummary():
             con = mdb.connect(**dbvars)
             cur = con.cursor()
             cur.execute(cmd1)
+            assert isinstance(cur.rowcount, int)
             row_count = cur.rowcount
             if not row_count == 1:
                 print "Result contains {} rows Ids for pathway {}.".format(
@@ -570,15 +572,15 @@ class PathwaySummary():
             cur = con.cursor()
             cur.execute(cmd0)
             cur.execute(cmd1)
-            rowCount = cur.rowcount
-            if not rowCount == 1:
+            row_count = cur.rowcount
+            if not row_count == 1:
                 raise NonSingleResult(
                     "Result contains %g rows Ids for pathway %s."
-                    % (rowCount, self.path_id))
+                    % (row_count, self.path_id))
             total_patients = int(cur.fetchone()[0])
             cur.execute(cmd2)
-            rowCount = cur.rowcount
-            if not rowCount:
+            row_count = cur.rowcount
+            if not row_count:
                 # NO GENES MUTATED. n_effective < n_pathway
                 return total_patients, count_dict
             rows = cur.fetchall()
