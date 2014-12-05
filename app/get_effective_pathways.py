@@ -937,7 +937,7 @@ def main():
 
 
 if __name__ == '__main__':
-    dbvars = {'host': 'localhost', 'db': 'CancerDB',
+    dbvars = {'host': 'localhost', 'db': 'pway',
               'read_default_file': "~/.my.cnf"}
     main()
 
