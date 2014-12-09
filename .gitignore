@@ -2,3 +2,5 @@
 *.pyc
 .idea
 .env
+app/static/pathways_svg/*
+app/static/pathways_pvalues*

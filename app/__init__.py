@@ -1,52 +1,71 @@
-from flask import Flask, render_template
-from flask.ext.sqlalchemy import SQLAlchemy
-from flask.ext.security import Security, SQLAlchemyUserDatastore, \
-    UserMixin, RoleMixin, login_required
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_security import Security, SQLAlchemyUserDatastore  # for email verif.
+from flask_login import LoginManager
+from flask_bootstrap import Bootstrap
+from flask_mail import Mail
 
-# Create app
-app = Flask(__name__)
-app.config['DEBUG'] = True
-app.config['SECRET_KEY'] = 'super-secret'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
+from config import config
 
-# Create database connection object
-db = SQLAlchemy(app)
 
-# Define models
-roles_users = db.Table('roles_users',
-        db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
-        db.Column('role_id', db.Integer(), db.ForeignKey('role.id')))
+bootstrap = Bootstrap()
+db = SQLAlchemy()
+mail = Mail()
 
-class Role(db.Model, RoleMixin):
-    id = db.Column(db.Integer(), primary_key=True)
-    name = db.Column(db.String(80), unique=True)
-    description = db.Column(db.String(255))
+login_manager = LoginManager()
+# login_manager.login_view = 'auth.login'
 
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), unique=True)
-    password = db.Column(db.String(255))
-    active = db.Column(db.Boolean())
-    confirmed_at = db.Column(db.DateTime())
-    roles = db.relationship('Role', secondary=roles_users,
-                            backref=db.backref('users', lazy='dynamic'))
+from .models import User, Role
 
-# Setup Flask-Security
-user_datastore = SQLAlchemyUserDatastore(db, User, Role)
-security = Security(app, user_datastore)
+def create_app(config_name):
+    app = Flask(__name__)
+    # development, testing, production, default
+    app.config.from_object(config[config_name])
 
-# Create a user to test with
-@app.before_first_request
-def create_user():
-    db.create_all()
-    user_datastore.create_user(email='matt@nobien.net', password='password')
-    db.session.commit()
+    # app.config['DEBUG'] = True
+    # app.config['SECRET_KEY'] = 'super-secret'
+    # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
+    app.config['SECURITY_CONFIRMABLE'] = True
+    app.config['SECURITY_REGISTERABLE'] = True
+    app.config['SECURITY_CHANGEABLE'] = True
 
-# Views
-@app.route('/')
-@login_required
-def home():
-    return render_template('index.html')
+    bootstrap.init_app(app)
+    db.init_app(app)
+    mail.init_app(app)
 
-if __name__ == '__main__':
-    app.run()
+    from .pway import pway as pway_blueprint
+    app.register_blueprint(pway_blueprint)
+
+    from .auth import auth as auth_blueprint
+    app.register_blueprint(auth_blueprint)
+
+    # Setup Flask-Security
+
+    user_datastore = SQLAlchemyUserDatastore(db, User, Role)
+    security = Security(app, user_datastore)
+                        # login_form='auth.login')
+                        # , confirm_register_form=None,
+                        # register_form=None, forgot_password_form=None,
+                        # reset_password_form=None,
+                        # change_password_form=None, send_confirmation_form=None,
+                        # passwordless_login_form=None)
+
+    # security.init_app(app)
+
+    # # Create a user to test with
+    # @app.before_first_request
+    # def create_user():
+    #     db.create_all()
+    #     user_datastore.create_user(email='sggaffney@gmail.com',
+    #                                password='password')
+    #     db.session.commit()
+
+    return app
+
+
+
+
+
+
+
+
