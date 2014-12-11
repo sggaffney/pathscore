@@ -22,9 +22,6 @@ def create_app(config_name):
     # development, testing, production, default
     app.config.from_object(config[config_name])
 
-    # app.config['DEBUG'] = True
-    # app.config['SECRET_KEY'] = 'super-secret'
-    # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
     app.config['SECURITY_CONFIRMABLE'] = True
     app.config['SECURITY_REGISTERABLE'] = True
     app.config['SECURITY_CHANGEABLE'] = True
