@@ -5,3 +5,4 @@ Flask-Security==1.7.4
 Flask-Script==2.0.5
 MySQL-Python==1.2.5
 py-bcrypt
+Flask-Uploads==0.1.3

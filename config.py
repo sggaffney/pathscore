@@ -2,7 +2,6 @@ import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
-
 # 	private final String SMTP_HOST_NAME = "mail.yale.edu";
 # 	private final String SMTP_AUTH_USER = "";
 # 	private final String SMTP_AUTH_PWD  = "";
@@ -13,8 +12,6 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY')
-    TALKS_PER_PAGE = 50
-    COMMENTS_PER_PAGE = 100
 
     MAIL_SERVER = os.environ.get('MAIL_SERVER')
     MAIL_PORT = int(os.environ.get('MAIL_PORT'))
@@ -30,6 +27,8 @@ class Config:
     SECURITY_EMAIL_SENDER = os.environ.get('SECURITY_EMAIL_SENDER')
     SECURITY_PASSWORD_HASH = os.environ.get('SECURITY_PASSWORD_HASH')
     SECURITY_PASSWORD_SALT = os.environ.get('SECURITY_PASSWORD_SALT')
+
+    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER')
 
 
 class DevelopmentConfig(Config):

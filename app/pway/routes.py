@@ -1,14 +1,39 @@
 from flask import render_template, flash, redirect, url_for, abort,\
     request, current_app
 from . import pway
-from flask_login import login_required, current_user
+from .forms import UploadForm
+from flask_login import login_required  # current_user
+from werkzeug.utils import secure_filename
+
 
 @pway.route('/')
 @login_required
 def index():
-    # page = request.args.get('page', 1, type=int)
-    # pagination = Talk.query.order_by(Talk.date.desc()).paginate(
-    #     page, per_page=current_app.config['TALKS_PER_PAGE'],
-    #     error_out=False)
-    # talk_list = pagination.items
+    return render_template('pway/index2.html')
+
+
+@pway.route('/demo')
+@login_required
+def demo():
     return render_template('pway/show_pathways.html')
+
+
+@pway.route('/upload', methods=('GET', 'POST'))
+@login_required
+def upload():
+    """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
+    form = UploadForm()
+    if form.validate_on_submit():
+        # upload = Upload(uploader=current_user)
+        mut_filename = secure_filename(form.mut_file.data.filename)
+        form.photo.data.save('uploads/' + mut_filename)
+
+        # form.to_model(upload)
+        # db.session.add(upload)
+        # db.session.commit()
+        flash('The input files were added successfully.')
+        return redirect(url_for('.index'))
+    else:
+        mut_filename = None
+    return render_template('pway/upload.html', form=form, filename=mut_filename)
+

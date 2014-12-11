@@ -6,6 +6,7 @@ from flask_login import UserMixin
 from flask_security import RoleMixin
 from . import db
 from . import db, login_manager
+from flask_wtf.file import FileField, FileAllowed, FileRequired
 
 # Define models
 roles_users = db.Table('roles_users',
@@ -94,3 +95,5 @@ def load_token(token):
     if id:
         return User.query.get(id)
     return None
+
+
