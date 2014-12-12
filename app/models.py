@@ -96,4 +96,17 @@ def load_token(token):
         return User.query.get(id)
     return None
 
-
+class UserFile(db.Model):
+    __tablename__ = 'uploads'
+    # save mut_filename, time, size, user_id in uploads table
+    # with 'is_valid' field, 'run_accepted', 'run_complete'
+    # run_id primary key
+    # only accept this file if user has no running jobs.
+    # will create folder for job: <run_id>
+    file_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    upload_time = db.Column(db.DateTime(), default=datetime.utcnow)
+    is_valid = db.Column(db.Boolean)
+    run_accepted = db.Column(db.Boolean)
+    run_complete = db.Column(db.Boolean)
+    user = db.relationship('uploader', lazy='dynamic', backref='uploads')

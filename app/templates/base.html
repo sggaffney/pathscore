@@ -29,7 +29,7 @@
         <!--<li class="active"><a href="#">Link <span class="sr-only">(current)</span></a></li>-->
         {% if current_user.is_authenticated() %}
         <li><a href="{{ url_for('pway.index') }}">Profile</a></li>
-        <li><a href="{{ url_for('pway.index') }}">New Search</a></li>
+        <li><a href="{{ url_for('pway.upload') }}">New Search</a></li>
         {% if current_user.is_admin %}
             <li>
                 <a href="{{ url_for('pway.index') }}">Moderate [Admin]
@@ -40,12 +40,12 @@
       </ul>
       <ul class="nav navbar-nav navbar-right">
         {% if not current_user.is_authenticated() %}
-        <li><a href="{{ url_for('auth.login') }}">Login</a></li>
+        <li><a href="{{ url_for('security.login') }}">Login</a></li>
         {% else %}
         <li class="dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">{{ current_user.email }} <span class="caret"></span></a>
             <ul class="dropdown-menu" role="menu">
-                <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+                <li><a href="{{ url_for('security.logout') }}">Logout</a></li>
             </ul>
         </li>
         {% endif %}
