@@ -4,6 +4,7 @@ from . import pway
 from .forms import UploadForm
 from flask_login import login_required  # current_user
 from werkzeug.utils import secure_filename
+import os
 
 
 @pway.route('/')
@@ -26,7 +27,8 @@ def upload():
     if form.validate_on_submit():
         # upload = Upload(uploader=current_user)
         mut_filename = secure_filename(form.mut_file.data.filename)
-        form.photo.data.save('uploads/' + mut_filename)
+        form.mut_file.data.save(os.path.join(current_app.config['UPLOAD_FOLDER'],
+                                             mut_filename))
 
         # form.to_model(upload)
         # db.session.add(upload)

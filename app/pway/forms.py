@@ -4,7 +4,7 @@ from wtforms import SubmitField
 
 
 class UploadForm(Form):
-    upload = FileField('mut_file', validators=[
+    mut_file = FileField('Patient-mutations file', validators=[
         FileRequired(),
         FileAllowed(['txt', 'tsv'], 'Use txt or tsv extension')
     ])
