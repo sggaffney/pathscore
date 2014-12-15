@@ -82,7 +82,7 @@ class User(UserMixin, db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(id))
+    return User.query.get(int(user_id))
 
 @login_manager.token_loader
 def load_token(token):
@@ -105,8 +105,9 @@ class UserFile(db.Model):
     # will create folder for job: <run_id>
     file_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    filename = db.Column(db.String(255))
     upload_time = db.Column(db.DateTime(), default=datetime.utcnow)
-    is_valid = db.Column(db.Boolean)
-    run_accepted = db.Column(db.Boolean)
-    run_complete = db.Column(db.Boolean)
-    user = db.relationship('uploader', lazy='dynamic', backref='uploads')
+    is_valid = db.Column(db.Boolean, default=False)
+    run_accepted = db.Column(db.Boolean, default=False)
+    run_complete = db.Column(db.Boolean, default=False)
+    uploader = db.relationship('User', lazy='dynamic', backref='uploads')
