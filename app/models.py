@@ -96,6 +96,7 @@ def load_token(token):
         return User.query.get(id)
     return None
 
+
 class UserFile(db.Model):
     __tablename__ = 'uploads'
     # save mut_filename, time, size, user_id in uploads table
@@ -110,4 +111,9 @@ class UserFile(db.Model):
     is_valid = db.Column(db.Boolean, default=False)
     run_accepted = db.Column(db.Boolean, default=False)
     run_complete = db.Column(db.Boolean, default=False)
+    genome_size = db.Column(db.String(255))
+    n_cutoff = db.Column(db.Integer)
+    required_genes = db.Column(db.Text())
+    ignore_genes = db.Column(db.Text())
+    proj_suffix = db.Column(db.String(255))
     uploader = db.relationship('User', lazy='dynamic', backref='uploads')
