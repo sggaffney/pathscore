@@ -116,4 +116,4 @@ class UserFile(db.Model):
     required_genes = db.Column(db.Text())
     ignore_genes = db.Column(db.Text())
     proj_suffix = db.Column(db.String(255))
-    uploader = db.relationship('User', lazy='dynamic', backref='uploads')
+    uploader = db.relationship('User', backref='uploads')
