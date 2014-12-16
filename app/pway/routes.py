@@ -1,6 +1,6 @@
 from flask import render_template, flash, redirect, url_for, abort,\
     request, current_app
-from . import pway
+from . import pway, FileTester
 from .forms import UploadForm
 from ..models import UserFile
 from .. import db
@@ -39,17 +39,23 @@ def upload():
         form.to_model(user_upload)
         db.session.add(user_upload)
         db.session.commit()
-
-        form.mut_file.data.save(
-            os.path.join(current_app.config['UPLOAD_FOLDER'], mut_filename))
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'],
+                                 user_upload.get_local_filename())
+        form.mut_file.data.save(file_path)
 
         # FILE SHOULD BE IN UPLOADS FOLDER NOW.
         # RESPOND BASED ON FILE VALIDITY:
         #     VALID: START RUN, FLASH 'EXPECT EMAIL' on STATUS PAGE
         #     INVALID: FLASH 'BAD FILE', LIST ERRORS ON UPLOAD PAGE
+        file_tester = FileTester(file_path)
 
-
-        flash('The input files were added successfully.')
-        return redirect(url_for('.index'))
+        if file_tester.good_headers:
+            if file_tester.good_headers and file_tester.data_present:
+                flash('File accepted and validated. Analysis in progress.')
+                return redirect(url_for('.index'))
+            else:  # good headers but no data
+                flash('Your file seems to be missing data. Please try again.')
+        else:  # bad headers
+            flash("Your headers don't look right. Expected headers are:\n{}"
+                .format('\t'.join(FileTester.want_headers)))
     return render_template('pway/upload.html', form=form)
-

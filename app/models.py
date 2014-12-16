@@ -117,3 +117,6 @@ class UserFile(db.Model):
     ignore_genes = db.Column(db.Text())
     proj_suffix = db.Column(db.String(255))
     uploader = db.relationship('User', backref='uploads')
+
+    def get_local_filename(self):
+        return '_'.join([str(self.file_id), self.filename])
