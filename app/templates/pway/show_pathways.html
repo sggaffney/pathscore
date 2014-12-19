@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block head %}
     {{ super() }}
-	<title>Melanoma Pathways</title>
+	<title>Pathways </title>
 	<style>
 		form {
 			display: table;
@@ -111,7 +111,7 @@
 		// console.log(geneList)
 		var max_n_pways = 10000;  //limit number of pathways returned
 		var n_pways_found = 0;
-		var use_pways = new Array();
+		var use_pways = [];
 		var gene = null;
 		
 		//clear old pathway images
