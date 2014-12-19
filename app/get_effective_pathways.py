@@ -48,7 +48,8 @@ class Patient():
 
 
 class GeneMatrix():
-    """Holds patient-gene matrix info for a single pathway."""
+    """Holds patient-gene matrix info for a single pathway.
+    Write matrix to file with call to export_matrix."""
 
     def __init__(self):
         self.genePatientDict = dict()
@@ -96,27 +97,33 @@ class GeneMatrix():
             outfile.write('\n')
 
 
-class PathwaySummary():
+class PathwaySummaryBasic():
+    """Holds pathway information."""
+    def __init__(self, pathway_number):
+        self.path_id = pathway_number
+        self.n_actual = None
+        # self.patients = list() # tuples. (patient_id, n_mutations, is_mutated)
+        self.n_effective = None
+        self.p_value = None
+
+
+class PathwaySummary(PathwaySummaryBasic):
     """Holds pathway information, and can fetch info from db."""
 
     def __init__(self, pathway_number, yale_proj_ids, proj_abbrvs,
                  patient_ids=list(), max_mutations=500, expressed_table=None,
                  ignore_genes=list()):
-        self.path_id = pathway_number
-        self.n_actual = None
+        PathwaySummaryBasic.__init__(self, pathway_number)
+        # above gives path_id, n_actual, n_effective, p_value
         self.patients = list()  # tuples. (patient_id, n_mutations, is_mutated)
         self.filter_patient_ids = patient_ids
         self.filter_expressed = expressed_table
         self.ignore_genes = ignore_genes
-        self.n_effective = None
-        self.p_value = None
         self.max_mutations = max_mutations
         self.proj_abbrvs = proj_abbrvs
-        # populated during post-processing:
         self.gene_coverage = OrderedDict()
         self.exclusive_genes = list()
         self.cooccurring_genes = list()
-        # set during populate_exclusive_cooccurring_coverage():
         self.geneMatrix = None
         self.runtime = None  # only set up by file reader
 
@@ -578,6 +585,7 @@ class LCalculator():
 class GenericPathwayFileProcessor():
     """Generic object that can convert yale_proj_ids and tcga_proj_abbrvs
     to file_name."""
+    base_str = 'pathways_pvalues_'
 
     def __init__(self, proj_abbrvs, name_suffix=None):
         self.proj_abbrvs = proj_abbrvs
@@ -586,8 +594,7 @@ class GenericPathwayFileProcessor():
 
     def _get_root_filename(self, proj_abbrvs):
         """Root file name for output files."""
-        base_str = 'pathways_pvalues_'
-        root_name = base_str + '_'.join(proj_abbrvs)
+        root_name = self.base_str + '_'.join(proj_abbrvs)
         if self.name_suffix:
             root_name += '_' + self.name_suffix
         return root_name
@@ -666,6 +673,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
     """Writes detailed postprocessing file:
     pathway names, pvalues and gene info."""
 
+    name_postfix = '_pretty.txt'
     def __init__(self, proj_abbrvs, pway_object_list,
                  name_suffix=None):
         # create self.root_name
@@ -673,7 +681,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                                              name_suffix=name_suffix)
         self.allPathways = pway_object_list
         self.nameDict = self.get_pathway_name_dict()
-        self.outfile_name = self.root_name + '_pretty.txt'
+        self.outfile_name = self.root_name + self.name_postfix
         self.matrix_folder = 'matrix_txt'
 
     @staticmethod
@@ -861,7 +869,7 @@ class BackgroundGenomeFetcher():
         return int(rows[0][0])
 
 
-def main():
+def run_analysis():
     """Arguments: projIds --patients patient_file."""
 
     parser = argparse.ArgumentParser()
@@ -960,8 +968,6 @@ def main():
 
 
 if __name__ == '__main__':
-    dbvars = {'host': 'localhost', 'db': 'pway',
-              'read_default_file': "~/.my.cnf"}
     main()
 
     
