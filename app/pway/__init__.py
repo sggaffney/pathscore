@@ -2,7 +2,6 @@ from flask import Blueprint
 
 pway = Blueprint('pway', __name__)
 
-
 class FileTester():
     want_headers = ['hugo_symbol', 'entrez_id', 'patient_id',
                     'variant_classification']
