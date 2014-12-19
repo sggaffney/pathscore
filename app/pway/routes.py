@@ -7,6 +7,9 @@ from .. import db
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
+from get_effective_pathways import run_analysis
+
+
 
 
 @pway.route('/')
@@ -30,9 +33,6 @@ def upload():
         # upload = Upload(uploader=current_user)
         mut_filename = secure_filename(form.mut_file.data.filename)
 
-        # save mut_filename, time, size, user_id in uploads table
-        # with 'is_valid' field, 'run_accepted', 'run_complete'
-        # run_id primary key
         # only accept this file if user has no running jobs.
         # will create folder for job: <run_id>
         user_upload = UserFile(filename=mut_filename, user_id=current_user.id)
@@ -51,11 +51,61 @@ def upload():
 
         if file_tester.good_headers:
             if file_tester.good_headers and file_tester.data_present:
+                user_upload.is_valid = True
                 flash('File accepted and validated. Analysis in progress.')
+                # want analysis to run asynchronously!
+                # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
+
                 return redirect(url_for('.index'))
             else:  # good headers but no data
                 flash('Your file seems to be missing data. Please try again.')
         else:  # bad headers
             flash("Your headers don't look right. Expected headers are:\n{}"
                 .format('\t'.join(FileTester.want_headers)))
+        db.session.add(user_upload)
+        db.session.commit()
     return render_template('pway/upload.html', form=form)
+
+
+"""
+
+orig defaults:
+ - output files saved to cwd
+ - txt files: pway_pvalues_<PROJ_NAME>_<SUFFIX>(_pretty).txt
+ - directories:
+    - pathways_svg
+    - matrix_txt
+        - matrix_svg
+
+UPLOADS FOLDER
+==============
+
+F 1_testfile.txt
+F 2_melanoma_mk2014.txt
+...
+D output_1/
+D output_2/
+...
+
+
+PROJECT RUN FOLDER
+==================
+
+ - create folder for project if text file is valid and user allowance not full
+
+D pathways_svg/
+D matrix_svg/
+D matrix_txt/
+F FILE_ID.txt
+F FILE_ID_detail.txt
+F FILE_ID.js
+
+ - txt file name/path (default pathways_pvalues_PROJSTR) determined by
+  GenericPathwayFileProcessor
+
+root_svg_target = "pathways_svg/"
+root_svg_matrix = "matrix_txt/matrix_svg/"
+EXPECTED BY HTML: root_svg_matrix2 = "matrix_svg/"
+proj_svg = 'proj_' + project_str + '/'
+
+"""
