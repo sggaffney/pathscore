@@ -1,6 +1,8 @@
-#!/Users/Stephen/Library/Enthought/Canopy_64bit/User/bin/python
-
 """Runs pathway pipeline on CancerDB tables or TCGA tables."""
+
+
+from .decorators import async
+from flask import current_app
 
 import MySQLdb as mdb
 from scipy.misc import comb
@@ -11,6 +13,27 @@ import argparse
 import warnings
 from collections import OrderedDict
 import os
+
+
+@async
+def run_analysis_async(app, user_upload):
+    """Asynchronous run of pathway analysis."""
+    with app.app_context():
+        dbvars = dict(host=current_app.config['SGG_DB_HOST'],
+                      db=current_app.config['SGG_DB_NAME'],
+                      read_default_file=current_app.config['SGG_DB_CNF'])
+
+
+        mail.send(msg)
+
+def send_email(subject, sender, recipients, text_body, html_body):
+    msg = Message(subject, sender=sender, recipients=recipients)
+    msg.body = text_body
+    msg.html = html_body
+    thr = Thread(target=send_async_email, args=[current_app, msg])
+    thr.start()
+
+
 
 
 class NonSingleResult(Exception):
