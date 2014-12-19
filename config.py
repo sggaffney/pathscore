@@ -30,6 +30,9 @@ class Config:
 
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER')
 
+    SGG_DB_CNF = os.environ.get('MYSQLDB_CNF')
+    SGG_DB_HOST = os.environ.get('MYSQLDB_HOST')
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -37,6 +40,7 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
     MAIL_FLUSH_INTERVAL = 60  # one minute
+    SGG_DB_NAME = os.environ.get('MYSQLDB_DB_DEV')
 
 
 class TestingConfig(Config):
@@ -44,11 +48,13 @@ class TestingConfig(Config):
     SECRET_KEY = 'secret'
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
+    SGG_DB_NAME = os.environ.get('MYSQLDB_DB_TEST')
 
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+    SGG_DB_NAME = os.environ.get('MYSQLDB_DB')
 
 
 config = {
