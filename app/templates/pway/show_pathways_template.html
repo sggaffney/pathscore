@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block head %}
+    {{ super() }}
+	<title>{{ page_info.title }}</title>
+	<style>
+		form {
+			display: table;
+			padding: 10px;
+			border-spacing: 0px;
+			border: thin dotted #bdcfef;
+			background-color: #d9eeff;
+			margin: 10px;
+		}
+
+		form > div {
+			display: table-row;
+		}
+
+		form p {
+			display: table-cell;
+			padding: 5px;
+			vertical-align: middle;
+		}
+
+		form > div p:first-child {
+			text-align: right;
+			max-width: 150px;
+		}
+		.padded {
+			padding:15px;
+		}
+
+
+	</style>
+{% endblock %}
+
+{% block page_content %}
+<div>
+	<h2>Significantly altered pathways for genes of interest.</h2>
+</div>
+
+<div>
+	<select id="projSelection" name="characters">
+		{% for proj in projects %}
+			<option value="{{ proj.id }}">{{ proj.name}}</option>
+		{% endfor %}
+	</select>
+
+	<input type="text" id="genes" size="40" maxlength="10000" value = "" 
+		placeholder="INCLUDE GENES e.g. BRAF,NRAS">
+
+	<input type="text" id="exclude" size="40" maxlength="10000" value = ""
+		placeholder="EXCLUDE GENES e.g. CBL">
+
+	<button id="geneSubmitButton">Get pathways</button>
+	Leave fields blank to skip filtering by gene.
+</div>
+<div id="imageContainer" class="padded">
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+{{super()}}
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1/jquery-ui.min.js"></script>
+<!-- <script src="pathways_pvalues_1.js"></script> --> <!-- SETS global pwayList -->
+<script>
+	
+	//on window load
+	$(function(){
+		
+		$geneBox = $('#genes');  // global for textbox containing gene names
+		$excludeBox = $('#exclude');  // global for textbox containing gene names
+		$imageContainer = $('#imageContainer');
+		$fetcherButton = $('#geneSubmitButton');
+		$projSelection = $('#projSelection');
+		pwayList = null;
+		skip_few = {{ page_info.skip_few }};
+
+		var pi = null;
+		projId = $projSelection.val();  // global for project id
+		
+		$projSelection.change(
+			function(){
+				projId = $projSelection.val();
+				updateProjId();
+			}
+		);
+
+		$fetcherButton.click(fetchPathways);
+		$geneBox.keypress(function(e){
+			if(e.keyCode==13)
+				$fetcherButton.click();
+			});
+		$excludeBox.keypress(function(e){
+			if(e.keyCode==13)
+				$fetcherButton.click();
+			});
+
+		updateProjId();
+
+	});
+
+	function updateProjId(){
+		$.getScript( "pathways_pvalues_" + projId + ".js", function( data, textStatus, jqxhr ) {
+			// console.log( data ); // Data returned
+			// console.log( textStatus ); // Success
+			// console.log( jqxhr.status ); // 200
+			console.log( "Load was performed." );
+			fetchPathways();
+			});
+		
+	}
+
+	function fetchPathways(){
+		var geneList = $geneBox.val().split(','); //array of genes
+		var excludeList = $excludeBox.val().split(','); //array of genes
+		console.log(geneList)
+		// console.log(geneList)
+		var max_n_pways = 10000;  //limit number of pathways returned
+		var n_pways_found = 0;
+		var use_pways = new Array();
+		var gene = null;
+		$imageContainer.empty();  //clear old pathway images
+		//iterate over pathways, checking to see if they contain genes of interest
+		for(var pi=0; pi<pwayList.length; pi++){
+			//stop iteration once enough pathways found.
+			var this_pway = pwayList[pi];
+
+			//if skip_few and eff<size, continue
+			if(skip_few && this_pway.effective<this_pway.size){
+				continue;
+			}
+
+			if(use_pways.length == max_n_pways){
+				break;
+			}
+
+			//if pathway contains anything in excludeList, continue
+			skip = false;
+			for(var ei=0; ei<excludeList.length; ei++){
+				if((this_pway.geneSet.indexOf(excludeList[ei]))>-1){
+					skip=true;
+					break;
+				}
+			}
+			if(skip){
+				continue;
+			}
+
+			// SHOW ALL PATHWAYS IF NO GENES SPECIFIED
+			if(geneList[0] == ""){
+				use_pways.push(this_pway);  // add pway to list
+			}
+			// is gene i in pway pi?
+			for(var gi=0; gi<geneList.length; gi++){
+				gene = geneList[gi];
+				// if(pi==0) console.log(gene);
+				if(this_pway.geneSet.indexOf(gene)>-1){ // gene found
+					use_pways.push(this_pway);  // add pway to list
+					break;
+				}
+			}
+		}
+		if(!use_pways.length){
+			$imageContainer.text("No pathways found");
+		}
+		else {
+			$imageContainer.text("Top " + use_pways.length + " pathways shown below.");
+		}
+		//now have up to max pathways in list. fill img tag src.
+		for(var pi=0; pi<use_pways.length; pi++){
+			$imageContainer.append(
+				'<h2><a href="'+ root_url + use_pways[pi]['url'] +'" target="_blank">' 
+				+ use_pways[pi]['name'] + '</a>' + ' (' + use_pways[pi]['pval'] + ') </h2>' 
+				+'<p><img src="pathways_svg/proj_' + projId + '/' + use_pways[pi]['id'] + '.svg" ' +
+				'height=1024px width=1024px alt="' + use_pways[pi]['id'] + '.svg" ></img>' //
+				+'</p>'
+				+'<p><img src="matrix_svg/proj_' + projId + '/' + use_pways[pi]['id'] + '.svg" ' +
+				'height=' + (use_pways[pi].geneSet.length*25+80) + 'px alt="' + use_pways[pi]['id'] + '.svg" ></img>' //
+				+'</p>'
+				);
+// +'<p><embed src="matrix_svg/proj_' + projId + '/' + use_pways[pi]['id'] + '.svgz" height="' + use_pways[pi].geneSet.length*25+80 + 'px" type="image/svg+xml" /></p>'
+		}
+		// return use_pways
+
+	}
+
+
+
+</script>
+
+{% endblock %}
