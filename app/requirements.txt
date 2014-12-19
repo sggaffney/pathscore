@@ -7,3 +7,5 @@ MySQL-Python==1.2.5
 py-bcrypt
 Flask-Uploads==0.1.3
 Flask-Migrate==1.3.0
+numpy==1.7.1
+scipy==0.12.0
