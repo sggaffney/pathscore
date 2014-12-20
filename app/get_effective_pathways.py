@@ -23,7 +23,10 @@ def run_analysis_async(app, user_id, user_upload):
         dbvars = dict(host=current_app.config['SGG_DB_HOST'],
                       db=current_app.config['SGG_DB_NAME'],
                       read_default_file=current_app.config['SGG_DB_CNF'])
-        run(user_id, user_upload, dbvars)
+        dir_path = os.path.join(current_app.config['UPLOAD_FOLDER'], user_id)
+        if not os.path.exists(dir_path):
+            os.mkdir(dir_path)
+        run(dir_path, user_upload, dbvars)
 
 def run_analysis(user_upload):
     user_id = current_user.id
