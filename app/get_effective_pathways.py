@@ -107,7 +107,7 @@ class PathwaySummaryBasic():
 class PathwaySummary(PathwaySummaryBasic):
     """Holds pathway information, and can fetch info from db."""
 
-    def __init__(self, pathway_number, yale_proj_ids, proj_abbrvs,
+    def __init__(self, pathway_number, proj_abbrvs,
                  patient_ids=list(), max_mutations=500, expressed_table=None,
                  ignore_genes=list()):
         PathwaySummaryBasic.__init__(self, pathway_number)
@@ -584,14 +584,16 @@ class GenericPathwayFileProcessor():
     to file_name."""
     base_str = 'pathways_pvalues_'
 
-    def __init__(self, proj_abbrvs, name_suffix=None):
-        self.proj_abbrvs = proj_abbrvs
+    def __init__(self, dir_path, file_id, name_suffix=None):
+        self.file_id = file_id
+        self.dir_path = dir_path
         self.name_suffix = name_suffix
-        self.root_name = self._get_root_filename(proj_abbrvs)
+        self.root_name = self._get_root_filename()
 
-    def _get_root_filename(self, proj_abbrvs):
+    def _get_root_filename(self):
         """Root file name for output files."""
-        root_name = self.base_str + '_'.join(proj_abbrvs)
+        root_name = os.path.join(self.dir_path, self.base_str + '_'
+                                 + self.file_id)
         if self.name_suffix:
             root_name += '_' + self.name_suffix
         return root_name
@@ -613,10 +615,10 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
 class PathwayListAssembler(GenericPathwayFileProcessor):
     """Builds ordered list of pathways from basic p-value file."""
 
-    def __init__(self, proj_abbrvs, patient_ids=list(), name_suffix=None,
+    def __init__(self, dir_path, file_id, patient_ids=list(), name_suffix=None,
                  max_mutations=None, expressed_table=None, ignore_genes=list()):
         # create self.root_name
-        GenericPathwayFileProcessor.__init__(self, proj_abbrvs,
+        GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
         self.filter_patient_ids = patient_ids
         self.max_mutations = max_mutations
@@ -636,7 +638,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 peffect = int(row[3])
                 runtime = float(row[4])
                 # set up pathway object
-                pway = PathwaySummary(path_id, self.proj_abbrvs,
+                pway = PathwaySummary(path_id, self.file_id,
                                       patient_ids=self.filter_patient_ids,
                                       max_mutations=self.max_mutations,
                                       expressed_table=self.expressed_table,
@@ -671,10 +673,10 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
     pathway names, pvalues and gene info."""
 
     name_postfix = '_pretty.txt'
-    def __init__(self, proj_abbrvs, pway_object_list,
+    def __init__(self, dir_path, file_id, pway_object_list,
                  name_suffix=None):
         # create self.root_name
-        GenericPathwayFileProcessor.__init__(self, proj_abbrvs,
+        GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
         self.allPathways = pway_object_list
         self.nameDict = self.get_pathway_name_dict()
@@ -866,40 +868,32 @@ class BackgroundGenomeFetcher():
         return int(rows[0][0])
 
 
-def run(user_id, user_upload, dbvars):
+def run(dir_path, user_upload, dbvars):
     """Arguments: projIds --patients patient_file."""
 
     # max_mutations
-    max_mutations = args.cutoff
-
-    if args.expression:
-        args.expression = args.expression[0]
-
-    ignore_genes = args.ignore
-
-    genome_size = BackgroundGenomeFetcher(args.genome,
-                                          args.expression).genome_size
-
-    # get patient list. maybe empty list.
-    patient_list = list()
-    if args.patients_file:
-        for line in args.patients_file:
-            temp_line = line.strip('\n')
-            if temp_line.isdigit():
-                patient_list.append(int(temp_line))  # integer if possible
-            else:
-                patient_list.append(temp_line)  # strings for tcga projects
-        print("Loaded {} patients.".format(len(patient_list)))
-    else:
-        print('No patients file provided. Using all patients.')
-
-    # split projIds into yale, tcga
-    proj_abbrvs = tuple(i for i in args.proj_ids if not i.isdigit())
-    print("Projects: {}".format(str(proj_abbrvs)))
+    max_mutations = user_upload.n_cutoff
+    file_id = user_upload.file_id
+    ignore_genes = user_upload.ignore_genes.split(',')
+    genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
+                                          None).genome_size
+    proj_suffix = user_upload.proj_suffix
+    # # get patient list. maybe empty list.
+    # patient_list = []
+    # if args.patients_file:
+    #     for line in args.patients_file:
+    #         temp_line = line.strip('\n')
+    #         if temp_line.isdigit():
+    #             patient_list.append(int(temp_line))  # integer if possible
+    #         else:
+    #             patient_list.append(temp_line)  # strings for tcga projects
+    #     print("Loaded {} patients.".format(len(patient_list)))
+    # else:
+    #     print('No patients file provided. Using all patients.')
 
     # get genes of interest, if any
-    if args.genes:
-        interest_genes = tuple(args.genes)
+    if user_upload.required_genes:
+        interest_genes = tuple(user_upload.required_genes.split(','))
     else:
         interest_genes = tuple()
     print("Interest genes: {}".format(str(interest_genes)))
@@ -910,10 +904,10 @@ def run(user_id, user_upload, dbvars):
     for pathway_number in all_path_ids:
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
-        pway = PathwaySummary(pathway_number, proj_abbrvs,
+        pway = PathwaySummary(pathway_number, dir_path, file_id,
                               patient_ids=patient_list,
                               max_mutations=max_mutations,
-                              expressed_table=args.expression,
+                              expressed_table=None,
                               ignore_genes=ignore_genes)
         pway.set_pathway_size()
         pway.populate_patient_info()
@@ -921,22 +915,22 @@ def run(user_id, user_upload, dbvars):
         lcalc.run()
         runtime = timeit.default_timer() - start
         # Write results to 'basic' file
-        basic_writer = PathwayBasicFileWriter(proj_abbrvs,
-                                              name_suffix=args.suffix)
+        basic_writer = PathwayBasicFileWriter(dir_path, file_id,
+                                              name_suffix=proj_suffix)
         basic_writer.write_pvalue_file(lcalc, runtime)
 
     # Gather all pathway stats from text file
-    assembler = PathwayListAssembler(proj_abbrvs,
-                                     patient_ids=patient_list,
-                                     name_suffix=args.suffix,
+    assembler = PathwayListAssembler(dir_path, file_id,
+                                     # patient_ids=None,
+                                     name_suffix=proj_suffix,
                                      max_mutations=max_mutations,
-                                     expressed_table=args.expression,
+                                     # expressed_table=args.expression,
                                      ignore_genes=ignore_genes)
     pway_list = assembler.get_ordered_pway_list()
 
     # Rank pathways, gather extra stats and write to final file
-    final_writer = PathwayDetailedFileWriter(proj_abbrvs, pway_list,
-                                             name_suffix=args.suffix)
+    final_writer = PathwayDetailedFileWriter(dir_path, file_id, pway_list,
+                                             name_suffix=proj_suffix)
     final_writer.write_detailed_file()
 
 
