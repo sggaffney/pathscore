@@ -3,6 +3,7 @@
 
 from .decorators import async
 from flask import current_app
+from flask_login import current_user
 
 import MySQLdb as mdb
 from scipy.misc import comb
@@ -16,24 +17,17 @@ import os
 
 
 @async
-def run_analysis_async(app, user_upload):
+def run_analysis_async(app, user_id, user_upload):
     """Asynchronous run of pathway analysis."""
     with app.app_context():
         dbvars = dict(host=current_app.config['SGG_DB_HOST'],
                       db=current_app.config['SGG_DB_NAME'],
                       read_default_file=current_app.config['SGG_DB_CNF'])
+        run(user_id, user_upload, dbvars)
 
-
-        mail.send(msg)
-
-def send_email(subject, sender, recipients, text_body, html_body):
-    msg = Message(subject, sender=sender, recipients=recipients)
-    msg.body = text_body
-    msg.html = html_body
-    thr = Thread(target=send_async_email, args=[current_app, msg])
-    thr.start()
-
-
+def run_analysis(user_upload):
+    user_id = current_user.id
+    run_analysis_async(current_app, user_id, user_upload)
 
 
 class NonSingleResult(Exception):
@@ -869,32 +863,8 @@ class BackgroundGenomeFetcher():
         return int(rows[0][0])
 
 
-def run_analysis():
+def run(user_id, user_upload, dbvars):
     """Arguments: projIds --patients patient_file."""
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("proj_ids", help="list of project identifiers",
-                        nargs="+")  # ids are strings, e.g. ["1","22","LUSC"]
-    parser.add_argument("-p", "--patients", type=file, dest="patients_file",
-                        help="file containing patients to include")
-    parser.add_argument("-g", "--genes", nargs="+",
-                        help="ignore pathways that don't contain these genes " +
-                             "(given by hugo symbol)")
-    parser.add_argument("-gs", "--genome",
-                        help="limit genome size to protein-coding genes.",
-                        choices=['no_pseudo', 'anything', 'protein-coding',
-                                 'inc_misc_chr'])
-    parser.add_argument("-s", "--suffix", help=
-                        "optional descriptive string to append to filenames.")
-    parser.add_argument("--cutoff", type=int, default=500, help=
-                        "maximum number of mutations allowed " +
-                        "for sample inclusion.")
-    parser.add_argument("--expression", nargs=1, help="name of table " +
-                        "containing entrez_id for expressed genes.")
-    parser.add_argument("--ignore", nargs="+", help="list of genes " +
-                        "(by hugo symbol) to ignore when calculating " +
-                        " p-values (and looking up pathway sizes).")
-    args = parser.parse_args()
 
     # max_mutations
     max_mutations = args.cutoff
