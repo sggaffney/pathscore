@@ -7,7 +7,7 @@ from .. import db
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
-from get_effective_pathways import run_analysis
+from ..get_effective_pathways import run_analysis
 
 
 
@@ -28,6 +28,7 @@ def demo():
 @login_required
 def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
+    upload_folder = current_app.config['UPLOAD_FOLDER']
     form = UploadForm()
     if form.validate_on_submit():
         # upload = Upload(uploader=current_user)
@@ -39,7 +40,10 @@ def upload():
         form.to_model(user_upload)
         db.session.add(user_upload)
         db.session.commit()
-        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'],
+        user_folder = os.path.join(upload_folder, str(current_user.id))
+        if not os.path.exists(user_folder):
+            os.mkdir(user_folder)
+        file_path = os.path.join(user_folder,
                                  user_upload.get_local_filename())
         form.mut_file.data.save(file_path)
 
@@ -55,7 +59,7 @@ def upload():
                 flash('File accepted and validated. Analysis in progress.')
                 # want analysis to run asynchronously!
                 # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
-
+                run_analysis(user_folder, user_upload)
                 return redirect(url_for('.index'))
             else:  # good headers but no data
                 flash('Your file seems to be missing data. Please try again.')
