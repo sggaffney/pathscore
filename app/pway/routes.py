@@ -41,9 +41,11 @@ def upload():
         db.session.add(user_upload)
         db.session.commit()
         user_folder = os.path.join(upload_folder, str(current_user.id))
+        proj_folder = os.path.join(user_folder, str(user_upload.file_id))
         if not os.path.exists(user_folder):
             os.mkdir(user_folder)
-        file_path = os.path.join(user_folder,
+        os.mkdir(proj_folder)
+        file_path = os.path.join(proj_folder,
                                  user_upload.get_local_filename())
         form.mut_file.data.save(file_path)
 
@@ -59,7 +61,7 @@ def upload():
                 flash('File accepted and validated. Analysis in progress.')
                 # want analysis to run asynchronously!
                 # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
-                run_analysis(user_folder, user_upload)
+                run_analysis(proj_folder, file_path, user_upload)
                 return redirect(url_for('.index'))
             else:  # good headers but no data
                 flash('Your file seems to be missing data. Please try again.')

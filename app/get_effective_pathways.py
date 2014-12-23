@@ -19,7 +19,7 @@ import os
 dbvars = dict()
 
 @async
-def run_analysis_async(app, user_dir, user_id, user_upload):
+def run_analysis_async(app, proj_dir, data_path, user_upload):
     """Asynchronous run of pathway analysis."""
     global dbvars
     with app.app_context():
@@ -27,14 +27,13 @@ def run_analysis_async(app, user_dir, user_id, user_upload):
                       db=current_app.config['SGG_DB_NAME'],
                       read_default_file=current_app.config['SGG_DB_CNF'])
         table_name = 'mutations_{}'.format(user_upload.file_id)
-        data_path = os.path.join(user_dir, user_upload.get_local_filename())
         MutationTable(table_name, data_path)
-        run(user_dir, table_name, user_upload)
+        run(proj_dir, table_name, user_upload)
 
-def run_analysis(user_dir, user_upload):
-    user_id = current_user.id
+
+def run_analysis(proj_dir, data_path, user_upload):
     app = current_app._get_current_object()
-    run_analysis_async(app, user_dir, user_id, user_upload)
+    run_analysis_async(app, proj_dir, data_path, user_upload)
 
 
 class NonSingleResult(Exception):
@@ -795,26 +794,22 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                     [repr(i) for i in pway.exclusive_genes]) + '}'
                 cooccurring_string = '{' + ','.join(
                     [repr(i) for i in pway.cooccurring_genes]) + '}'
-                out.write(
-                    "{path_id}\t{name}\t{n_actual}\t{n_effective}\t" +
-                    "{p_value:.3e}\t{runtime:.2f}\t{exclusive_string}\t" +
-                    "{cooccurring_string}\t{coverage_string}\n"
-                    .format(path_id=pway.path_id,
-                            name=path_name,
-                            coverage_string=coverage_string,
-                            n_actual=pway.n_actual,
-                            n_effective=pway.n_effective,
-                            p_value=pway.p_value,
-                            runtime=pway.runtime,
-                            exclusive_string=exclusive_string,
-                            cooccurring_string=cooccurring_string))
+                out.write("""{path_id}\t{name}\t{n_actual}\t{n_effective}\t{p_value:.3e}\t{runtime:.2f}\t{exclusive_string}\t{cooccurring_string}\t{coverage_string}\n"""
+                          .format(path_id=pway.path_id, name=path_name,
+                                  coverage_string=coverage_string,
+                                  n_actual=pway.n_actual,
+                                  n_effective=pway.n_effective,
+                                  p_value=pway.p_value,
+                                  runtime=pway.runtime,
+                                  exclusive_string=exclusive_string,
+                                  cooccurring_string=cooccurring_string))
 
     def write_matrix_files(self, pway):
         """Write text file containing presence matrix for patient-gene pair."""
-        if not os.path.exists(self.matrix_folder):
-            os.mkdir(self.matrix_folder)
-        matrix_filename = self.matrix_folder + os.sep + self.root_name + \
-            '_matrix' + str(pway.path_id) + '.txt'
+        matrix_path = os.path.join(self.dir_path, self.matrix_folder)
+        if not os.path.exists(matrix_path):
+            os.mkdir(matrix_path)
+        matrix_filename = os.path.join(matrix_path, 'matrix_' + str(pway.path_id) + '.txt')
         with open(matrix_filename, 'w') as outfile:
             pway.geneMatrix.export_matrix(outfile, pway.exclusive_genes)
 
