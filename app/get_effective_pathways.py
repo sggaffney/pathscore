@@ -257,7 +257,7 @@ class PathwaySummary(PathwaySummaryBasic):
         Assumes expression table is in tcga database.
         """
         if self.filter_expressed:
-            filter_str = "INNER JOIN tcga.{filter_expressed} e " \
+            filter_str = "INNER JOIN {filter_expressed} e " \
                 "ON {join_ref} = e.entrez_id" \
                 .format(filter_expressed=self.filter_expressed,
                         join_ref=join_ref)
@@ -287,7 +287,7 @@ class PathwaySummary(PathwaySummaryBasic):
                 g.patient_id IS NOT NULL AS mutated FROM
                 # good patients, mutation_count
                 (SELECT patient_id, count(DISTINCT m.entrez_id) AS n_patient
-                FROM tcga.{table} m
+                FROM {table} m
                     {expression_filter_m}
                     {patient_filter} {ignore_gene_filter1}
                     {variant_WHERE_AND} `Variant_Classification` <> 'Silent'
@@ -296,7 +296,7 @@ class PathwaySummary(PathwaySummaryBasic):
                 # pathway mutation counts above 0
                 (SELECT patient_id FROM
                     # get distinct genes from patients
-                    (SELECT DISTINCT patient_id, entrez_id FROM tcga.{table}
+                    (SELECT DISTINCT patient_id, entrez_id FROM {table}
                         {patient_filter} {ignore_gene_filter2}) pg
                     # join to pathway genes
                         INNER JOIN 
@@ -337,7 +337,7 @@ class PathwaySummary(PathwaySummaryBasic):
                 n_mutated = row[1]
                 is_mutated = row[2] > 0
                 is_yale = False
-                patient = Patient(patient_id, n_mutated, is_mutated, is_yale)
+                patient = Patient(patient_id, n_mutated, is_mutated)
                 self.patients.append(patient)
 
     def update_exclusive_cooccurring_coverage(self):
@@ -383,13 +383,13 @@ class PathwaySummary(PathwaySummaryBasic):
                 # PATIENT, HUGO PAIRS in pathway of interest.
                 SELECT patient_id, group_concat(DISTINCT hugo_symbol
                 ORDER BY hugo_symbol SEPARATOR ',') AS symbols
-                FROM tcga.{table} t
+                FROM {table} t
                 # gene subset in pathway of interest
                 INNER JOIN refs.`pathway_gene_link` pgl
                 ON t.entrez_id = pgl.entrez_id {expression_filter_pgl}
                 NATURAL JOIN
                 #good patients
-                (SELECT patient_id FROM tcga.{table}
+                (SELECT patient_id FROM {table}
                 WHERE `Variant_Classification` <> 'Silent' {patient_filter}
                     GROUP BY patient_id 
                     HAVING count(*) <= {max_mutations}) p
@@ -452,7 +452,7 @@ class PathwaySummary(PathwaySummaryBasic):
         for tcga_table in self.proj_abbrvs:
             cmd0 = """SET SESSION group_concat_max_len = 30000;"""
             cmd1 = """SELECT count(DISTINCT patient_id) AS n_patient FROM 
-                (SELECT patient_id FROM tcga.{table} 
+                (SELECT patient_id FROM {table}
                 WHERE `Variant_Classification` <> 'Silent' {patient_filter}
                 GROUP BY patient_id HAVING count(*) <= {max_mutations}) p2;""" \
                 .format(max_mutations=self.max_mutations, table=tcga_table,
@@ -461,13 +461,13 @@ class PathwaySummary(PathwaySummaryBasic):
             # HUGO LIST AND PATIENT COUNTS
             cmd2 = """SELECT hugo_symbol, count(DISTINCT patient_id)
                 AS n_patients, GROUP_CONCAT(DISTINCT patient_id) AS patients
-                FROM tcga.{table} t
+                FROM {table} t
                 # gene subset in pathway of interest
                 INNER JOIN refs.`pathway_gene_link` pgl
                 ON t.entrez_id = pgl.entrez_id {expression_filter_pgl}
                 NATURAL JOIN
                 #good patients
-                (SELECT patient_id FROM tcga.{table} t
+                (SELECT patient_id FROM {table} t
                     WHERE `Variant_Classification` <> 'Silent' {patient_filter}
                     GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p
                 WHERE path_id = {path_id}
@@ -632,7 +632,7 @@ class GenericPathwayFileProcessor():
     def _get_root_filename(self):
         """Root file name for output files."""
         root_name = os.path.join(self.dir_path, self.base_str + '_'
-                                 + self.file_id)
+                                 + str(self.file_id))
         if self.name_suffix:
             root_name += '_' + self.name_suffix
         return root_name
@@ -889,7 +889,7 @@ class BackgroundGenomeFetcher():
     @staticmethod
     def _fetch_expressed_genome_size(expressed_table):
         """Count genes via SQL query: assumes row count equals gene count."""
-        cmd1 = """SELECT count(*) FROM tcga.{table_name};""".format(
+        cmd1 = """SELECT count(*) FROM {table_name};""".format(
             table_name=expressed_table)
         try:
             con = mdb.connect(**dbvars)
@@ -912,7 +912,7 @@ def run(dir_path, table_name, user_upload):
 
     # max_mutations
     table_list = [table_name]  # code can iterate through list of tables
-    max_mutations = user_upload.n_cutoff
+    max_mutations = user_upload.n_cutoff or 500  # default max is 500
     if user_upload.ignore_genes:
         ignore_genes = user_upload.ignore_genes.split(',')
     else:
