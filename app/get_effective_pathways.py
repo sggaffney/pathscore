@@ -631,7 +631,7 @@ class GenericPathwayFileProcessor():
 
     def _get_root_filename(self):
         """Root file name for output files."""
-        root_name = os.path.join(self.dir_path, self.base_str + '_'
+        root_name = os.path.join(self.dir_path, self.base_str
                                  + str(self.file_id))
         if self.name_suffix:
             root_name += '_' + self.name_suffix
@@ -654,11 +654,13 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
 class PathwayListAssembler(GenericPathwayFileProcessor):
     """Builds ordered list of pathways from basic p-value file."""
 
-    def __init__(self, dir_path, file_id, patient_ids=list(), name_suffix=None,
-                 max_mutations=None, expressed_table=None, ignore_genes=list()):
+    def __init__(self, dir_path, file_id, proj_abbrvs, patient_ids=list(),
+                 name_suffix=None, max_mutations=None, expressed_table=None,
+                 ignore_genes=list()):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
+        self.proj_abbrvs = proj_abbrvs
         self.filter_patient_ids = patient_ids
         self.max_mutations = max_mutations
         self.expressed_table = expressed_table
@@ -677,7 +679,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 peffect = int(row[3])
                 runtime = float(row[4])
                 # set up pathway object
-                pway = PathwaySummary(path_id, self.file_id,
+                pway = PathwaySummary(path_id, self.proj_abbrvs,
                                       patient_ids=self.filter_patient_ids,
                                       max_mutations=self.max_mutations,
                                       expressed_table=self.expressed_table,
@@ -911,6 +913,7 @@ def run(dir_path, table_name, user_upload):
     """Arguments: projIds --patients patient_file."""
 
     # max_mutations
+    file_id = user_upload.file_id
     table_list = [table_name]  # code can iterate through list of tables
     max_mutations = user_upload.n_cutoff or 500  # default max is 500
     if user_upload.ignore_genes:
@@ -943,7 +946,7 @@ def run(dir_path, table_name, user_upload):
     id_fetcher = PathwayIdsFetcher(interest_genes)
     all_path_ids = id_fetcher.fetchPathwayIds()
 
-    for pathway_number in all_path_ids:
+    for pathway_number in all_path_ids[0:30]:
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
         pway = PathwaySummary(pathway_number, table_list,
@@ -956,12 +959,12 @@ def run(dir_path, table_name, user_upload):
         lcalc.run()
         runtime = timeit.default_timer() - start
         # Write results to 'basic' file
-        basic_writer = PathwayBasicFileWriter(dir_path, table_list,
+        basic_writer = PathwayBasicFileWriter(dir_path, file_id,
                                               name_suffix=proj_suffix)
         basic_writer.write_pvalue_file(lcalc, runtime)
 
     # Gather all pathway stats from text file
-    assembler = PathwayListAssembler(dir_path, table_list,
+    assembler = PathwayListAssembler(dir_path, file_id, table_list,
                                      # patient_ids=None,
                                      name_suffix=proj_suffix,
                                      max_mutations=max_mutations,
@@ -970,7 +973,7 @@ def run(dir_path, table_name, user_upload):
     pway_list = assembler.get_ordered_pway_list()
 
     # Rank pathways, gather extra stats and write to final file
-    final_writer = PathwayDetailedFileWriter(dir_path, table_list, pway_list,
+    final_writer = PathwayDetailedFileWriter(dir_path, file_id, pway_list,
                                              name_suffix=proj_suffix)
     final_writer.write_detailed_file()
 
