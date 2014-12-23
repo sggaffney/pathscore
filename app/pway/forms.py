@@ -32,6 +32,8 @@ class UploadForm(Form):
         upload.mut_file = self.mut_file.data
         upload.genome_size = self.genome_size.data
         upload.n_cutoff = self.n_cutoff.data
-        upload.required_genes = self.required_genes.data
-        upload.ignore_genes = self.ignore_genes.data
+        if upload.required_genes:
+            upload.required_genes = self.required_genes.data
+        if self.ignore_genes.data:
+            upload.ignore_genes = self.ignore_genes.data
         upload.proj_suffix = self.proj_suffix.data
