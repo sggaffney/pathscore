@@ -29,7 +29,7 @@ def run_analysis_async(app, user_dir, user_id, user_upload):
         table_name = 'mutations_{}'.format(user_upload.file_id)
         data_path = os.path.join(user_dir, user_upload.get_local_filename())
         MutationTable(table_name, data_path)
-        run(user_dir, user_upload)
+        run(user_dir, table_name, user_upload)
 
 def run_analysis(user_dir, user_upload):
     user_id = current_user.id
@@ -907,12 +907,12 @@ class BackgroundGenomeFetcher():
         return int(rows[0][0])
 
 
-def run(dir_path, user_upload):
+def run(dir_path, table_name, user_upload):
     """Arguments: projIds --patients patient_file."""
 
     # max_mutations
+    table_list = [table_name]  # code can iterate through list of tables
     max_mutations = user_upload.n_cutoff
-    file_id = user_upload.file_id
     ignore_genes = user_upload.ignore_genes.split(',')
     genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
                                           None).genome_size
@@ -943,8 +943,7 @@ def run(dir_path, user_upload):
     for pathway_number in all_path_ids:
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
-        pway = PathwaySummary(pathway_number, dir_path, file_id,
-                              patient_ids=patient_list,
+        pway = PathwaySummary(pathway_number, table_list,
                               max_mutations=max_mutations,
                               expressed_table=None,
                               ignore_genes=ignore_genes)
@@ -954,12 +953,12 @@ def run(dir_path, user_upload):
         lcalc.run()
         runtime = timeit.default_timer() - start
         # Write results to 'basic' file
-        basic_writer = PathwayBasicFileWriter(dir_path, file_id,
+        basic_writer = PathwayBasicFileWriter(dir_path, table_list,
                                               name_suffix=proj_suffix)
         basic_writer.write_pvalue_file(lcalc, runtime)
 
     # Gather all pathway stats from text file
-    assembler = PathwayListAssembler(dir_path, file_id,
+    assembler = PathwayListAssembler(dir_path, table_list,
                                      # patient_ids=None,
                                      name_suffix=proj_suffix,
                                      max_mutations=max_mutations,
@@ -968,7 +967,7 @@ def run(dir_path, user_upload):
     pway_list = assembler.get_ordered_pway_list()
 
     # Rank pathways, gather extra stats and write to final file
-    final_writer = PathwayDetailedFileWriter(dir_path, file_id, pway_list,
+    final_writer = PathwayDetailedFileWriter(dir_path, table_list, pway_list,
                                              name_suffix=proj_suffix)
     final_writer.write_detailed_file()
 
