@@ -16,9 +16,12 @@ from collections import OrderedDict
 import os
 
 
+dbvars = dict()
+
 @async
 def run_analysis_async(app, user_id, user_upload):
     """Asynchronous run of pathway analysis."""
+    global dbvars
     with app.app_context():
         dbvars = dict(host=current_app.config['SGG_DB_HOST'],
                       db=current_app.config['SGG_DB_NAME'],
@@ -26,7 +29,7 @@ def run_analysis_async(app, user_id, user_upload):
         dir_path = os.path.join(current_app.config['UPLOAD_FOLDER'], user_id)
         if not os.path.exists(dir_path):
             os.mkdir(dir_path)
-        run(dir_path, user_upload, dbvars)
+        run(dir_path, user_upload)
 
 def run_analysis(user_upload):
     user_id = current_user.id
@@ -868,7 +871,7 @@ class BackgroundGenomeFetcher():
         return int(rows[0][0])
 
 
-def run(dir_path, user_upload, dbvars):
+def run(dir_path, user_upload):
     """Arguments: projIds --patients patient_file."""
 
     # max_mutations
