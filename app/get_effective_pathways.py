@@ -19,19 +19,19 @@ import os
 dbvars = dict()
 
 @async
-def run_analysis_async(app, user_id, user_upload):
+def run_analysis_async(app, user_dir, user_id, user_upload):
     """Asynchronous run of pathway analysis."""
     global dbvars
     with app.app_context():
         dbvars = dict(host=current_app.config['SGG_DB_HOST'],
                       db=current_app.config['SGG_DB_NAME'],
                       read_default_file=current_app.config['SGG_DB_CNF'])
-        dir_path = os.path.join(current_app.config['UPLOAD_FOLDER'], user_id)
-        if not os.path.exists(dir_path):
-            os.mkdir(dir_path)
-        run(dir_path, user_upload)
+        table_name = 'mutations_{}'.format(user_upload.file_id)
+        data_path = os.path.join(user_dir, user_upload.get_local_filename())
+        MutationTable(table_name, data_path)
+        run(user_dir, user_upload)
 
-def run_analysis(user_upload):
+def run_analysis(user_dir, user_upload):
     user_id = current_user.id
     app = current_app._get_current_object()
     run_analysis_async(app, user_dir, user_id, user_upload)
@@ -46,6 +46,41 @@ class Patient():
         self.patient_id = patient_id
         self.n_mutated = n_mutated
         self.is_mutated = is_mutated
+
+
+class MutationTable():
+    """Loads data from file into table, given table_name and file path."""
+    def __init__(self, table_name, data_path):
+        self.table_name = table_name
+        self.data_path = data_path
+        self.loaded = False
+        # CREATE AND POPULATE TABLE
+        create_str = """CREATE TABLE `{}` (
+          `hugo_symbol` VARCHAR(255) DEFAULT NULL,
+          `entrez_id` INT(11) DEFAULT NULL,
+          `patient_id` VARCHAR(255) DEFAULT NULL,
+          `variant_classification` VARCHAR(255) DEFAULT NULL,
+          KEY `temp_patient_id` (`patient_id`) USING HASH,
+          KEY `temp_patient_entrez` (`patient_id`,`entrez_id`)
+          USING HASH);""".format(table_name)
+        load_str = """load data local infile '{}'
+        into table `{}` fields terminated by '\t'
+        lines terminated by '\n' ignore 1 lines;""".format(
+            data_path, table_name
+        )
+        try:
+            con = mdb.connect(**dbvars)
+            cur = con.cursor()
+            cur.execute(create_str)
+            cur.execute(load_str)
+            con.commit()
+            self.loaded = True
+        except mdb.Error as e:
+            print "Error %d: %s" % (e.args[0], e.args[1])
+        finally:
+            if con:
+                con.close()
+
 
 
 class GeneMatrix():
@@ -883,7 +918,7 @@ def run(dir_path, user_upload):
                                           None).genome_size
     proj_suffix = user_upload.proj_suffix
     # # get patient list. maybe empty list.
-    # patient_list = []
+    patient_list = []
     # if args.patients_file:
     #     for line in args.patients_file:
     #         temp_line = line.strip('\n')
