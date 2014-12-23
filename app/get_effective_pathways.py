@@ -33,7 +33,8 @@ def run_analysis_async(app, user_id, user_upload):
 
 def run_analysis(user_upload):
     user_id = current_user.id
-    run_analysis_async(current_app, user_id, user_upload)
+    app = current_app._get_current_object()
+    run_analysis_async(app, user_dir, user_id, user_upload)
 
 
 class NonSingleResult(Exception):
