@@ -197,7 +197,7 @@ class PathwaySummary(PathwaySummaryBasic):
             con = mdb.connect(**dbvars)
             cur = con.cursor()
             cur.execute(cmd1)
-            assert isinstance(cur.rowcount, int)
+            # assert isinstance(cur.rowcount, int)
             row_count = cur.rowcount
             if not row_count == 1:
                 print "Result contains {} rows Ids for pathway {}.".format(
@@ -913,7 +913,10 @@ def run(dir_path, table_name, user_upload):
     # max_mutations
     table_list = [table_name]  # code can iterate through list of tables
     max_mutations = user_upload.n_cutoff
-    ignore_genes = user_upload.ignore_genes.split(',')
+    if user_upload.ignore_genes:
+        ignore_genes = user_upload.ignore_genes.split(',')
+    else:
+        ignore_genes = []
     genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
                                           None).genome_size
     proj_suffix = user_upload.proj_suffix
