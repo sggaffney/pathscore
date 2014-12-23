@@ -36,4 +36,5 @@ class UploadForm(Form):
             upload.required_genes = self.required_genes.data
         if self.ignore_genes.data:
             upload.ignore_genes = self.ignore_genes.data
-        upload.proj_suffix = self.proj_suffix.data
+        if self.proj_suffix.data:
+            upload.proj_suffix = self.proj_suffix.data
