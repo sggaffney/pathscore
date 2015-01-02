@@ -18,11 +18,12 @@
     </tr>
     {% for proj in projects %}
         {% if proj.run_complete %}
-        <tr class="success">
+            <tr class="success">
+            <td><a href="{{ url_for('pway.results', proj=proj.get_local_filename()) }}">{{ proj.get_local_filename() }}</a></td>
         {% else %}
-        <tr>
-        {% endif %}
+            <tr>
             <td>{{ proj.get_local_filename() }}</td>
+        {% endif %}
             <td>{{ proj.upload_time }} </td>
             <td>{{ proj.filename }} </td>
             <td>{{ proj.genome_size }} </td>

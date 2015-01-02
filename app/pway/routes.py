@@ -28,9 +28,11 @@ def demo():
 @pway.route('/results')
 @login_required
 def results():
+    show_proj = request.args.get('proj', None)
     upload_list = UserFile.query.filter_by(user_id=current_user.id).filter_by(run_complete=True).all()
     return render_template('pway/show_pathways_template.html',
-                           projects=upload_list, user_id=current_user.id)
+                           projects=upload_list, user_id=current_user.id,
+                           show_proj=show_proj)
 
 
 @pway.route('/upload', methods=('GET', 'POST'))

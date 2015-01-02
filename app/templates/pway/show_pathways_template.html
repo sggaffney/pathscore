@@ -42,7 +42,13 @@
 <div>
 	<select id="projSelection" name="characters">
 		{% for proj in projects %}
-			<option value="{{ proj.file_id }}">{{ proj.get_local_filename() }}</option>
+			{% if show_proj == proj.get_local_filename() %}
+				<option value="{{ proj.file_id }}" selected="selected">
+			{% else %}
+				<option value="{{ proj.file_id }}">
+			{% endif %}
+				{{ proj.get_local_filename() }}
+				</option>
 		{% endfor %}
 	</select>
 
