@@ -25,7 +25,7 @@ class UploadForm(Form):
         length(max=600, message="600 character limit.")])
     ignore_genes = TextAreaField('Ignore genes', validators=[optional(),
         length(max=600, message="600 character limit.")])
-    proj_suffix = StringField('Project suffix string', validators=[optional()])
+    proj_suffix = StringField('Project name', validators=[optional()])
     submit = SubmitField('Upload')
 
     def to_model(self, upload):
