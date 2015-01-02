@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block head %}
     {{ super() }}
-	<title>{{ page_info.title }}</title>
+	<title>Results</title>
 	<style>
 		form {
 			display: table;
@@ -42,7 +42,7 @@
 <div>
 	<select id="projSelection" name="characters">
 		{% for proj in projects %}
-			<option value="{{ proj.id }}">{{ proj.name}}</option>
+			<option value="{{ proj.file_id }}">{{ proj.get_local_filename() }}</option>
 		{% endfor %}
 	</select>
 
@@ -77,7 +77,7 @@
 		$fetcherButton = $('#geneSubmitButton');
 		$projSelection = $('#projSelection');
 		pwayList = null;
-		skip_few = {{ page_info.skip_few }};
+		skip_few = true;
 
 		var pi = null;
 		projId = $projSelection.val();  // global for project id
@@ -85,6 +85,7 @@
 		$projSelection.change(
 			function(){
 				projId = $projSelection.val();
+				console.log(projId)
 				updateProjId();
 			}
 		);
@@ -104,7 +105,7 @@
 	});
 
 	function updateProjId(){
-		$.getScript( "pathways_pvalues_" + projId + ".js", function( data, textStatus, jqxhr ) {
+		$.getScript( "static/data/{{ user_id }}/" + projId + "/" + projId + ".js", function( data, textStatus, jqxhr ) {
 			// console.log( data ); // Data returned
 			// console.log( textStatus ); // Success
 			// console.log( jqxhr.status ); // 200
@@ -175,10 +176,10 @@
 			$imageContainer.append(
 				'<h2><a href="'+ root_url + use_pways[pi]['url'] +'" target="_blank">' 
 				+ use_pways[pi]['name'] + '</a>' + ' (' + use_pways[pi]['pval'] + ') </h2>' 
-				+'<p><img src="pathways_svg/proj_' + projId + '/' + use_pways[pi]['id'] + '.svg" ' +
+				+'<p><img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways[pi]['id'] + '.svg" ' +
 				'height=1024px width=1024px alt="' + use_pways[pi]['id'] + '.svg" ></img>' //
 				+'</p>'
-				+'<p><img src="matrix_svg/proj_' + projId + '/' + use_pways[pi]['id'] + '.svg" ' +
+				+'<p><img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + use_pways[pi]['id'] + '.svg" ' +
 				'height=' + (use_pways[pi].geneSet.length*25+80) + 'px alt="' + use_pways[pi]['id'] + '.svg" ></img>' //
 				+'</p>'
 				);
