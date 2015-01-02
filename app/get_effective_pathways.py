@@ -1046,14 +1046,16 @@ def run(dir_path, table_name, user_upload):
     # generate_files(dir_path, final_writer.outfile_name, user_upload)
 
     detail_path = final_writer.outfile_name
-    descriptive_name = str(user_upload.file_id) + user_upload.filename
-    js_out_path = os.path.join(dir_path, descriptive_name + ".js")
+    descriptive_name = user_upload.get_local_filename()
+    js_out_path = os.path.join(dir_path,
+                               user_upload.get_local_filename() + ".js")
 
     make_js_file(detail_path, js_out_path)
     # html_name = create_html(detail_path, out_dir, project_str, descriptive_name,
     #                         skipfew)
-    create_svgs(detail_path)
-    create_matrix_svgs(detail_path)
+    create_pway_plots(str(detail_path))
+    # create_svgs(str(detail_path))
+    # create_matrix_svgs(str(detail_path))
 
 
 
@@ -1095,9 +1097,20 @@ def make_js_file(results_path, out_path):
                 out.write("\n")
         out.write("];\n")
 
+def create_pway_plots(txt_path):
+    """Run matlab script that builds matrix and target svgs."""
+    # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
+    cmd = 'matlab -nosplash -nodesktop -r \"pway_plots(' \
+          '{txtpath!r});\"'.format(txtpath=txt_path)
+    with open(os.devnull, "r") as fnullin:
+        with open(os.devnull, "w") as fnullout:
+            subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
+                                  stderr=fnullout, shell=True)
+
+
 
 def create_svgs(txt_path):
-    """Run matlab script that builds svgs in directory containing
+    """NOT USED. Run matlab script that builds svgs in directory containing
     pathways txt."""
     # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
     cmd = 'matlab -nosplash -nodesktop -r \"plot_pway_targets({txtpath!r},' \
@@ -1109,7 +1122,7 @@ def create_svgs(txt_path):
 
 
 def create_matrix_svgs(txt_path):
-    """Run matlab script that builds matrix svgs. SVGs stored in matrix_
+    """NOT USED. Run matlab script that builds matrix svgs. SVGs stored in matrix_
     txt/matrix_svg."""
     # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
     cmd = 'matlab -nosplash -nodesktop -r \"plot_patient_genes(' \
