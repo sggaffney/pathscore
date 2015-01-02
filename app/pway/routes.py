@@ -15,7 +15,9 @@ from ..get_effective_pathways import run_analysis
 @pway.route('/')
 @login_required
 def index():
-    return render_template('pway/index2.html')
+
+    upload_list = UserFile.query.filter_by(user_id=current_user.id).all()
+    return render_template('pway/index2.html', projects=upload_list)
 
 
 @pway.route('/demo')

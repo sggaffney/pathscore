@@ -2,4 +2,34 @@
 
 {% block page_content %}
 
+{% if projects %}
+<table class="table">
+    <tr>
+        <th>Project Name</th>
+        <th>Date</th>
+        <th>Filename</th>
+        <th>Genome size</th>
+        <th>n_cutoff</th>
+        <th>Ignore</th>
+        <th>Required</th>
+        <th>Complete</th>
+    </tr>
+    {% for proj in projects %}
+    <tr>
+        <td>{{ proj.get_local_filename() }}</td>
+        <td>{{ proj.upload_time }} </td>
+        <td>{{ proj.filename }} </td>
+        <td>{{ proj.genome_size }} </td>
+        <td>{{ proj.n_cutoff }} </td>
+        <td>{{ proj.ignore_genes }} </td>
+        <td>{{ proj.required_genes }} </td>
+        <td>{{ proj.run_complete }} </td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% else %}
+No projects to show. Please upload a file on the <a href="{{url_for('pway.upload')}}">Upload</a> page.
+{% endif %}
+
 {% endblock %}
