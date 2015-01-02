@@ -1,0 +1,10 @@
+<p>Your pathway search run has finshed.</p>
+
+<p>Project name = {{ project.proj_suffix|safe }}.<br>
+Filename = {{ project.filename }}.<br>
+Submitted at {{ project.upload_time }}".</p>
+
+<p>Please visit the <a href="{{ url_for('pway.results', proj=project.get_local_filename(), _external=True) }}">results page</a> to view result graphics.</p>
+
+<p>Sincerely,</p>
+<p>Pathway Search admin</p>

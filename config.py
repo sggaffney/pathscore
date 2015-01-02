@@ -33,6 +33,8 @@ class Config:
     SGG_DB_CNF = os.environ.get('MYSQLDB_CNF')
     SGG_DB_HOST = os.environ.get('MYSQLDB_HOST')
 
+    SERVER_NAME = 'localhost:5000'
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

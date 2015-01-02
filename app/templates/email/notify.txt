@@ -1,0 +1,11 @@
+Your pathway search run has finshed.
+
+Project name = {{ project.proj_suffix|safe }}.
+Filename = {{ project.filename }}.
+Submitted at {{ project.upload_time }}".
+
+Please visit {{ url_for('pway.results', proj=project.get_local_filename(), _external=True) }} to view results.
+
+Sincerely,
+
+Pathway Search admin

@@ -17,6 +17,7 @@ import os
 import subprocess
 
 from . import db
+from .emails import run_finished_notification
 
 
 dbvars = dict()
@@ -35,6 +36,7 @@ def run_analysis_async(app, proj_dir, data_path, user_upload):
         user_upload.run_complete = True
         db.session.add(user_upload)
         db.session.commit()
+        run_finished_notification(user_upload)
 
 
 def run_analysis(proj_dir, data_path, user_upload):
