@@ -23,6 +23,13 @@ def index():
 def demo():
     return render_template('pway/show_pathways.html')
 
+@pway.route('/results')
+@login_required
+def results():
+    upload_list = UserFile.query.filter_by(user_id=current_user.id).filter_by(run_complete=True).all()
+    return render_template('pway/show_pathways_template.html',
+                           projects=upload_list, user_id=current_user.id)
+
 
 @pway.route('/upload', methods=('GET', 'POST'))
 @login_required
