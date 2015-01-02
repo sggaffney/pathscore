@@ -119,4 +119,14 @@ class UserFile(db.Model):
     uploader = db.relationship('User', backref='uploads')
 
     def get_local_filename(self):
-        return '_'.join([str(self.file_id), self.filename])
+        keepcharacters = (' ', '.', '_')
+        safe_suffix = None
+        if self.proj_suffix:
+            safe_suffix = "".join(c for c in self.proj_suffix if c.isalnum()
+                                  or c in keepcharacters).rstrip()
+        if safe_suffix:
+            use_title = str(safe_suffix)
+        else:
+            use_title = self.filename
+        return '_'.join([str(self.file_id), use_title])
+
