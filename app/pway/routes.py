@@ -8,6 +8,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
 from ..get_effective_pathways import run_analysis
+from ..admin import get_project_folder, get_user_folder
 
 
 
@@ -39,7 +40,6 @@ def results():
 @login_required
 def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
-    upload_folder = current_app.config['UPLOAD_FOLDER']
     form = UploadForm()
     if form.validate_on_submit():
         # upload = Upload(uploader=current_user)
@@ -51,8 +51,9 @@ def upload():
         form.to_model(user_upload)
         db.session.add(user_upload)
         db.session.commit()
-        user_folder = os.path.join(upload_folder, str(current_user.id))
-        proj_folder = os.path.join(user_folder, str(user_upload.file_id))
+
+        user_folder = get_user_folder(current_user.id)
+        proj_folder = get_project_folder(user_upload)
         if not os.path.exists(user_folder):
             os.mkdir(user_folder)
         os.mkdir(proj_folder)

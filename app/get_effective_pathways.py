@@ -30,12 +30,14 @@ def run_analysis_async(app, proj_dir, data_path, user_upload):
         dbvars = dict(host=current_app.config['SGG_DB_HOST'],
                       db=current_app.config['SGG_DB_NAME'],
                       read_default_file=current_app.config['SGG_DB_CNF'])
-        table_name = 'mutations_{}'.format(user_upload.file_id)
+        # table_name = 'mutations_{}'.format(user_upload.file_id)
+        table_name = user_upload.table_name
         MutationTable(table_name, data_path)
         run(proj_dir, table_name, user_upload)
         user_upload.run_complete = True
         db.session.add(user_upload)
         db.session.commit()
+        drop_table(table_name)
         run_finished_notification(user_upload)
 
 
@@ -45,6 +47,20 @@ def run_analysis(proj_dir, data_path, user_upload):
     db.session.commit()
     app = current_app._get_current_object()
     run_analysis_async(app, proj_dir, data_path, user_upload)
+
+
+def drop_table(table_name):
+    cmd = """drop table {};""".format(table_name)
+    try:
+        con = mdb.connect(**dbvars)
+        cur = con.cursor()
+        cur.execute(cmd)
+        con.commit()
+    except mdb.Error as e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+    finally:
+        if con:
+            con.close()
 
 
 class NonSingleResult(Exception):

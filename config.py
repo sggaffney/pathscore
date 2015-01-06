@@ -35,6 +35,7 @@ class Config:
 
     SERVER_NAME = 'localhost:5000'
 
+    PROJ_DELETE_INTERVAL = 86400  # one day
 
 class DevelopmentConfig(Config):
     DEBUG = True

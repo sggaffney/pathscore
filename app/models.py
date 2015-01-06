@@ -130,3 +130,10 @@ class UserFile(db.Model):
             use_title = self.filename
         return '_'.join([str(self.file_id), use_title])
 
+    @property
+    def table_name(self):
+        return 'mutations_{}'.format(self.file_id)
+
+    @property
+    def path(self):
+        return 'mutations_{}'.format(self.file_id)
