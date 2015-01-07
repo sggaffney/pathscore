@@ -2,64 +2,55 @@
 {% block head %}
     {{ super() }}
 	<title>Results</title>
-	<style>
-		form {
-			display: table;
-			padding: 10px;
-			border-spacing: 0px;
-			border: thin dotted #bdcfef;
-			background-color: #d9eeff;
-			margin: 10px;
-		}
-
-		form > div {
-			display: table-row;
-		}
-
-		form p {
-			display: table-cell;
-			padding: 5px;
-			vertical-align: middle;
-		}
-
-		form > div p:first-child {
-			text-align: right;
-			max-width: 150px;
-		}
-		.padded {
-			padding:15px;
-		}
-
-
-	</style>
 {% endblock %}
 
 {% block page_content %}
-<div>
-	<h2>Significantly altered pathways for genes of interest.</h2>
+<div class="page-header">
+	<h1>Pathway Search Results</h1>
 </div>
 
+
+<div class="panel panel-default">
+	<div class="panel-heading">Browse your available projects</div>
+	<div class="panel-body">
+		<form class="form-inline" action="">
+			<div class="form-group">
+				<select class="form-control" id="projSelection" name="characters">
+				{% for proj in projects %}
+					{% if show_proj == proj.get_local_filename() %}
+						<option value="{{ proj.file_id }}" selected="selected">
+					{% else %}
+						<option value="{{ proj.file_id }}">
+					{% endif %}
+						{{ proj.get_local_filename() }}
+						</option>
+				{% endfor %}
+				</select>
+			</div>
+
+			<div class="form-group">
+				<input class="form-control" type="text" id="genes" size="40" maxlength="10000" value = ""
+					placeholder="INCLUDE GENES e.g. BRAF,NRAS">
+			</div>
+			<div class="form-group">
+				<input class="form-control" type="text" id="exclude" size="40" maxlength="10000" value = ""
+					placeholder="EXCLUDE GENES e.g. CBL">
+			</div>
+			<div class="form-group">
+			<button id="geneSubmitButton" class="btn btn-default" type="button">Get pathways</button>
+			</div>
+
+		</form>
+			Leave fields blank to skip filtering by gene.
+	    </div>
+</div>
+
+
+
+
 <div>
-	<select id="projSelection" name="characters">
-		{% for proj in projects %}
-			{% if show_proj == proj.get_local_filename() %}
-				<option value="{{ proj.file_id }}" selected="selected">
-			{% else %}
-				<option value="{{ proj.file_id }}">
-			{% endif %}
-				{{ proj.get_local_filename() }}
-				</option>
-		{% endfor %}
-	</select>
-
-	<input type="text" id="genes" size="40" maxlength="10000" value = "" 
-		placeholder="INCLUDE GENES e.g. BRAF,NRAS">
-
-	<input type="text" id="exclude" size="40" maxlength="10000" value = ""
-		placeholder="EXCLUDE GENES e.g. CBL">
-
-	<button id="geneSubmitButton">Get pathways</button>
-	Leave fields blank to skip filtering by gene.
+	<button class="btn btn-default" id="toggleTargetButton">Hide targets</button>
+	<button class="btn btn-default" id="toggleMatrixButton">Hide matrices</button>
 </div>
 <div id="imageContainer" class="padded">
 </div>
@@ -81,20 +72,41 @@
 		$excludeBox = $('#exclude');  // global for textbox containing gene names
 		$imageContainer = $('#imageContainer');
 		$fetcherButton = $('#geneSubmitButton');
+		$targetButton = $('#toggleTargetButton');
+		$matrixButton = $('#toggleMatrixButton');
 		$projSelection = $('#projSelection');
 		pwayList = null;
 		skip_few = true;
 
 		var pi = null;
 		projId = $projSelection.val();  // global for project id
+		proj_names = {{ proj_names|safe }};
 		
 		$projSelection.change(
 			function(){
 				projId = $projSelection.val();
-				console.log(projId)
 				updateProjId();
 			}
 		);
+
+		$targetButton.click(function(){
+			if ($(this).text() === 'Hide targets') {
+				 $(this).text('Show targets');
+			}
+			else {
+				$(this).text('Hide targets');
+			}
+			$(".svg_target").toggle()
+		});
+		$matrixButton.click(function(){
+			if ($(this).text() === 'Hide matrices') {
+				 $(this).text('Show matrices');
+			}
+			else {
+				$(this).text('Hide matrices');
+			}
+			$(".svg_matrix").toggle()
+		});
 
 		$fetcherButton.click(fetchPathways);
 		$geneBox.keypress(function(e){
@@ -111,7 +123,7 @@
 	});
 
 	function updateProjId(){
-		$.getScript( "static/data/{{ user_id }}/" + projId + "/" + projId + ".js", function( data, textStatus, jqxhr ) {
+		$.getScript( "static/data/{{ user_id }}/" + projId + "/" + proj_names[projId] + ".js", function( data, textStatus, jqxhr ) {
 			// console.log( data ); // Data returned
 			// console.log( textStatus ); // Success
 			// console.log( jqxhr.status ); // 200
@@ -180,19 +192,19 @@
 		//now have up to max pathways in list. fill img tag src.
 		for(var pi=0; pi<use_pways.length; pi++){
 			$imageContainer.append(
-				'<h2><a href="'+ root_url + use_pways[pi]['url'] +'" target="_blank">' 
-				+ use_pways[pi]['name'] + '</a>' + ' (' + use_pways[pi]['pval'] + ') </h2>' 
-				+'<p><img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways[pi]['id'] + '.svg" ' +
-				'height=1024px width=1024px alt="' + use_pways[pi]['id'] + '.svg" ></img>' //
+				'<div class="panel panel-primary">' +
+				'<div class="panel-heading">' +
+				'<h2 class="panel-title"><a href="'+ root_url + use_pways[pi]['url'] +'" target="_blank">'
+				+ use_pways[pi]['name'] + '</a>' + ' (' + use_pways[pi]['pval'] + ') </h2></div>' +
+				'<div class="panel-body" style="padding:0">'
+				+'<p class="svg_target"><img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways[pi]['id'] + '.svg" ' +
+				'height=1024px width=1024px alt="' + use_pways[pi]['id'] + '.svg" ></img>'
 				+'</p>'
-				+'<p><img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + use_pways[pi]['id'] + '.svg" ' +
+				+'<p class="svg_matrix"><img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + use_pways[pi]['id'] + '.svg" ' +
 				'height=' + (use_pways[pi].geneSet.length*25+80) + 'px alt="' + use_pways[pi]['id'] + '.svg" ></img>' //
-				+'</p>'
+				+'</p></div>'
 				);
-// +'<p><embed src="matrix_svg/proj_' + projId + '/' + use_pways[pi]['id'] + '.svgz" height="' + use_pways[pi].geneSet.length*25+80 + 'px" type="image/svg+xml" /></p>'
 		}
-		// return use_pways
-
 	}
 
 
