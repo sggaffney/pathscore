@@ -57,6 +57,11 @@ def create_app(config_name):
     #                                password='password')
     #     db.session.commit()
 
+    from app.admin import start_cleanup_thread
+    @app.before_first_request
+    def before_first_request():
+        start_cleanup_thread()
+
     return app
 
 
