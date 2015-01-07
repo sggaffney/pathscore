@@ -134,6 +134,3 @@ class UserFile(db.Model):
     def table_name(self):
         return 'mutations_{}'.format(self.file_id)
 
-    @property
-    def path(self):
-        return 'mutations_{}'.format(self.file_id)

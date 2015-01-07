@@ -45,21 +45,31 @@ def archive():
 def results():
     show_proj = request.args.get('proj', None)
     upload_list = UserFile.query.filter_by(user_id=current_user.id).filter_by(run_complete=True).all()
+    proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
+    if not(upload_list):
+        flash("No project results to show yet.", "info")
     return render_template('pway/show_pathways_template.html',
                            projects=upload_list, user_id=current_user.id,
-                           show_proj=show_proj)
+                           show_proj=show_proj, proj_names=proj_names)
 
 
 @pway.route('/upload', methods=('GET', 'POST'))
 @login_required
 def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
+    # only accept this file if user has no running jobs.
+    incomplete = UserFile.query.filter_by(user_id=current_user.id)\
+        .filter_by(run_complete=0).all()
+    if incomplete:
+        flash("Sorry, you must wait until your currently running projects "
+              "have finished.", "danger")
+        return index()
+
     form = UploadForm()
     if form.validate_on_submit():
         # upload = Upload(uploader=current_user)
         mut_filename = secure_filename(form.mut_file.data.filename)
 
-        # only accept this file if user has no running jobs.
         # will create folder for job: <run_id>
         user_upload = UserFile(filename=mut_filename, user_id=current_user.id)
         form.to_model(user_upload)
