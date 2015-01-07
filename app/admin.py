@@ -6,6 +6,7 @@ import os
 import shutil
 from threading import Thread
 import time
+import zipfile
 
 
 _cleanup_thread = None
@@ -45,3 +46,27 @@ def tidy_projects_loop(app):
         time.sleep(app.config['PROJ_DELETE_INTERVAL'])
         with app.app_context():
             remove_oldies()
+
+
+# def zipdir(path, zip):
+#     """Called by zip_project."""
+#     for root, dirs, files in os.walk(path):
+#         for file in files:
+#             zip.write(os.path.join(root, file))
+
+
+def zip_project(upload_obj):
+    # TODO: only zip if file not there already
+    proj_name = upload_obj.get_local_filename()
+    user_folder = get_user_folder(upload_obj.user_id)
+    zip_path = os.path.join(user_folder, proj_name + '.zip')
+    zipf = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
+    proj_path = get_project_folder(upload_obj)
+    for root, dirs, files in os.walk(proj_path):
+        for file in files:
+            zipf.write(os.path.join(root, file),
+                       os.path.relpath(os.path.join(root, file),
+                                       os.path.join(proj_path, '..')))
+    zipf.close()
+    return zip_path
+

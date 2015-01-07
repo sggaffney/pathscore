@@ -95,3 +95,7 @@ ul.comment-list li.comment:nth-child(even)
 .badge-red {
     background-color:#d44;
 }
+
+.vmiddle_sgg tbody tr td {
+    vertical-align: middle;
+}
