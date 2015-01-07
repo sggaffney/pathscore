@@ -1,5 +1,5 @@
 from flask import render_template, flash, redirect, url_for, abort,\
-    request, current_app
+    request, current_app, send_file
 from . import pway, FileTester
 from .forms import UploadForm
 from ..models import UserFile
@@ -8,9 +8,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
 from ..get_effective_pathways import run_analysis
-from ..admin import get_project_folder, get_user_folder
-
-
+from ..admin import get_project_folder, get_user_folder, zip_project
 
 
 @pway.route('/')
@@ -25,6 +23,22 @@ def index():
 @login_required
 def demo():
     return render_template('pway/show_pathways.html')
+
+
+@pway.route('/archive')
+@login_required
+def archive():
+    proj_id = int(request.args.get('proj', 0))
+    upload_obj = None
+    if proj_id:
+        upload_obj = UserFile.query.get(proj_id)
+    if not upload_obj or current_user.id != upload_obj.user_id:
+        abort(404)
+    zip_path = zip_project(upload_obj)
+    filename = os.path.basename(zip_path)
+    return send_file(zip_path, mimetype='application/zip',
+                     as_attachment=True, attachment_filename=filename)
+
 
 @pway.route('/results')
 @login_required

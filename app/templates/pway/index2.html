@@ -5,7 +5,7 @@
     <h1>Status</h1>
 </div>
 {% if projects %}
-<table class="table table-hover">
+<table class="table table-hover vmiddle_sgg">
     <tr>
         <th>Project Name</th>
         <th>Date</th>
@@ -15,6 +15,7 @@
         <th>Ignore</th>
         <th>Required</th>
         <th>Complete</th>
+        <th>Zip</th>
     </tr>
     {% for proj in projects %}
         {% if proj.run_complete %}
@@ -31,6 +32,19 @@
             <td>{{ proj.ignore_genes }} </td>
             <td>{{ proj.required_genes }} </td>
             <td>{{ proj.run_complete }} </td>
+        {% if proj.run_complete %}
+            <td>
+                <!--<a href="{{ url_for('pway.archive', proj=proj.file_id) }}">-->
+            <form method="get" action="{{ url_for('pway.archive', proj=proj.file_id) }}">
+                <input type="hidden" name="proj" value="{{ proj.file_id }}">
+                <button class="btn btn-default" aria-label="Download Archive">
+                    <span class="glyphicon glyphicon-download" aria-hidden="true"></span>
+                </button>
+            </form>
+            </td>
+        {% else %}
+            <td>n/a</td>
+        {% endif %}
         </tr>
     {% endfor %}
 </table>
