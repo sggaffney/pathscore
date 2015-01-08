@@ -14,7 +14,7 @@
         <th>n_cutoff</th>
         <th>Ignore</th>
         <th>Required</th>
-        <th>Complete</th>
+        <th>Status</th>
         <th>Zip</th>
     </tr>
     {% for proj in projects %}
@@ -31,7 +31,13 @@
             <td>{{ proj.n_cutoff }} </td>
             <td>{{ proj.ignore_genes }} </td>
             <td>{{ proj.required_genes }} </td>
-            <td>{{ proj.run_complete }} </td>
+        {% if proj.run_complete %}
+            <td>Complete</td>
+        {% elif proj.run_complete == False %}
+            <td>Running</td>
+        {% else %}
+            <td>Failed</td>
+        {% endif %}
         {% if proj.run_complete %}
             <td>
                 <!--<a href="{{ url_for('pway.archive', proj=proj.file_id) }}">-->

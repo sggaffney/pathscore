@@ -111,6 +111,9 @@ def upload():
         if file_tester.good_headers:
             if file_tester.good_headers and file_tester.data_present:
                 user_upload.is_valid = True
+                user_upload.run_complete = False
+                db.session.add(user_upload)
+                db.session.commit()
                 flash('File accepted and validated. Analysis in progress.',
                       'success')
                 # want analysis to run asynchronously!

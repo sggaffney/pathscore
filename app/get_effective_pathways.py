@@ -34,12 +34,16 @@ def run_analysis_async(app, proj_dir, data_path, user_upload):
         # table_name = 'mutations_{}'.format(user_upload.file_id)
         table_name = user_upload.table_name
         MutationTable(table_name, data_path)
-        run(proj_dir, table_name, user_upload)
-        user_upload.run_complete = True
-        db.session.add(user_upload)
-        db.session.commit()
-        drop_table(table_name)
-        run_finished_notification(user_upload)
+        try:
+            run(proj_dir, table_name, user_upload)
+            user_upload.run_complete = True
+        except:
+            user_upload.run_complete = None
+        finally:
+            db.session.add(user_upload)
+            db.session.commit()
+            drop_table(table_name)
+            run_finished_notification(user_upload)
 
 
 def run_analysis(proj_dir, data_path, user_upload):
