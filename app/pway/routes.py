@@ -94,16 +94,18 @@ def upload():
         if file_tester.good_headers:
             if file_tester.good_headers and file_tester.data_present:
                 user_upload.is_valid = True
-                flash('File accepted and validated. Analysis in progress.')
+                flash('File accepted and validated. Analysis in progress.',
+                      'success')
                 # want analysis to run asynchronously!
                 # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
                 run_analysis(proj_folder, file_path, user_upload)
                 return redirect(url_for('.index'))
             else:  # good headers but no data
-                flash('Your file seems to be missing data. Please try again.')
+                flash('Your file seems to be missing data. Please try again.',
+                      'danger')
         else:  # bad headers
             flash("Your headers don't look right. Expected headers are:\n{}"
-                .format('\t'.join(FileTester.want_headers)))
+                  .format('\t'.join(FileTester.want_headers)), 'danger')
         db.session.add(user_upload)
         db.session.commit()
     return render_template('pway/upload.html', form=form)
