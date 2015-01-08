@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 import os
 from ..get_effective_pathways import run_analysis
 from ..admin import get_project_folder, get_user_folder, zip_project
-
+from datetime import datetime, timedelta
 
 @pway.route('/')
 @login_required
@@ -65,6 +65,23 @@ def upload():
               "have finished.", "danger")
         return index()
 
+    # ENFORCE WEEKLY LIMIT AND DISPLAY INFO MESSAGE
+    week_ago = datetime.now() - timedelta(days=7)
+    week_complete = UserFile.query.filter_by(user_id=current_user.id)\
+        .filter_by(run_complete=True).filter(UserFile.upload_time > week_ago)\
+        .all()
+    n_week = len(week_complete)
+    n_week_max = int(max([r.uploads_pw for r in current_user.roles]))
+    # if len(week_complete>9):
+    if n_week >= n_week_max:
+        first_time = min([p.upload_time for p in week_complete])
+        wait_time = first_time + timedelta(days=7) - datetime.now()
+        diff_str = '{:.1f}'.format(wait_time.seconds/(60*60.))
+
+        flash("Sorry, you've used your allotted runs for this week. You can "
+              "try again in {} hours.".format(diff_str), "danger")
+        return index()
+
     form = UploadForm()
     if form.validate_on_submit():
         # upload = Upload(uploader=current_user)
@@ -108,6 +125,9 @@ def upload():
                   .format('\t'.join(FileTester.want_headers)), 'danger')
         db.session.add(user_upload)
         db.session.commit()
+    else:
+        flash("You've run {} projects in the last week.".format(n_week) +
+              " Your weekly limit is {}.".format(n_week_max), "info")
     return render_template('pway/upload.html', form=form)
 
 
