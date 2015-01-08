@@ -49,8 +49,8 @@
 
 
 <div>
-	<button class="btn btn-default" id="toggleTargetButton">Hide targets</button>
-	<button class="btn btn-default" id="toggleMatrixButton">Hide matrices</button>
+	<button class="btn btn-default" id="toggleTargetButton">Toggle targets</button>
+	<button class="btn btn-default" id="toggleMatrixButton">Toggle matrices</button>
 </div>
 <div id="imageContainer" class="padded">
 </div>
@@ -90,21 +90,9 @@
 		);
 
 		$targetButton.click(function(){
-			if ($(this).text() === 'Hide targets') {
-				 $(this).text('Show targets');
-			}
-			else {
-				$(this).text('Hide targets');
-			}
 			$(".svg_target").toggle()
 		});
 		$matrixButton.click(function(){
-			if ($(this).text() === 'Hide matrices') {
-				 $(this).text('Show matrices');
-			}
-			else {
-				$(this).text('Hide matrices');
-			}
 			$(".svg_matrix").toggle()
 		});
 
