@@ -15,6 +15,7 @@ import warnings
 from collections import OrderedDict
 import os
 import subprocess
+from .misc import simplify_string
 
 from . import db
 from .emails import run_finished_notification
@@ -81,7 +82,7 @@ class MutationTable():
         self.data_path = data_path
         self.loaded = False
         # CREATE AND POPULATE TABLE
-        create_str = """CREATE TABLE `{}` (
+        create_str = u"""CREATE TABLE `{}` (
           `hugo_symbol` VARCHAR(255) DEFAULT NULL,
           `entrez_id` INT(11) DEFAULT NULL,
           `patient_id` VARCHAR(255) DEFAULT NULL,
@@ -89,7 +90,7 @@ class MutationTable():
           KEY `temp_patient_id` (`patient_id`) USING HASH,
           KEY `temp_patient_entrez` (`patient_id`,`entrez_id`)
           USING HASH);""".format(table_name)
-        load_str = """load data local infile '{}'
+        load_str = u"""load data local infile '{}'
         into table `{}` fields terminated by '\t'
         lines terminated by '\n' ignore 1 lines;""".format(
             data_path, table_name
@@ -647,7 +648,7 @@ class LCalculator():
 class GenericPathwayFileProcessor():
     """Generic object that can convert yale_proj_ids and tcga_proj_abbrvs
     to file_name."""
-    base_str = 'pathways_pvalues_'
+    base_str = 'pathways_pvalues'
 
     def __init__(self, dir_path, file_id, name_suffix=None):
         self.file_id = file_id
@@ -657,10 +658,11 @@ class GenericPathwayFileProcessor():
 
     def _get_root_filename(self):
         """Root file name for output files."""
-        root_name = os.path.join(self.dir_path, self.base_str
-                                 + str(self.file_id))
+        root_name = os.path.join(self.dir_path, self.base_str)
         if self.name_suffix:
             root_name += '_' + self.name_suffix
+        else:
+            root_name += '_' + str(self.file_id)
         return root_name
 
 
@@ -1006,7 +1008,7 @@ def run(dir_path, table_name, user_upload):
         ignore_genes = []
     genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
                                           None).genome_size
-    proj_suffix = user_upload.proj_suffix
+    proj_suffix = user_upload.get_local_filename()
     # # get patient list. maybe empty list.
     patient_list = []
     # if args.patients_file:

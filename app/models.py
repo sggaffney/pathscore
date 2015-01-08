@@ -6,6 +6,8 @@ from flask_login import UserMixin
 from flask_security import RoleMixin
 from . import db
 from . import db, login_manager
+import unicodedata as ud
+from unidecode import unidecode
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 
 # Define models
@@ -123,9 +125,12 @@ class UserFile(db.Model):
         safe_suffix = None
         if self.proj_suffix:
             safe_suffix = "".join(c for c in self.proj_suffix if c.isalnum()
-                                  or c in keepcharacters).rstrip()
+                                  or c in keepcharacters)\
+                .rstrip().replace(' ', '_')
         if safe_suffix:
-            use_title = str(safe_suffix)
+            safe_suffix = unidecode(safe_suffix)  # returns ascii str
+            # safe_suffix = ud.normalize("NFC", safe_suffix)
+            use_title = safe_suffix  # str(safe_suffix)
         else:
             use_title = self.filename
         return '_'.join([str(self.file_id), use_title])
