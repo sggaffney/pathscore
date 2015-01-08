@@ -44,7 +44,7 @@ class DevelopmentConfig(Config):
         'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
     MAIL_FLUSH_INTERVAL = 60  # one minute
     SGG_DB_NAME = os.environ.get('MYSQLDB_DB_DEV')
-
+    SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO')
 
 class TestingConfig(Config):
     TESTING = True
