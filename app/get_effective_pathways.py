@@ -1007,7 +1007,7 @@ def run(dir_path, table_name, user_upload):
     table_list = [table_name]  # code can iterate through list of tables
     max_mutations = user_upload.n_cutoff or 500  # default max is 500
     if user_upload.ignore_genes:
-        ignore_genes = user_upload.ignore_genes.split(',')
+        ignore_genes = str(user_upload.ignore_genes).split(',')
     else:
         ignore_genes = []
     genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
@@ -1028,7 +1028,7 @@ def run(dir_path, table_name, user_upload):
 
     # get genes of interest, if any
     if user_upload.required_genes:
-        interest_genes = tuple(user_upload.required_genes.split(','))
+        interest_genes = tuple(str(user_upload.required_genes).split(','))
     else:
         interest_genes = tuple()
     print("Interest genes: {}".format(str(interest_genes)))
