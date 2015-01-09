@@ -1,0 +1,28 @@
+{% macro render_field(field) %}
+
+    {% if field.errors %}
+        <div class="form-group has-error">
+    {% else %}
+        <div class="form-group">
+    {% endif %}
+
+
+    {% if field.type == "RadioField" %}
+        {{ field.label(class_="control-label") }}
+        {% for subfield in field %}
+            <div class="radio">
+            {{ subfield }} {{ subfield.label }}
+            </div>
+        {% endfor %}
+
+    {% else %}
+        {{ field.label(class_="control-label") }}
+        {{ field(class_="form-control", **kwargs) }}
+        {% for error in field.errors %}
+            <p class="text-danger">{{ error }}</p>
+        {% endfor %}
+    {% endif %}
+
+    </div>
+
+{% endmacro %}

@@ -14,38 +14,26 @@
     <form method="post" action="/upload" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
 
-        <div class="form-group">
-            {{ form.proj_suffix.label(class_="control-label") }}
-            {{ form.proj_suffix(class_="form-control", placeholder="e.g. LUAD_Feb2013") }}
-        </div>
-        <div class="form-group">
-            {{ form.genome_size.label(class_="control-label") }}
-            {% for subfield in form.genome_size %}
-                <div class="radio">
-                    {{ subfield }} {{ subfield.label }}
-                </div>
-            {% endfor %}
-        </div>
-        <div class="form-group">
-            {{ form.n_cutoff.label(class_="control-label") }}
-            {{ form.n_cutoff(class_="form-control", placeholder="500") }}
-        </div>
-        <div class="form-group">
-            {{ form.required_genes.label(class_="control-label") }}
-            {{ form.required_genes(class_="form-control",
-                placeholder="e.g. BRAF,NRAS", rows="1") }}
-        </div>
-        <div class="form-group">
-            {{ form.ignore_genes.label(class_="control-label") }}
-            {{ form.ignore_genes(class_="form-control",
-                placeholder="e.g. TP53", rows="1") }}
-        </div>
-        <div class="form-group">
+        {{ render_field(form.proj_suffix, placeholder="e.g. LUAD_Feb2013") }}
+        {{ render_field(form.genome_size) }}
+        {{ render_field(form.n_cutoff, placeholder="500") }}
+        {{ render_field(form.required_genes, placeholder="e.g. BRAF,NRAS", rows="1") }}
+        {{ render_field(form.ignore_genes, placeholder="e.g. TP53", rows="1") }}
+
+
+        {% if form.mut_file.errors %}
+            <div class="form-group has-error">
+        {% else %}
+            <div class="form-group">
+        {% endif %}
             {{ form.mut_file.label }}
             {{ form.mut_file }}
+            {% for error in form.mut_file.errors %}
+                <p class="text-danger">{{ error }}</p>
+            {% endfor %}
             <p class="help-block">Tab-separated plain text file, with the following headers:
                 hugo_symbol, entrez_id, patient_id, variant_classification</p>
-        </div>
+            </div>
 
         {{ form.submit(class_="btn btn-default") }}
 
