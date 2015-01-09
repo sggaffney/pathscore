@@ -99,3 +99,13 @@ ul.comment-list li.comment:nth-child(even)
 .vmiddle_sgg tbody tr td {
     vertical-align: middle;
 }
+
+body {
+    margin-bottom: 60px;
+}
+
+@media(min-width: 768px){
+    .sgg_center {
+        width:60%; margin: 0 auto;
+    }
+}

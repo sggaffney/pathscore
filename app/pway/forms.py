@@ -2,9 +2,10 @@
 
 from flask.ext.wtf import Form
 from flask_wtf.file import FileField, FileAllowed, FileRequired
-from wtforms import SubmitField, RadioField, IntegerField, TextAreaField, \
+from wtforms import SubmitField, RadioField, TextAreaField, \
     StringField
-from wtforms.validators import Optional, Length, Required, DataRequired, \
+from flask.ext.wtf.html5 import IntegerField
+from wtforms.validators import Optional, Length, DataRequired, DataRequired, \
     optional, length
 
 
@@ -19,13 +20,17 @@ class UploadForm(Form):
         ('no_pseudo', 'All minus pseudogenes (28795)'),
         ('all', 'All (45466)'),
         ('inc_misc_chr', "All plus 'misc' chr genes (46286)")],
-        default='client')  # TODO: check validation enforces choices
-    n_cutoff = IntegerField('Gene limit per patient', [optional()])
-    required_genes = TextAreaField('Required genes', validators=[optional(),
-        length(max=600, message="600 character limit.")])
-    ignore_genes = TextAreaField('Ignore genes', validators=[optional(),
-        length(max=600, message="600 character limit.")])
-    proj_suffix = StringField('Project name', validators=[optional()])
+        default='protein-coding')  # TODO: check validation enforces choices
+    n_cutoff = IntegerField('Gene limit per patient', validators=[optional()],
+                            default=500)
+    required_genes = TextAreaField('Required genes (optional)', validators=
+        [optional(), length(max=600, message="600 character limit.")])
+    ignore_genes = TextAreaField('Ignore genes (optional)', validators=
+        [optional(), length(max=600, message="600 character limit.")])
+    proj_suffix = StringField('Project name',
+                              validators=[DataRequired(),
+                                          length(max=40, message=
+                                          "40 character limit.")])
     submit = SubmitField('Upload')
 
     def to_model(self, upload):

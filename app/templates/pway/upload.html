@@ -1,9 +1,56 @@
 {% extends "base.html" %}
 {% import "bootstrap/wtf.html" as wtf %}
+{% from "_formhelpers.html" import render_field %}
 
 {% block page_content %}
 <div class="page-header">
     <h1>Upload</h1>
 </div>
-{{ wtf.quick_form(form, enctype="multipart/form-data") }}
+
+
+    <p class="lead">Please complete the form below to set the project running.</p>
+
+    <div class="sgg_center">
+    <form method="post" action="/upload" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <div class="form-group">
+            {{ form.proj_suffix.label(class_="control-label") }}
+            {{ form.proj_suffix(class_="form-control", placeholder="e.g. LUAD_Feb2013") }}
+        </div>
+        <div class="form-group">
+            {{ form.genome_size.label(class_="control-label") }}
+            {% for subfield in form.genome_size %}
+                <div class="radio">
+                    {{ subfield }} {{ subfield.label }}
+                </div>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.n_cutoff.label(class_="control-label") }}
+            {{ form.n_cutoff(class_="form-control", placeholder="500") }}
+        </div>
+        <div class="form-group">
+            {{ form.required_genes.label(class_="control-label") }}
+            {{ form.required_genes(class_="form-control",
+                placeholder="e.g. BRAF,NRAS", rows="1") }}
+        </div>
+        <div class="form-group">
+            {{ form.ignore_genes.label(class_="control-label") }}
+            {{ form.ignore_genes(class_="form-control",
+                placeholder="e.g. TP53", rows="1") }}
+        </div>
+        <div class="form-group">
+            {{ form.mut_file.label }}
+            {{ form.mut_file }}
+            <p class="help-block">Tab-separated plain text file, with the following headers:
+                hugo_symbol, entrez_id, patient_id, variant_classification</p>
+        </div>
+
+        {{ form.submit(class_="btn btn-default") }}
+
+    </form>
+</div>
+
+{# wtf.quick_form(form, enctype="multipart/form-data") #}
 {% endblock %}
