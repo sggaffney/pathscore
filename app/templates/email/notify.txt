@@ -1,10 +1,18 @@
-Your pathway search run has finshed.
+{% if project.run_complete %}
+Your pathway search run has finshed successfully.
+{% else %}
+Your pathway search run has terminated with errors.
+{% endif %}
 
 Project name = {{ project.proj_suffix|safe }}.
 Filename = {{ project.filename }}.
 Submitted at {{ project.upload_time }}".
 
+{% if project.run_complete %}
 Please visit {{ url_for('pway.results', proj=project.get_local_filename(), _external=True) }} to view results.
+{% else %}
+You might wish to try again with modified inputs.
+{% endif %}
 
 Sincerely,
 

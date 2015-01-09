@@ -1,10 +1,19 @@
-<p>Your pathway search run has finshed.</p>
+{% if project.run_complete %}
+<p>Your pathway search run has finshed successfully.</p>
+{% else %}
+<p>Your pathway search run has terminated with errors.</p>
+{% endif %}
+
 
 <p>Project name = {{ project.proj_suffix|safe }}.<br>
 Filename = {{ project.filename }}.<br>
 Submitted at {{ project.upload_time }}".</p>
 
+{% if project.run_complete %}
 <p>Please visit the <a href="{{ url_for('pway.results', proj=project.get_local_filename(), _external=True) }}">results page</a> to view result graphics.</p>
+{% else %}
+<p>You might wish to try again with modified inputs.</p>
+{% endif %}
 
 <p>Sincerely,</p>
 <p>Pathway Search admin</p>
