@@ -1077,7 +1077,11 @@ def run(dir_path, table_name, user_upload):
     make_js_file(detail_path, js_out_path)
     # html_name = create_html(detail_path, out_dir, project_str, descriptive_name,
     #                         skipfew)
-    create_pway_plots(str(detail_path))
+
+    # ONLY CREATE SVGS IF MATRIX TXT PATH EXISTS (i.e. pathways have mutations)
+    if os.path.exists(os.path.join(final_writer.dir_path,
+                                   final_writer.matrix_folder)):
+        create_pway_plots(str(detail_path))
     # create_svgs(str(detail_path))
     # create_matrix_svgs(str(detail_path))
 
