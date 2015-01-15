@@ -14,9 +14,9 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY')
 
     MAIL_SERVER = os.environ.get('MAIL_SERVER')
-    MAIL_PORT = int(os.environ.get('MAIL_PORT'))
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS') is 'True'
-    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL') is 'True'
+    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS') == 'True'
+    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL') == 'True'
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', '')
@@ -44,7 +44,7 @@ class DevelopmentConfig(Config):
         'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
     MAIL_FLUSH_INTERVAL = 60  # one minute
     SGG_DB_NAME = os.environ.get('MYSQLDB_DB_DEV')
-    SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO') is 'True'
+    SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO') == 'True'
 
 class TestingConfig(Config):
     TESTING = True
