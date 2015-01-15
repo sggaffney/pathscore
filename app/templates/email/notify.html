@@ -7,7 +7,7 @@
 
 <p>Project name = {{ project.proj_suffix|safe }}.<br>
 Filename = {{ project.filename }}.<br>
-Submitted at {{ project.upload_time }}".</p>
+Submitted at {{ project.upload_time }}.</p>
 
 {% if project.run_complete %}
 <p>Please visit the <a href="{{ url_for('pway.results', proj=project.get_local_filename(), _external=True) }}">results page</a> to view result graphics.</p>
