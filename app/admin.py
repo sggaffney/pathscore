@@ -7,6 +7,7 @@ import shutil
 from threading import Thread
 import time
 import zipfile
+from emails import run_finished_notification
 
 
 _cleanup_thread = None
@@ -46,6 +47,18 @@ def tidy_projects_loop(app):
         time.sleep(app.config['PROJ_DELETE_INTERVAL'])
         with app.app_context():
             remove_oldies()
+
+
+def force_all_stopped_status():
+    stop_list = UserFile.query.filter_by(run_complete=0).all()
+    if stop_list:
+        for upload_obj in stop_list:
+            upload_id = upload_obj.file_id
+            upload_obj.run_complete = None
+            db.session.add(upload_obj)
+            run_finished_notification(upload_id)
+        db.session.commit()
+
 
 
 # def zipdir(path, zip):

@@ -57,10 +57,12 @@ def create_app(config_name):
     #                                password='password')
     #     db.session.commit()
 
-    from app.admin import start_cleanup_thread
+    from app.admin import start_cleanup_thread, force_all_stopped_status
+
     @app.before_first_request
     def before_first_request():
         start_cleanup_thread()
+        force_all_stopped_status()
 
 
     @user_registered.connect_via(app)
