@@ -19,39 +19,55 @@ from .misc import simplify_string
 
 from . import db
 from .emails import run_finished_notification
+from .models import UserFile
 
+
+class TableLoadException(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return repr(self.msg)
 
 dbvars = dict()
 
 @async
-def run_analysis_async(app, proj_dir, data_path, user_upload):
+def run_analysis_async(app, proj_dir, data_path, upload_id):
     """Asynchronous run of pathway analysis."""
     global dbvars
     with app.app_context():
+        user_upload = UserFile.query.get(upload_id)
         dbvars = dict(host=current_app.config['SGG_DB_HOST'],
                       db=current_app.config['SGG_DB_NAME'],
                       read_default_file=current_app.config['SGG_DB_CNF'])
         # table_name = 'mutations_{}'.format(user_upload.file_id)
-        table_name = user_upload.table_name
-        MutationTable(table_name, data_path)
+        table = None
         try:
+            table_name = user_upload.get_table_name()
+            table = MutationTable(table_name, data_path)
+            if not table.loaded:
+                raise TableLoadException("Failed to load table {!r}."
+                                         .format(table_name))
             run(proj_dir, table_name, user_upload)
             user_upload.run_complete = True
         except:
             user_upload.run_complete = None
+            raise
         finally:
             db.session.add(user_upload)
             db.session.commit()
-            drop_table(table_name)
-            run_finished_notification(user_upload)
+            if table:
+                drop_table(table_name)
+            run_finished_notification(upload_id)
 
 
-def run_analysis(proj_dir, data_path, user_upload):
-    user_upload.run_accepted = True
-    db.session.add(user_upload)
-    db.session.commit()
+
+def run_analysis(proj_dir, data_path, upload_id):
+    # user_upload.run_accepted = True
+    # db.session.add(user_upload)
+    # db.session.commit()
     app = current_app._get_current_object()
-    run_analysis_async(app, proj_dir, data_path, user_upload)
+    run_analysis_async(app, proj_dir, data_path, upload_id)
 
 
 def drop_table(table_name):

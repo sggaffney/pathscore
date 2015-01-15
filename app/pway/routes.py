@@ -59,7 +59,8 @@ def results():
 def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
     # only accept this file if user has no running jobs.
-    incomplete = UserFile.query.filter_by(user_id=current_user.id)\
+    user_id = current_user.id
+    incomplete = UserFile.query.filter_by(user_id=user_id)\
         .filter_by(run_complete=0).all()
     if incomplete:
         flash("Sorry, you must wait until your currently running projects "
@@ -68,7 +69,7 @@ def upload():
 
     # ENFORCE WEEKLY LIMIT AND DISPLAY INFO MESSAGE
     week_ago = datetime.now() - timedelta(days=7)
-    week_complete = UserFile.query.filter_by(user_id=current_user.id)\
+    week_complete = UserFile.query.filter_by(user_id=user_id)\
         .filter_by(run_complete=True).filter(UserFile.upload_time > week_ago)\
         .all()
     n_week = len(week_complete)
@@ -89,12 +90,12 @@ def upload():
         mut_filename = secure_filename(form.mut_file.data.filename)
 
         # will create folder for job: <run_id>
-        user_upload = UserFile(filename=mut_filename, user_id=current_user.id)
+        user_upload = UserFile(filename=mut_filename, user_id=user_id)
         form.to_model(user_upload)
         db.session.add(user_upload)
         db.session.commit()
 
-        user_folder = get_user_folder(current_user.id)
+        user_folder = get_user_folder(user_id)
         proj_folder = get_project_folder(user_upload)
         if not os.path.exists(user_folder):
             os.mkdir(user_folder)
@@ -113,13 +114,14 @@ def upload():
             if file_tester.good_headers and file_tester.data_present:
                 user_upload.is_valid = True
                 user_upload.run_complete = False
+                upload_id = user_upload.file_id
                 db.session.add(user_upload)
                 db.session.commit()
                 flash('File accepted and validated. Analysis in progress.',
                       'success')
                 # want analysis to run asynchronously!
                 # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
-                run_analysis(proj_folder, file_path, user_upload)
+                run_analysis(proj_folder, file_path, upload_id)
                 return redirect(url_for('.index'))
             else:  # good headers but no data
                 flash('Your file seems to be missing data. Please try again.',
