@@ -81,6 +81,9 @@ def zip_project(upload_obj):
     proj_path = get_project_folder(upload_obj)
     for root, dirs, files in os.walk(proj_path):
         for file in files:
+            # ignore raw .txt files in root of project directory
+            if root is proj_path and file.endswith('.txt'):
+                continue
             zipf.write(os.path.join(root, file),
                        os.path.relpath(os.path.join(root, file),
                                        os.path.join(proj_path, '..')))
