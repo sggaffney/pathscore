@@ -27,10 +27,14 @@ def remove_oldies():
     cutoff = datetime.now() - timedelta(days=4, hours=0)
     oldies = UserFile.query.filter(UserFile.upload_time < cutoff).all()
     for upload in oldies:
-        proj_folder = get_project_folder(upload)
-        shutil.rmtree(proj_folder)
+        delete_project_folder(upload)
         db.session.delete(upload)
     db.session.commit()
+
+
+def delete_project_folder(upload):
+        proj_folder = get_project_folder(upload)
+        shutil.rmtree(proj_folder)
 
 
 def start_cleanup_thread():

@@ -8,7 +8,8 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
 from ..get_effective_pathways import run_analysis
-from ..admin import get_project_folder, get_user_folder, zip_project
+from ..admin import get_project_folder, get_user_folder, zip_project, \
+    delete_project_folder
 from datetime import datetime, timedelta
 
 @pway.route('/')
@@ -126,8 +127,9 @@ def upload():
         else:  # bad headers
             flash("Your headers don't look right. Expected headers are:\n{}"
                   .format('\t'.join(FileTester.want_headers)), 'danger')
-        db.session.add(user_upload)
-        db.session.commit()
+            delete_project_folder(user_upload)
+            db.session.delete(user_upload)
+            db.session.commit()
     else:
         flash("You've run {} projects in the last week.".format(n_week) +
               " Your weekly limit is {}.".format(n_week_max), "info")
