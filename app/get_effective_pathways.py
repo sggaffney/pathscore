@@ -872,8 +872,36 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         self.root_url = "http://www.broadinstitute.org/gsea/msigdb/cards/"
         self.url = self.fetch_url()
         self.gene_set = set()
+        self.gene_pc = dict()
 
-    def as_string(self):
+    @property
+    def nice_name(self):
+        name_str = self.name.replace('_', ' ')
+        name_str = name_str.replace('BIOCARTA ', '')
+        name_str = name_str.replace('REACTOME ', '')
+        name_str = name_str.replace('KEGG ', '')
+        name_str = name_str.replace('TEL PATHWAY', 'TELOMERASE PATHWAY')
+        name_str = name_str.replace('RNA PATHWAY', 'PKR SIGNALING PATHWAY')
+        return name_str
+
+    def as_string_js(self):
+        """Return string for javascript."""
+        outstr = "{ id:" + self.path_id + ", " + "name:'" + self.nice_name \
+                 + "', pval:'" + self.p_value + "', size:" + str(self.n_actual) \
+                 + ", effective:" + str(
+            self.n_effective) + ", url:'" + self.url + "', geneSet: "
+        if self.gene_set:
+            gene_set_str = "','".join(self.gene_set)
+            outstr = outstr + "['" + gene_set_str + "']}"
+        else:
+            outstr = outstr + "[]}"
+        return outstr
+
+    @property
+    def full_url(self):
+        return self.root_url + self.url
+
+    def as_string_readable(self):
         """Return string for javascript."""
         name_str = self.name.replace('_', ' ')
         name_str = name_str.replace('BIOCARTA ', '')
@@ -897,6 +925,7 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         url_row = None
         cmd = """SELECT info_url FROM refs.pathways WHERE path_id = {};""".format(
             self.path_id)
+        url = None
         try:
             con = mdb.connect(**dbvars)
             cur = con.cursor()
@@ -906,13 +935,14 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
                 raise Exception("Result contains %g rows Ids for pathway %s."
                                 % (rowCount, self.path_id))
             url_row = cur.fetchone()
+            url = url_row[0]
+            url = url.split(self.root_url)[1]
         except mdb.Error as e:
             print "Error %d: %s" % (e.args[0], e.args[1])
         finally:
             if con:
                 con.close()
-        url = url_row[0]
-        url = url.split(self.root_url)[1]
+
         return url
 
 
@@ -1087,25 +1117,30 @@ def run(dir_path, table_name, user_upload):
 
     detail_path = final_writer.outfile_name
     descriptive_name = user_upload.get_local_filename()
+
+    allPathways = load_pathway_list_from_file(detail_path)
+
     js_out_path = os.path.join(dir_path,
                                user_upload.get_local_filename() + ".js")
+    make_js_file(allPathways, js_out_path)
 
-    make_js_file(detail_path, js_out_path)
+    readable_path = os.path.join(dir_path,
+                                 user_upload.get_local_filename() + ".xls")
+    make_readable_file(allPathways, readable_path)
     # html_name = create_html(detail_path, out_dir, project_str, descriptive_name,
     #                         skipfew)
 
     # ONLY CREATE SVGS IF MATRIX TXT PATH EXISTS (i.e. pathways have mutations)
     if os.path.exists(os.path.join(final_writer.dir_path,
                                    final_writer.matrix_folder)):
-        create_pway_plots(str(detail_path))
+        pass  # create_pway_plots(str(detail_path))
     # create_svgs(str(detail_path))
     # create_matrix_svgs(str(detail_path))
 
 
-
-
-def make_js_file(results_path, out_path):
-    # BUILD JS FILE
+def load_pathway_list_from_file(results_path):
+    """Loads detailed file into list of PathwaySummaryParsed objects.
+    Used for making js file and user readable output."""
     allPathways = list()  # will hold pathway objects
     ignoreList = ['CANCER', 'GLIOMA', 'MELANOMA', 'LEUKEMIA', 'CARCINOMA']
     # project_id = raw_input("Project id? ")  # <TODO:sgg> change to input in python3
@@ -1129,17 +1164,46 @@ def make_js_file(results_path, out_path):
             pway.p_value = vals[4]
             gene_set = set.union(set(eval(vals[6])), set(eval(vals[7])))
             pway.gene_set = gene_set
+            pc_str = vals[8]  # e.g. struct('ACADS',2.44,'ACADVL',2.44)
+            pc_str = "{" + pc_str.lstrip('struct(').rstrip(')')\
+                .replace("',", "':") + "}"  # e.g. {'ACADS':2.44,'ACADVL':2.44}
+            pway.gene_pc = eval(pc_str)
             allPathways.append(pway)
+    return allPathways
+
+
+def make_js_file(allPathways, out_path):
+    # BUILD JS FILE
     with open(out_path, 'w') as out:  # 'pathways_pvalues_{}.js'
-        out.write("root_url = '{}';\n".format(pway.root_url))
+        out.write("root_url = '{}';\n".format(allPathways[0].root_url))
         out.write("pwayList = [\n")
         for ind, pway in enumerate(allPathways):
             if pway.gene_set:
-                out.write(pway.as_string())
+                out.write(pway.as_string_js())
                 if ind < len(allPathways) - 1:
                     out.write(",")
                 out.write("\n")
         out.write("];\n")
+
+
+def make_readable_file(allPathways, out_path):
+    """Create file suitable for archiving for user."""
+    header_str = "pathway_name, url, p_value, n_effective, n_actual, " \
+                 "genes_mutated_pc"
+    header_line = '\t'.join(header_str.split(', ')) + '\n'
+    with open(out_path, 'w') as out:
+        out.write(header_line)
+        for pway in allPathways:
+            if pway.gene_set:
+                line_vals = list()
+                line_vals.append(pway.nice_name)
+                line_vals.append(pway.full_url)
+                line_vals.append(pway.p_value)
+                line_vals.append(pway.n_effective)
+                line_vals.append(pway.n_actual)
+                line_vals.append(pway.gene_pc)
+                out.write('\t'.join([str(v) for v in line_vals]) + '\n')
+
 
 def create_pway_plots(txt_path):
     """Run matlab script that builds matrix and target svgs."""
