@@ -4,7 +4,7 @@ from flask_security import Security, SQLAlchemyUserDatastore  # for email verif.
 from flask_login import LoginManager
 from flask_bootstrap import Bootstrap
 from flask_mail import Mail
-
+from flask.ext.security.signals import user_registered
 from config import config
 
 
@@ -61,6 +61,13 @@ def create_app(config_name):
     @app.before_first_request
     def before_first_request():
         start_cleanup_thread()
+
+
+    @user_registered.connect_via(app)
+    def user_registered_sighandler(app, user, confirm_token):
+        default_role = user_datastore.find_role("general")
+        user_datastore.add_role_to_user(user, default_role)
+        db.session.commit()
 
     return app
 
