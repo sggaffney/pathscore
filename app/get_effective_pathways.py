@@ -1082,7 +1082,7 @@ def run(dir_path, table_name, user_upload):
     id_fetcher = PathwayIdsFetcher(interest_genes)
     all_path_ids = id_fetcher.fetchPathwayIds()
 
-    for pathway_number in all_path_ids[0:30]:
+    for pathway_number in all_path_ids:
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
         pway = PathwaySummary(pathway_number, table_list,
@@ -1133,7 +1133,7 @@ def run(dir_path, table_name, user_upload):
     # ONLY CREATE SVGS IF MATRIX TXT PATH EXISTS (i.e. pathways have mutations)
     if os.path.exists(os.path.join(final_writer.dir_path,
                                    final_writer.matrix_folder)):
-        pass  # create_pway_plots(str(detail_path))
+        create_pway_plots(str(detail_path))
     # create_svgs(str(detail_path))
     # create_matrix_svgs(str(detail_path))
 
