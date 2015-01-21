@@ -827,7 +827,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
         with open(self.outfile_name, 'w', bufsize) as out:
             for pway in self.allPathways:
                 # Get extra info, if p_value is low
-                if pway.p_value < 0.1:
+                if pway.p_value < 0.05:
                     pway.update_exclusive_cooccurring_coverage()
                     if pway.gene_coverage:  # if genes are hit...
                         if pway.n_effective > pway.n_actual:
