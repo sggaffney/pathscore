@@ -108,7 +108,8 @@ class MutationTable():
           `patient_id` VARCHAR(255) DEFAULT NULL,
           `variant_classification` VARCHAR(255) DEFAULT NULL,
           KEY `temp_patient_id` (`patient_id`) USING HASH,
-          KEY `temp_patient_entrez` (`patient_id`,`entrez_id`)
+          KEY `temp_patient_entrez` (`patient_id`,`entrez_id`) USING HASH,
+          KEY `temp_patient_entrez_varclass` (`patient_id`,`entrez_id`,`variant_classification`)
           USING HASH);""".format(table_name)
         load_str = u"""load data local infile '{}'
         into table `{}` fields terminated by '\t'
