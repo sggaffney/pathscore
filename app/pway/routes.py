@@ -23,7 +23,7 @@ def index():
 @pway.route('/demo')
 @login_required
 def demo():
-    return render_template('pway/show_pathways.html')
+    return render_template('pway/show_pathways_demo.html')
 
 
 @pway.route('/archive')
