@@ -62,7 +62,8 @@ def upload():
     user_id = current_user.id
     incomplete = UserFile.query.filter_by(user_id=user_id)\
         .filter_by(run_complete=0).all()
-    if incomplete:
+    role_names = [r.name for r in current_user.roles]
+    if 'townsend' not in role_names and incomplete:
         flash("Sorry, you must wait until your currently running projects "
               "have finished.", "danger")
         return index()
@@ -133,8 +134,12 @@ def upload():
             db.session.delete(user_upload)
             db.session.commit()
     else:
-        flash("You've run {} projects in the last week.".format(n_week) +
-              " Your weekly limit is {}.".format(n_week_max), "info")
+        message = "You've run {} projects in the last week. ".format(n_week)
+        message += "Your weekly limit is {}.".format(n_week_max)
+        if incomplete:
+            message += "\nYou have {} jobs still running."\
+                .format(len(incomplete))
+        flash(message, "info")
     return render_template('pway/upload.html', form=form)
 
 
