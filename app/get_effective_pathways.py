@@ -606,9 +606,10 @@ class LCalculator():
             if self.G - pway_size < n_patient:
                 p_no_mut = float64(0)
             else:
-                p_no_mut = exp(math.log(comb(self.G - pway_size, n_patient,
-                                             exact=True)) - math.log(
-                    comb(self.G, n_patient, exact=True)))
+                p_no_mut = self._get_p_no_mutations(self.G, pway_size, n_patient)
+                # p_no_mut = exp(math.log(comb(self.G - pway_size, n_patient,
+                #                              exact=True)) - math.log(
+                #     comb(self.G, n_patient, exact=True)))
             if mutated:
                 p = 1 - p_no_mut
             else:
@@ -616,6 +617,16 @@ class LCalculator():
             prob_list.append(log(p))
         prob_array = array(prob_list)
         return prob_array.sum()
+
+    def _get_p_no_mutations(self, G, x, n):
+        """G is background genome size, x is pathway size, n is number of
+        genes mutated in patient."""
+        x = float(x)
+        prob = 1
+        for i in xrange(n):
+            prob = prob * (1 - x/(G-i))
+        # PREVIOUS prob = exp(math.log(comb(G - x, n, exact=True)) - math.log(comb(G, n, exact=True)))
+        return prob
 
     def _get_ne(self):
         last_ll = None
