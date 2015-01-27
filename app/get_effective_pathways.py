@@ -7,6 +7,7 @@ from flask_login import current_user
 
 import MySQLdb as mdb
 from scipy.misc import comb
+import numpy as np
 from numpy import *
 from scipy import stats
 import timeit
@@ -20,6 +21,10 @@ from .misc import simplify_string
 from . import db
 from .emails import run_finished_notification
 from .models import UserFile
+
+import pyximport
+pyximport.install(setup_args={'include_dirs': np.get_include()})
+from comb_functions import get_pway_likelihood_cython
 
 
 class TableLoadException(Exception):
@@ -582,6 +587,9 @@ class LCalculator():
         self.pvalue = None
         self.max_mutations = pway.max_mutations
 
+        self.n_patients, self.n_mutated_array, self.is_mutated_array = \
+            self._get_patient_arrays()
+
     def run(self):
         """ Calculate likelihood and maximum likelihood estimate."""
         self.likelihood = self._get_pway_likelihood(self.pway.n_actual)
@@ -593,40 +601,58 @@ class LCalculator():
         self.pway.n_effective = self.ne
         self.pway.p_value = self.pvalue
 
-    def _get_pway_likelihood(self, pway_size=None):
-        if pway_size is None:
-            pway_size = self.pway_size
-        prob_list = list()
-        # iterate over patients
-        for patient in self.pway.patients:
-            n_patient = patient.n_mutated
-            mutated = patient.is_mutated
-            # if there are fewer out-of-pathway genes than there are
-            # genes mutated, p_no_mut is zero
-            if self.G - pway_size < n_patient:
-                p_no_mut = float64(0)
-            else:
-                p_no_mut = self._get_p_no_mutations(self.G, pway_size, n_patient)
-                # p_no_mut = exp(math.log(comb(self.G - pway_size, n_patient,
-                #                              exact=True)) - math.log(
-                #     comb(self.G, n_patient, exact=True)))
-            if mutated:
-                p = 1 - p_no_mut
-            else:
-                p = p_no_mut
-            prob_list.append(log(p))
-        prob_array = array(prob_list)
-        return prob_array.sum()
+    def _get_patient_arrays(self):
+        """converts list of Patient objects (with n_mutated and is_mutated
+        attributes) to is_mutated boolean array and n_mutated int array.
+        Returns n_patients, n_mutated, is_mutated."""
+        patients = self.pway.patients
+        n_patients = len(patients)
+        n_mutated_array = np.array([p.n_mutated for p in patients], dtype=int)
+        is_mutated_array = np.array([p.is_mutated for p in patients],
+                                    dtype=int)
+        return n_patients, n_mutated_array, is_mutated_array
 
-    def _get_p_no_mutations(self, G, x, n):
-        """G is background genome size, x is pathway size, n is number of
-        genes mutated in patient."""
-        x = float(x)
-        prob = 1
-        for i in xrange(n):
-            prob = prob * (1 - x/(G-i))
-        # PREVIOUS prob = exp(math.log(comb(G - x, n, exact=True)) - math.log(comb(G, n, exact=True)))
-        return prob
+    def _get_pway_likelihood(self, pway_size=None):
+        """Calculate pathway likelihood at stated size."""
+        return get_pway_likelihood_cython(self.G, pway_size,
+                                          self.n_patients, self.n_mutated_array,
+                                          self.is_mutated_array)
+
+    # def _get_pway_likelihood(self, pway_size=None):
+    #     if pway_size is None:
+    #         pway_size = self.pway_size
+    #     prob_list = list()
+    #     # iterate over patients
+    #     for patient in self.pway.patients:
+    #         n_patient = patient.n_mutated
+    #         mutated = patient.is_mutated
+    #         # if there are fewer out-of-pathway genes than there are
+    #         # genes mutated, p_no_mut is zero
+    #         if self.G - pway_size < n_patient:
+    #             p_no_mut = float64(0)
+    #         else:
+    #             p_no_mut = self._get_p_no_mutations(self.G, pway_size, n_patient)
+    #             # p_no_mut = exp(math.log(comb(self.G - pway_size, n_patient,
+    #             #                              exact=True)) - math.log(
+    #             #     comb(self.G, n_patient, exact=True)))
+    #         if mutated:
+    #             p = 1 - p_no_mut
+    #         else:
+    #             p = p_no_mut
+    #         prob_list.append(log(p))
+    #     prob_array = array(prob_list)
+    #     return prob_array.sum()
+
+    # def _get_p_no_mutations(self, G, x, n):
+    #     """G is background genome size, x is pathway size, n is number of
+    #     genes mutated in patient."""
+    #     return get_p_no_mutations_cython(G, x, n)
+        # x = float(x)
+        # prob = 1
+        # for i in xrange(n):
+        #     prob = prob * (1 - x/(G-i))
+        # # PREVIOUS prob = exp(math.log(comb(G - x, n, exact=True)) - math.log(comb(G, n, exact=True)))
+        # return prob
 
     def _get_ne(self):
         last_ll = None
