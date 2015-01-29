@@ -22,10 +22,16 @@ from . import db
 from .emails import run_finished_notification
 from .models import UserFile
 from app import dbvars
+from .db_lookups import lookup_path_sizes_global, lookup_path_sizes_exclude, \
+    lookup_patient_counts, build_path_patient_dict, \
+    fetch_path_ids_interest_genes, get_pathway_name_dict, get_gene_combs_hit, \
+    get_gene_counts
 
 import pyximport
 pyximport.install(setup_args={'include_dirs': np.get_include()})
 from comb_functions import get_pway_likelihood_cython
+
+path_size_dict = lookup_path_sizes_global()
 
 
 class TableLoadException(Exception):
@@ -34,7 +40,6 @@ class TableLoadException(Exception):
 
     def __str__(self):
         return repr(self.msg)
-
 
 
 @async
@@ -144,12 +149,9 @@ class GeneMatrix():
     def __init__(self):
         self.genePatientDict = dict()
 
-    def add_gene_patients(self, gene, patientList):
+    def add_gene_patients(self, genepatients_dict):
         """Add gene-patientList pairs into dictionary."""
-        if gene in self.genePatientDict:
-            self.genePatientDict.extend(patientList)
-        else:
-            self.genePatientDict[gene] = patientList
+        self.genePatientDict = genepatients_dict
 
     def export_matrix(self, outfile, exclusive_genes):
         """Writes tab-separated matrix file for patient/gene
@@ -187,140 +189,7 @@ class GeneMatrix():
             outfile.write('\n')
 
 
-def lookup_path_sizes_global():
-    """Get pathway sizes when exclude genes are provided."""
-    cmd = """SELECT path_id, count(DISTINCT entrez_id)
-    FROM refs.pathway_gene_link pgl
-    INNER JOIN refs.ncbi_entrez n ON pgl.entrez_id = n.geneId
-    GROUP BY path_id;""".format()
-    size_dict = dict()
-    try:
-        con = mdb.connect(**dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            print "No pathways found."
-            return size_dict
-        for row_no in xrange(row_count):
-            row = cur.fetchone()
-            size_dict[row[0]] = row[1]
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
-    return size_dict
 
-
-path_size_dict = lookup_path_sizes_global()
-
-
-def lookup_path_sizes_exclude(ignore_genes):
-    """Get pathway sizes when exclude genes are provided."""
-
-    genes_string = repr(tuple(ignore_genes)).replace(",)", ")")
-    genes_string = "WHERE symbol NOT IN {}".format(genes_string)
-
-    cmd = """SELECT path_id, count(DISTINCT entrez_id)
-    FROM refs.pathway_gene_link pgl
-    INNER JOIN refs.ncbi_entrez n ON pgl.entrez_id = n.geneId
-    {genes_string} GROUP BY path_id;""".format()
-
-    size_dict = dict()
-    try:
-        con = mdb.connect(**dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            print "No pathways found."
-            return size_dict
-        for row_no in xrange(row_count):
-            row = cur.fetchone()
-            size_dict[row[0]] = row[1]
-
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
-    return size_dict
-
-
-def lookup_patient_counts(table_name, ignore_genes):
-    """Get pathway sizes when exclude genes are provided."""
-
-    if(ignore_genes):
-        genes_string = repr(tuple(ignore_genes)).replace(",)", ")")
-        genes_string = "WHERE hugo_symbol NOT IN {}".format(genes_string)
-    else:
-        genes_string = ""
-    cmd = """SELECT patient_id, count(DISTINCT entrez_id)
-              FROM {table_name} {genes_string} GROUP BY patient_id"""\
-        .format(table_name=table_name, genes_string=genes_string)
-
-    patient_size_dict = dict()
-    try:
-        con = mdb.connect(**dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            print "No pathways found."
-            return patient_size_dict
-        for row_no in xrange(row_count):
-            row = cur.fetchone()
-            patient_size_dict[row[0]] = row[1]
-
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
-    return patient_size_dict
-
-
-def build_path_patient_dict(table_name, ignore_genes):
-    """Returns dict. Maps path_id (int) -> {Set of patient_ids}."""
-    if ignore_genes:
-        genes_string = repr(tuple(ignore_genes)).replace(",)", ")")
-        genes_string = "WHERE hugo_symbol NOT IN {}".format(genes_string)
-    else:
-        genes_string = ""
-    cmd = """SELECT pgl.path_id, patient_id FROM
-            (SELECT DISTINCT patient_id, entrez_id FROM {table_name}
-             {genes_string}) pg
-            INNER JOIN
-            refs.pathway_gene_link pgl ON pg.entrez_id = pgl.entrez_id;"""\
-        .format(table_name=table_name, genes_string=genes_string)
-    path_patient_dict = dict()
-    try:
-        con = mdb.connect(**dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            print "No patient-pathway pairs found."
-            return path_patient_dict
-        for row_no in xrange(row_count):
-            row = cur.fetchone()
-            path_id = row[0]
-            patient_id = row[1]
-            if path_id in path_patient_dict:
-                path_patient_dict[path_id].add(patient_id)
-            else:
-                path_patient_dict[path_id] = {patient_id}
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
-    return path_patient_dict
 
 
 class PathwaySummaryBasic():
@@ -337,7 +206,7 @@ class PathwaySummary(PathwaySummaryBasic):
     """Holds pathway information, and can fetch info from db."""
 
     def __init__(self, pathway_number, proj_abbrvs,
-                 patient_ids=list(), max_mutations=500, expressed_table=None,
+                 patient_ids=list(), expressed_table=None,
                  ignore_genes=list()):
         PathwaySummaryBasic.__init__(self, pathway_number)
         # above gives path_id, n_actual, n_effective, p_value
@@ -345,7 +214,6 @@ class PathwaySummary(PathwaySummaryBasic):
         self.filter_patient_ids = patient_ids
         self.filter_expressed = expressed_table
         self.ignore_genes = ignore_genes
-        self.max_mutations = max_mutations
         self.proj_abbrvs = proj_abbrvs
         self.gene_coverage = OrderedDict()
         self.exclusive_genes = list()
@@ -415,24 +283,23 @@ class PathwaySummary(PathwaySummaryBasic):
             filter_str = ""
         return filter_str
 
-
-    def update_exclusive_cooccurring_coverage(self):
+    def update_exclusive_cooccurring_coverage(self, genelists, n_patients,
+                                              gene_patients):
         """POSTPROCESSING.
         Gather pathway gene info and write detailed output."""
         self.geneMatrix = GeneMatrix()  # populated during update_gene_coverage
-        self._populate_exclusive_cooccurring()
-        self._update_gene_coverage()
+        self._populate_exclusive_cooccurring(genelists)
+        self._update_gene_coverage(n_patients, gene_patients)
 
-    def _populate_exclusive_cooccurring(self):
+    def _populate_exclusive_cooccurring(self, genelists):
         """ Postprocessing step. Look up gene combinations hit
         (via _get_gene_combs_hit_yale and _get_gene_combs_hit_tcga),
         sort into sets."""
-        gene_combs_list = self._get_gene_combs_hit()
         all_hit_genes_set = set()
         exclusive_gene_set = set()
         # get minimum set of gene combinations
         temp_set = set()
-        for genes in gene_combs_list:
+        for genes in genelists:
             temp_set.add(tuple(genes))
         gene_combs_list = [list(genes) for genes in temp_set]
         for geneList in gene_combs_list:
@@ -446,64 +313,11 @@ class PathwaySummary(PathwaySummaryBasic):
         self.cooccurring_genes = sorted(list(cooccurring_gene_set))
         return
 
-    def _get_gene_combs_hit(self):
-        """Gets patient-pathway gene overlap info from databse.
-        Only called by _populate_exclusive_cooccurring.
-        """
-        rows = None
-        geneLists = list()
-        for tcga_table in self.proj_abbrvs:
-            # UNIQUE HUGO LISTS
-            cmd = """SELECT DISTINCT symbols FROM
-                (
-                # PATIENT, HUGO PAIRS in pathway of interest.
-                SELECT patient_id, group_concat(DISTINCT hugo_symbol
-                ORDER BY hugo_symbol SEPARATOR ',') AS symbols
-                FROM {table} t
-                # gene subset in pathway of interest
-                INNER JOIN refs.`pathway_gene_link` pgl
-                ON t.entrez_id = pgl.entrez_id {expression_filter_pgl}
-                NATURAL JOIN
-                #good patients
-                (SELECT patient_id FROM {table}
-                WHERE `Variant_Classification` <> 'Silent' {patient_filter}
-                    GROUP BY patient_id 
-                    HAVING count(*) <= {max_mutations}) p
-                WHERE path_id = {path_id} AND `Variant_Classification`<>'Silent'
-                GROUP BY patient_id
-                ) g;""". \
-                format(path_id=self.path_id,
-                       max_mutations=self.max_mutations,
-                       table=tcga_table,
-                       patient_filter=self._build_patient_filter_str(
-                           form="AND"),
-                       expression_filter_pgl=self._build_expressed_filter_str(
-                           "pgl.entrez_id"))
-            try:
-                con = mdb.connect(**dbvars)
-                cur = con.cursor()
-                cur.execute(cmd)
-                rows = cur.fetchall()
-            except mdb.Error as e:
-                print "Error %d: %s" % (e.args[0], e.args[1])
-            finally:
-                if con:
-                    con.close()
-            gene_strings = [row[0] for row in rows]
-            temp_gene_lists = [genesString.split(',') for genesString in
-                               gene_strings]
-            geneLists.extend(temp_gene_lists)
-        return geneLists
-
-    def _update_gene_coverage(self):
+    def _update_gene_coverage(self, n_patients, gene_patients):
         """Populate object's gene_coverage dictionary."""
         gene_coverage = dict()
-        (total_patients, counts_temp) = self._get_gene_counts()
-        for gene in counts_temp.iterkeys():
-            if gene in gene_coverage:
-                gene_coverage[gene] += counts_temp[gene]
-            else:
-                gene_coverage[gene] = counts_temp[gene]
+        for gene in gene_patients:
+            gene_coverage[gene] = len(gene_patients[gene])
 
         coverage_tuple = [tuple([gene, gene_coverage[gene]]) for gene in
                           gene_coverage]
@@ -514,86 +328,9 @@ class PathwaySummary(PathwaySummaryBasic):
 
         # convert to coverage by dividing by number of patients
         for gene in gene_coverage:
-            gene_coverage[gene] = float(
-                gene_coverage[gene]) / total_patients * 100
+            gene_coverage[gene] = float(gene_coverage[gene]) / n_patients * 100
         self.gene_coverage = gene_coverage
         return
-
-    def _get_gene_counts(self):
-        """ Fetch dictionary: gene -> int percentage of patients with mutation.
-        Dictionary may be empty if no pathway genes were mutated."""
-        total_patients = 0  # will increase as inspect tables
-        count_dict = dict()
-        rows = None
-        for tcga_table in self.proj_abbrvs:
-            cmd0 = """SET SESSION group_concat_max_len = 30000;"""
-            cmd1 = """SELECT count(DISTINCT patient_id) AS n_patient FROM 
-                (SELECT patient_id FROM {table}
-                WHERE `Variant_Classification` <> 'Silent' {patient_filter}
-                GROUP BY patient_id HAVING count(*) <= {max_mutations}) p2;""" \
-                .format(max_mutations=self.max_mutations, table=tcga_table,
-                        patient_filter=self._build_patient_filter_str(
-                            form="AND"))
-            # HUGO LIST AND PATIENT COUNTS
-            cmd2 = """SELECT hugo_symbol, count(DISTINCT patient_id)
-                AS n_patients, GROUP_CONCAT(DISTINCT patient_id) AS patients
-                FROM {table} t
-                # gene subset in pathway of interest
-                INNER JOIN refs.`pathway_gene_link` pgl
-                ON t.entrez_id = pgl.entrez_id {expression_filter_pgl}
-                NATURAL JOIN
-                #good patients
-                (SELECT patient_id FROM {table} t
-                    WHERE `Variant_Classification` <> 'Silent' {patient_filter}
-                    GROUP BY patient_id HAVING count(*) <= {max_mutations} )  p
-                WHERE path_id = {path_id}
-                    AND `Variant_Classification` <> 'Silent'
-                {patient_filter}
-                GROUP BY hugo_symbol
-                ORDER BY hugo_symbol;""" \
-                .format(path_id=self.path_id,
-                        max_mutations=self.max_mutations,
-                        table=tcga_table,
-                        patient_filter=self._build_patient_filter_str(
-                            form="AND"),
-                        expression_filter_pgl=self._build_expressed_filter_str(
-                            "pgl.entrez_id"))
-            try:
-                con = mdb.connect(**dbvars)
-                cur = con.cursor()
-                cur.execute(cmd0)
-                cur.execute(cmd1)
-                rowCount = cur.rowcount
-                if not rowCount == 1:
-                    raise NonSingleResult(
-                        "Result contains %g rows Ids for pathway %s."
-                        % (rowCount, self.path_id))
-                total_patients += int(cur.fetchone()[0])
-                cur.execute(cmd2)
-                rowCount = cur.rowcount
-                if not rowCount:
-                    # NO GENES MUTATED. n_effective < n_pathway
-                    return total_patients, count_dict
-                rows = cur.fetchall()
-            except mdb.Error as e:
-                print "Error %d: %s" % (e.args[0], e.args[1])
-            finally:
-                if con:
-                    con.close()
-            for geneRow in rows:
-                gene = geneRow[0]
-                coverage = int(geneRow[1])
-                patient_names = geneRow[2].split(',')
-                if not len(patient_names) == coverage:
-                    raise Exception(
-                        "Pathway coverage query gives inconsistent " +
-                        "patient counts and patient names.")
-                self.geneMatrix.add_gene_patients(gene, patient_names)
-                if gene in count_dict:
-                    count_dict[gene] += coverage
-                else:
-                    count_dict[gene] = coverage
-        return total_patients, count_dict
 
 
 class LCalculator():
@@ -608,7 +345,7 @@ class LCalculator():
         self.ne_ll = None
         self.D = None
         self.pvalue = None
-        self.max_mutations = pway.max_mutations
+        # self.max_mutations = pway.max_mutations
 
         self.n_patients, self.n_mutated_array, self.is_mutated_array = \
             self._get_patient_arrays()
@@ -728,14 +465,13 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
     """Builds ordered list of pathways from basic p-value file."""
 
     def __init__(self, dir_path, file_id, proj_abbrvs, patient_ids=list(),
-                 name_suffix=None, max_mutations=None, expressed_table=None,
+                 name_suffix=None, expressed_table=None,
                  ignore_genes=list()):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
         self.proj_abbrvs = proj_abbrvs
         self.filter_patient_ids = patient_ids
-        self.max_mutations = max_mutations
         self.expressed_table = expressed_table
         self.ignore_genes = ignore_genes
 
@@ -754,7 +490,6 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.proj_abbrvs,
                                       patient_ids=self.filter_patient_ids,
-                                      max_mutations=self.max_mutations,
                                       expressed_table=self.expressed_table,
                                       ignore_genes=self.ignore_genes)
                 pway.set_up_from_file(pval, psize, peffect, runtime)
@@ -788,46 +523,18 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
 
     name_postfix = '_detail.txt'
     def __init__(self, dir_path, file_id, pway_object_list,
-                 name_suffix=None):
+                 name_suffix=None, path_genelists_dict=dict(),
+                 path_genepatients_dict=dict(), n_patients=None):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
         self.allPathways = pway_object_list
-        self.nameDict = self.get_pathway_name_dict()
+        self.nameDict = get_pathway_name_dict()
         self.outfile_name = self.root_name + self.name_postfix
         self.matrix_folder = 'matrix_txt'
-
-    @staticmethod
-    def get_pathway_name_dict():
-        """Gets name for all pathways, stored in dict: pathid -> pathname."""
-        rows = None
-        pathway_dict = dict()
-        # GET pway_size
-        cmd1 = """SELECT p.path_id, pathway_name FROM refs.pathways p
-        INNER JOIN
-        (SELECT DISTINCT path_id FROM refs.pathway_gene_link) l
-        ON p.path_id = l.path_id;"""
-        try:
-            con = mdb.connect(**dbvars)
-            cur = con.cursor()
-            cur.execute(cmd1)
-            row_count = cur.rowcount
-            if not row_count > 1:
-                raise Exception(
-                    "Result contains %g rows Ids for pathway lookup."
-                    % row_count)
-            rows = cur.fetchall()
-        except mdb.Error as e:
-            print "Error %d: %s" % (e.args[0], e.args[1])
-        finally:
-            if con:
-                con.close()
-        # rows is [[id,name],[id,name],...]
-        for pair in rows:
-            path_id = int(pair[0])
-            path_name = pair[1]
-            pathway_dict[path_id] = path_name
-        return pathway_dict
+        self.path_genelists_dict = path_genelists_dict
+        self.path_genepatients_dict = path_genepatients_dict
+        self.n_patients = n_patients
 
     @staticmethod
     def dict_to_struct(coverage_dict):
@@ -852,9 +559,14 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
             for pway in self.allPathways:
                 # Get extra info, if p_value is low
                 if pway.p_value < 0.05:
-                    pway.update_exclusive_cooccurring_coverage()
+                    pway.update_exclusive_cooccurring_coverage(
+                        self.path_genelists_dict[pway.path_id],
+                        self.n_patients,
+                        self.path_genepatients_dict[pway.path_id])
                     if pway.gene_coverage:  # if genes are hit...
                         if pway.n_effective > pway.n_actual:
+                            pway.geneMatrix.add_gene_patients(
+                                self.path_genepatients_dict[pway.path_id])
                             self.write_matrix_files(pway)
                 path_name = self.nameDict[pway.path_id]
                 coverage_string = self.dict_to_struct(pway.gene_coverage)
@@ -971,47 +683,6 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         return url
 
 
-class PathwayIdsFetcher():
-    def __init__(self, interest_genes):
-        self.interest_genes = interest_genes
-
-    def fetchPathwayIds(self):
-        """Get pathway ids containing genes in (possibly empty) interest set."""
-        rows = None
-        all_path_ids = list()
-        if self.interest_genes:
-            genes_string = repr(tuple(self.interest_genes))
-            genes_string = genes_string.replace(",)", ")")
-            genes_string = "WHERE symbol IN " + genes_string
-        else:
-            genes_string = ""
-        # GET pway_size
-        cmd1 = """SELECT distinct path_id FROM refs.pathway_gene_link pgl
-            INNER JOIN (SELECT geneId FROM refs.ncbi_entrez 
-                {genes_string}) g
-            ON pgl.entrez_id = g.geneId ORDER BY path_id;""".format(
-            genes_string=genes_string)
-        try:
-            con = mdb.connect(**dbvars)
-            cur = con.cursor()
-            cur.execute(cmd1)
-            rowCount = cur.rowcount
-            if not rowCount:
-                raise Exception(
-                    "Result contains %g rows Ids for pathway lookup."
-                    % (rowCount))
-            rows = cur.fetchall()
-        except mdb.Error as e:
-            print "Error %d: %s" % (e.args[0], e.args[1])
-        finally:
-            if con:
-                con.close()
-        # rows is [[id,name],[id,name],...]
-        for id in rows:
-            all_path_ids.append(int(id[0]))
-        return all_path_ids
-
-
 class BackgroundGenomeFetcher():
     def __init__(self, genome_str, expressed_table=None):
         """Specifying an expressed table will result in a genome size equal to 
@@ -1086,7 +757,7 @@ def run(dir_path, table_name, user_upload):
     # max_mutations
     file_id = user_upload.file_id
     table_list = [table_name]  # code can iterate through list of tables
-    max_mutations = user_upload.n_cutoff or 500  # default max is 500
+    # max_mutations = user_upload.n_cutoff or 500  # default max is 500
     if user_upload.ignore_genes:
         ignore_genes = str(user_upload.ignore_genes).split(',')
     else:
@@ -1122,9 +793,8 @@ def run(dir_path, table_name, user_upload):
     # CREATE LIST OF PATHWAYS TO INSPECT
     all_path_ids = {id for id in path_patient_dict}  # all altered pathways set
     if interest_genes:
-        id_fetcher = PathwayIdsFetcher(interest_genes)
-        interest_gene_path_ids = set(id_fetcher.fetchPathwayIds())
-        all_path_ids = all_path_ids.intersection(interest_gene_path_ids)  #set
+        interest_gene_path_ids = fetch_path_ids_interest_genes(interest_genes)
+        all_path_ids = all_path_ids.intersection(set(interest_gene_path_ids))
         # delete unnecessary path_ids if there are interest_genes
         unwanted_ids = list()
         for path in path_patient_dict:
@@ -1145,7 +815,7 @@ def run(dir_path, table_name, user_upload):
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
         pway = PathwaySummary(pathway_number, table_list,
-                              max_mutations=max_mutations,
+                              # max_mutations=max_mutations,
                               expressed_table=None,
                               ignore_genes=ignore_genes)
         pway.set_pathway_size()
@@ -1163,14 +833,20 @@ def run(dir_path, table_name, user_upload):
     assembler = PathwayListAssembler(dir_path, file_id, table_list,
                                      # patient_ids=None,
                                      name_suffix=proj_suffix,
-                                     max_mutations=max_mutations,
                                      # expressed_table=args.expression,
                                      ignore_genes=ignore_genes)
     pway_list = assembler.get_ordered_pway_list()
 
+    path_genelists_dict = get_gene_combs_hit(table_name)
+    path_genepatients_dict = get_gene_counts(table_name)
+    n_patients = len(patient_size_dict)
+
     # Rank pathways, gather extra stats and write to final file
     final_writer = PathwayDetailedFileWriter(dir_path, file_id, pway_list,
-                                             name_suffix=proj_suffix)
+                                             name_suffix=proj_suffix,
+                                             path_genelists_dict=path_genelists_dict,
+                                             path_genepatients_dict=path_genepatients_dict,
+                                             n_patients=n_patients)
     final_writer.write_detailed_file()
 
     # generate_files(dir_path, final_writer.outfile_name, user_upload)
@@ -1274,7 +950,6 @@ def create_pway_plots(txt_path):
         with open(os.devnull, "w") as fnullout:
             subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
                                   stderr=fnullout, shell=True)
-
 
 
 def create_svgs(txt_path):
