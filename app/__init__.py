@@ -17,6 +17,8 @@ login_manager = LoginManager()
 
 from .models import User, Role
 
+dbvars = dict()  # set in create_app. used in mysqldb queries.
+
 def create_app(config_name):
     app = Flask(__name__)
     # development, testing, production, default
@@ -25,6 +27,11 @@ def create_app(config_name):
     app.config['SECURITY_CONFIRMABLE'] = True
     app.config['SECURITY_REGISTERABLE'] = True
     app.config['SECURITY_CHANGEABLE'] = True
+
+    global dbvars
+    dbvars = dict(host=app.config['SGG_DB_HOST'],
+                  db=app.config['SGG_DB_NAME'],
+                  read_default_file=app.config['SGG_DB_CNF'])
 
     bootstrap.init_app(app)
     db.init_app(app)

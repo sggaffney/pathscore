@@ -21,6 +21,7 @@ from .misc import simplify_string
 from . import db
 from .emails import run_finished_notification
 from .models import UserFile
+from app import dbvars
 
 import pyximport
 pyximport.install(setup_args={'include_dirs': np.get_include()})
@@ -34,17 +35,17 @@ class TableLoadException(Exception):
     def __str__(self):
         return repr(self.msg)
 
-dbvars = dict()
+
 
 @async
 def run_analysis_async(app, proj_dir, data_path, upload_id):
     """Asynchronous run of pathway analysis."""
-    global dbvars
+    # global dbvars
     with app.app_context():
         user_upload = UserFile.query.get(upload_id)
-        dbvars = dict(host=current_app.config['SGG_DB_HOST'],
-                      db=current_app.config['SGG_DB_NAME'],
-                      read_default_file=current_app.config['SGG_DB_CNF'])
+        # dbvars = dict(host=current_app.config['SGG_DB_HOST'],
+        #               db=current_app.config['SGG_DB_NAME'],
+        #               read_default_file=current_app.config['SGG_DB_CNF'])
         # table_name = 'mutations_{}'.format(user_upload.file_id)
         table = None
         try:
