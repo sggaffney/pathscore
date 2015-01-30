@@ -55,7 +55,7 @@ if nargin==0
     pretty_file = '/Users/Stephen/Dropbox/Townsend/melanoma_data/pathways_pvalues_melanoma_cutaneous_braf_expressed_pretty.txt';
 end
 
-[txt_root, proj_suffix, root_folder] = getPathInfo(pretty_file);
+[txt_root, ~, root_folder] = getPathInfo(pretty_file);
 
 
 % MATRIX TXT ROOT
@@ -203,18 +203,19 @@ end
 % set(gca,'CLim',[0,1])
 
 
+% BACKGROUND GRAY RECTANGLE AND GRID
+rectangle('Position',[0,0,ax_x.len, ax_y.len],'FaceColor',[0.85,0.85,0.85],'EdgeColor','none')
+addGrid(ax_x, ax_y, 'w')
 
-
-
-
+% RED AND BLUE MUTATION BOXES
 [y,x] = find(fig_array == 0.5);
 arrayfun(@(x_i,y_i) addBox(x_i, y_i, ax_x, ax_y, 'r'), x,y);
 
 [y,x] = find(fig_array == 1);
 arrayfun(@(x_i,y_i) addBox(x_i, y_i, ax_x, ax_y, 'b'), x,y);
-
-[y,x] = find(fig_array == 0);
-arrayfun(@(x_i,y_i) addBox(x_i, y_i, ax_x, ax_y, [0.85,0.85,0.85]), x,y);
+% 
+% [y,x] = find(fig_array == 0);
+% arrayfun(@(x_i,y_i) addBox(x_i, y_i, ax_x, ax_y, [0.85,0.85,0.85]), x,y);
 
 % addBox(x_i, y_i, ax_x, ax_y, ax_topleft,facecolor)
 
@@ -280,7 +281,6 @@ end
 
 function addBox(x_i, y_i, ax_x, ax_y,facecolor)
 
-
 % l = ax_topleft(1) + (x_i-1)*ax_x.boxlen + 1;
 % b = ax_topleft(2) + (y_i)*ax_y.boxlen - 1;
 % w = ax_x.boxlen-2;
@@ -293,12 +293,28 @@ h = ax_y.boxlen-2;
 
 rectangle('Position',[xm,ym,w,h],'FaceColor',facecolor,'EdgeColor','none')
 
-
-
-
-
 end
 
+%% Draw grid lines to demarcate patient-gene pairs
+function addGrid(ax_x, ax_y, color)
 
+    n_x = ax_x.len / ax_x.boxlen;
+    n_y = ax_y.len / ax_y.boxlen;
 
+    % line 'after' all boxes excluding last one
 
+    % draw X grid
+    if n_x >1
+        xvals = repmat(ax_x.boxlen * (1:n_x-1), 2,1);
+        yvals = [zeros(1,n_x-1); ax_y.len * ones(1,n_x-1)];
+        line(xvals,yvals,'Color',color,'LineWidth',2)
+    end
+    
+    if n_x >1
+        
+        xvals = [zeros(1,n_y-1); ax_x.len * ones(1,n_y-1)];
+        yvals = repmat(ax_y.boxlen * (1:n_y-1), 2,1);
+        line(xvals,yvals,'Color',color,'LineWidth',2)
+    end
+
+end
