@@ -40,7 +40,7 @@ def lookup_path_sizes_exclude(ignore_genes):
     cmd = """SELECT path_id, count(DISTINCT entrez_id)
     FROM refs.pathway_gene_link pgl
     INNER JOIN refs.ncbi_entrez n ON pgl.entrez_id = n.geneId
-    {genes_string} GROUP BY path_id;""".format()
+    {genes_string} GROUP BY path_id;""".format(genes_string=genes_string)
 
     size_dict = dict()
     try:
