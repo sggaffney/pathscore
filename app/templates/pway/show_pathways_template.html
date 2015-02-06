@@ -34,7 +34,7 @@
 			</div>
 			<div class="form-group">
 				<input class="form-control" type="text" id="exclude" size="40" maxlength="10000" value = ""
-					placeholder="EXCLUDE GENES e.g. CBL">
+					placeholder="EXCLUDE GENES e.g. TTN">
 			</div>
 			<div class="form-group">
 			<button id="geneSubmitButton" class="btn btn-default" type="button">Get pathways</button>
@@ -62,6 +62,7 @@
 
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1/jquery-ui.min.js"></script>
+<script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
 <!-- <script src="pathways_pvalues_1.js"></script> --> <!-- SETS global pwayList -->
 <script>
 	
@@ -106,9 +107,32 @@
 				$fetcherButton.click();
 			});
 
-		updateProjId();
+		pageNo = 0;
+		pageMax = 20;
 
-	});
+		updateProjId();
+	})
+
+
+	function increment_page(increment){
+		//change page number if appropriate given increment
+		// SETS UP USE_PWAYS_PAGE
+		if(increment == -1 && increment == 1){
+			return;
+		}
+		if(use_pways.length <= pageMax){
+			return;
+		}
+		if(increment < 0 && pageNo==0){
+			return;
+		}
+		if(increment == 1 && pageNo==0){
+			return;
+		}
+		pageNo += increment;
+		use_pways_page = use_pways.slice(pageNo, pageNo+pageMax-1);
+		updateImages();
+	}
 
 	function updateProjId(){
 		$.getScript( "static/data/{{ user_id }}/" + projId + "/" + proj_names[projId] + ".js", function( data, textStatus, jqxhr ) {
@@ -121,14 +145,18 @@
 		
 	}
 
+//	function
+
 	function fetchPathways(){
+		// UPDATE FILTERED USE_PWAY LIST BASED ON FORM CONTENTS
+
 		var geneList = $geneBox.val().split(','); //array of genes
 		var excludeList = $excludeBox.val().split(','); //array of genes
-		console.log(geneList)
+		console.log(geneList);
 		// console.log(geneList)
 		var max_n_pways = 10000;  //limit number of pathways returned
 		var n_pways_found = 0;
-		var use_pways = new Array();
+		use_pways = [];
 		var gene = null;
 		$imageContainer.empty();  //clear old pathway images
 		//iterate over pathways, checking to see if they contain genes of interest
@@ -175,24 +203,39 @@
 			$imageContainer.text("No pathways found");
 		}
 		else {
-			$imageContainer.text("Top " + use_pways.length + " pathways shown below.");
+			$imageContainer.text(use_pways.length + " pathways found.");
 		}
+		// sets use_pways_page to first page set
+		use_pways_page = pwayList.slice(0, pageNo+pageMax-1);
+		updateImages()
+	}
+
+	function updateImages(){
 		//now have up to max pathways in list. fill img tag src.
-		for(var pi=0; pi<use_pways.length; pi++){
+		var rank1 = pageNo*pageMax;
+		var n_shown = use_pways_page.length;
+		if (n_shown>1) {
+			var show_text = " Showing pathways " + (rank1+1) + " to " + (rank1 + n_shown);
+			$imageContainer.append(show_text);
+		}
+		for(var pi=0; pi<use_pways_page.length; pi++){
 			$imageContainer.append(
 				'<div class="panel panel-primary">' +
 				'<div class="panel-heading">' +
-				'<h2 class="panel-title"><a href="'+ root_url + use_pways[pi]['url'] +'" target="_blank">'
-				+ use_pways[pi]['name'] + '</a>' + ' (' + use_pways[pi]['pval'] + ') </h2></div>' +
+				'<h2 class="panel-title"><a href="'+ root_url + use_pways_page[pi]['url'] +'" target="_blank">'
+				+ use_pways_page[pi]['name'] + '</a>' + ' (' + use_pways_page[pi]['pval'] + ') </h2></div>' +
 				'<div class="panel-body" style="padding:0">'
-				+'<p class="svg_target"><img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways[pi]['id'] + '.svg" ' +
-				'height=1024px width=1024px alt="' + use_pways[pi]['id'] + '.svg" ></img>'
-				+'</p>'
-				+'<p class="svg_matrix"><img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + use_pways[pi]['id'] + '.svg" ' +
-				'height=' + (use_pways[pi].geneSet.length*25+80) + 'px alt="' + use_pways[pi]['id'] + '.svg" ></img>' //
-				+'</p></div>'
+				+'<div class="svg_target ui-widget-content"><img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways_page[pi]['id'] + '.svgz" ' +
+				'alt="' + use_pways_page[pi]['id'] + '.svgz" ></img>'
+				+'</div>'
+				+'<div class="svg_matrix ui-widget-content"><img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + use_pways_page[pi]['id'] + '.svgz" ' +
+				'px alt="' + use_pways_page[pi]['id'] + '.svgz" ></img>' //
+				+'</div></div>'
 				);
+				// 'height=1024px width=1024px
+				//'height=' + (use_pways_page[pi].geneSet.length*25+80) +
 		}
+		$(".svg_matrix, .svg_target").resizable();
 	}
 
 
