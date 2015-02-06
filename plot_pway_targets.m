@@ -3,9 +3,11 @@
 
 function plot_pway_targets(results_file, varargin)
 
-dbstop if error
+global max_diameter_units fig_width cmap_name mixed_sizes ...
+    skip_gene skip_few_hits rot_scale rot_max;
 
-global max_diameter_units fig_width cmap_name mixed_sizes skip_gene skip_few_hits;
+rot_scale = 20;
+rot_max = 55;
 
 if(ismember('--eps',varargin))
     print_eps = 1;
@@ -222,7 +224,8 @@ for j = 1:n_mutated
         count_color = 'k';
     end
     fill(X,Y,tab_col,'LineStyle','-','LineWidth',4,'EdgeColor',tab_edge_color); 
-    text(textpos.X, textpos.Y, gene_name,'HorizontalAlignment',textpos.h,'VerticalAlignment',textpos.v)
+    text(textpos.X, textpos.Y, gene_name,'HorizontalAlignment',textpos.h,...
+        'VerticalAlignment',textpos.v, 'Rotation',textpos.rot)
     text(coverage_pos.X,coverage_pos.Y,int2str(coverage_struct.(gene_name)),...
         'HorizontalAlignment','Center','VerticalAlignment','Middle','Color',count_color)
     
@@ -246,7 +249,7 @@ end
 
 %% Get X and Y points on arc segment (used for fill) and text position structure for positioning gene label.
 function [X, Y, textpos, coverage_pos] = getGeneSegmentCoordsFixedSize(n_path, r_effective, i)
-    
+    global rot_scale rot_max;
     n_steps = 10;  % number of line segments in gene arc
     seg_width = 0.05;
     delta = 2/360*2*pi; % angle separation between segments
@@ -271,7 +274,7 @@ function [X, Y, textpos, coverage_pos] = getGeneSegmentCoordsFixedSize(n_path, r
     
     textpos.X = r_text * sin(theta_text) + 0.5;
     textpos.Y = r_text * cos(theta_text) + 0.5;
-    textpos.rot = -theta_text * 360/(2*pi);
+    textpos.rot = max(min(rot_max, rot_scale*tan(-pi/2-theta_text)),-rot_max);
     
     coverage_pos.X = r_coverage * sin(theta_coverage) + 0.5;
     coverage_pos.Y = r_coverage * cos(theta_coverage) + 0.5;
@@ -294,7 +297,7 @@ end
 
 %% Get X and Y points on arc segment (used for fill) and text position structure for positioning gene label.
 function [X, Y, textpos, coverage_pos] = getGeneSegmentCoordsGeneSize(r_effective, all_coverages, i)
-
+    global rot_scale rot_max;
     n_steps = 10*all_coverages(i);  % number of line segments in gene arc
     seg_width = 0.05;
     delta = 2/360*2*pi; % angle separation between segments
@@ -322,7 +325,7 @@ function [X, Y, textpos, coverage_pos] = getGeneSegmentCoordsGeneSize(r_effectiv
     
     textpos.X = r_text * sin(theta_text) + 0.5;
     textpos.Y = r_text * cos(theta_text) + 0.5;
-    textpos.rot = -theta_text * 360/(2*pi);
+    textpos.rot = max(min(rot_max, rot_scale*tan(-pi/2-theta_text)),-rot_max);
     
     coverage_pos.X = r_coverage * sin(theta_coverage) + 0.5;
     coverage_pos.Y = r_coverage * cos(theta_coverage) + 0.5;
