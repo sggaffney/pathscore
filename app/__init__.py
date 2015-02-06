@@ -24,10 +24,6 @@ def create_app(config_name):
     # development, testing, production, default
     app.config.from_object(config[config_name])
 
-    app.config['SECURITY_CONFIRMABLE'] = True
-    app.config['SECURITY_REGISTERABLE'] = True
-    app.config['SECURITY_CHANGEABLE'] = True
-
     global dbvars
     dbvars = dict(host=app.config['SGG_DB_HOST'],
                   db=app.config['SGG_DB_NAME'],

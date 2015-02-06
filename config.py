@@ -27,13 +27,16 @@ class Config:
     SECURITY_EMAIL_SENDER = os.environ.get('SECURITY_EMAIL_SENDER')
     SECURITY_PASSWORD_HASH = os.environ.get('SECURITY_PASSWORD_HASH')
     SECURITY_PASSWORD_SALT = os.environ.get('SECURITY_PASSWORD_SALT')
+    SECURITY_CONFIRMABLE = os.environ.get('SECURITY_CONFIRMABLE') == 'True'
+    SECURITY_REGISTERABLE = os.environ.get('SECURITY_REGISTERABLE') == 'True'
+    SECURITY_CHANGEABLE = os.environ.get('SECURITY_CHANGEABLE') == 'True'
 
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER')
 
     SGG_DB_CNF = os.environ.get('MYSQLDB_CNF')
     SGG_DB_HOST = os.environ.get('MYSQLDB_HOST')
 
-    SERVER_NAME = 'localhost:5000'
+    # SERVER_NAME = 'http://pathscore.local:80'
 
     PROJ_DELETE_INTERVAL = 86400  # one day
 

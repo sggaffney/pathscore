@@ -3,8 +3,6 @@
 
 function plot_patient_genes(pretty_file, optional_path_id)
 
-dbstop if error
-
 if(nargin==1)
     plot_patient_genes_default(pretty_file)
 else
@@ -60,7 +58,7 @@ end
 
 % MATRIX TXT ROOT
 
-cd(txt_root)
+% cd(txt_root)
 
 % CREATE SVG OUTPUT FOLDERS
 svg_root = fullfile(root_folder, 'matrix_svg/');
@@ -74,12 +72,13 @@ end
 % end
 
 % RUN ON ALL MATRIX TXT FILES
-f = dir('matrix*.txt');
+f = dir(fullfile(txt_root,'matrix*.txt'));
 fnames = {f.name};
 for file_ind = 1:length(fnames)
     gzip_bool = false;
     svg_bool = true;
-    plot_patient_genes_for_file(fnames{file_ind}, svg_root, gzip_bool, svg_bool)
+    plot_patient_genes_for_file(fullfile(txt_root, fnames{file_ind}),...
+        svg_root, gzip_bool, svg_bool)
 end
 
 end
