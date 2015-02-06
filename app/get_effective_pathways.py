@@ -16,7 +16,7 @@ import warnings
 from collections import OrderedDict
 import os
 import subprocess
-from .misc import simplify_string
+from .misc import zip_svgs
 
 from . import db
 from .emails import run_finished_notification
@@ -870,6 +870,7 @@ def run(dir_path, table_name, user_upload):
     if os.path.exists(os.path.join(final_writer.dir_path,
                                    final_writer.matrix_folder)):
         create_pway_plots(str(detail_path))
+        zip_svgs(final_writer.dir_path)
     # create_svgs(str(detail_path))
     # create_matrix_svgs(str(detail_path))
 
