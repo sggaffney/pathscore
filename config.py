@@ -38,7 +38,7 @@ class Config:
 
     # SERVER_NAME = 'http://pathscore.local:80'
 
-    PROJ_DELETE_INTERVAL = 86400  # one day
+    PROJ_DELETE_INTERVAL = 1814400  # 3 weeks
 
 class DevelopmentConfig(Config):
     DEBUG = True
