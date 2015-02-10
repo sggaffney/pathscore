@@ -10,7 +10,7 @@ if os.path.exists('.env'):
 from app import create_app
 from flask_script import Manager
 from app import db
-from app.models import User
+from app.models import User, Role
 from flask.ext.migrate import Migrate, MigrateCommand
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
@@ -29,7 +29,7 @@ def test():
 
 
 @manager.command
-def adduser(email, username, admin=False):
+def adduser(email, role='general'):
     """Register a new user."""
     from getpass import getpass
     password = getpass()
@@ -37,12 +37,14 @@ def adduser(email, username, admin=False):
     if password != password2:
         import sys
         sys.exit('Error: passwords do not match.')
+    role_obj = Role.query.filter_by(name=role).one()
     db.create_all()
-    user = User(email=email, password=password,
-                is_admin=admin)
+    user = User(email=email, password_raw=password)
+    user.roles.append(role_obj)
+    # app.user_datastore.add_role_to_user(user, default_role)
     db.session.add(user)
     db.session.commit()
-    print('User {0} was registered successfully.'.format(username))
+    print('User {0} was registered successfully.'.format(email))
 
 
 if __name__ == '__main__':

@@ -9,6 +9,7 @@ from . import db, login_manager
 import unicodedata as ud
 from unidecode import unidecode
 from flask_wtf.file import FileField, FileAllowed, FileRequired
+from flask.ext.security.utils import encrypt_password
 
 # Define models
 roles_users = db.Table('roles_users',
@@ -40,13 +41,14 @@ class User(UserMixin, db.Model):
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
 
-    # @property
-    # def password(self):
-    #     raise AttributeError('password is not a readable attribute')
-    #
-    # @password.setter
-    # def password(self, password):
-    #     self.password_hash = generate_password_hash(password)
+    @property
+    def password_raw(self):
+        raise AttributeError('password is not a readable attribute')
+
+    @password_raw.setter
+    def password_raw(self, password):
+        """Used by manager adduser to has password."""
+        self.password = encrypt_password(password)
 
     # def verify_password(self, password):
     #     return check_password_hash(self.password_hash, password)
