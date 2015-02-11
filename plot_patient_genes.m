@@ -181,7 +181,8 @@ ax_x = ax(orientation);
 ax_y = ax(3-orientation);
 
 
-figure('Menubar','none','Position',[100, 100, ax_x.len+ax_x.padding, ax_y.len+ax_y.padding]);
+figure('Menubar','none','Position',[100, 100, ax_x.len+ax_x.padding, ax_y.len+ax_y.padding],...
+    'Visible','off');
 fig_pos = get(gcf,'Position'); % figure position
 fig_w = fig_pos(3);
 fig_h = fig_pos(4);
@@ -229,13 +230,14 @@ t_x = text((0:ax_x.num-1) * ax_x.boxlen+ax_x.boxlen/2-3,...
     ones(1,ax_x.num)*ax_y.len,...
     ax_x.labels);
 set(t_x,'HorizontalAlignment','right','VerticalAlignment','top', ...
-      'Rotation',45,'FontSize',12,'FontName','Helvetica');
+      'Rotation',45,'FontSize',12,'FontName','Helvetica',...
+      'Interpreter','none');
 
 t_y = text(zeros(1,ax_y.num)-1,...
     (0:ax_y.num-1) * ax_y.boxlen+ax_y.boxlen/2,...
     ax_y.labels);
 set(t_y,'HorizontalAlignment','right','VerticalAlignment','middle',...
-    'FontSize',12,'FontName','Helvetica');
+    'FontSize',12,'FontName','Helvetica', 'Interpreter','none');
 %       'Rotation',45);
 % set(gca,'YTick',1:ax_y.num)
 % set(gca,'YTickLabel',ax_y.labels)
@@ -263,6 +265,38 @@ set(t_y,'HorizontalAlignment','right','VerticalAlignment','middle',...
 % % % end
 
 if(svg_bool)
+    [L,B,~,~] = get_annotation_limits(gca);
+    dx_spare = (ax_x.padding-10) + L;
+    dy_spare = fig_h - (B+10);
+    
+    % have fig_pos, get ax_pos
+    ax_pos = get(gca,'Position');
+    
+    % nudge axis left by dx_spare and deduct dx_spare from fig_width
+    % nudge axis down by dy_spare and deduct dy_spare from fig_height
+    
+    set(gca, 'Position', [...
+        ax_pos(1) - dx_spare, ...  % left
+        ax_pos(2) - dy_spare, ...  % bottom
+        ax_pos(3), ...  % width
+        ax_pos(4)]);  % height
+    
+    set(gcf, 'Position', [...
+        fig_pos(1),...  % left
+        fig_pos(2),...  % bottom
+        fig_pos(3) - dx_spare,...  % width
+        fig_pos(4) - dy_spare])  % height
+    
+    
+    % update paper units, figure paper position, resize paper
+    set(gcf,'Units','centimeters')
+    fig_pos_cm = get(gcf,'Position');
+    fig_w_cm = fig_pos_cm(3);
+    fig_h_cm = fig_pos_cm(4);
+    set(gcf,'PaperUnits','centimeters')
+    set(gcf,'PaperSize', [fig_w_cm, fig_h_cm]);
+    set(gcf,'PaperPosition',[0 0 fig_w_cm fig_h_cm]);
+    
     plot2svg([out_dir int2str(path_id) '.svg'])
 
 if(gzip_bool)

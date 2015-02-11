@@ -73,7 +73,7 @@ if(print_svg)
 %     end
 end
     
-fileName = [root_folder '/pathways_pvalues_' proj_suffix '_detail.txt'];
+fileName = fullfile(root_folder, ['pathways_pvalues_' proj_suffix '_detail.txt']);
 pathways = readInPathways(fileName); %, n_pathways
 n_pways = length(pathways);
 
@@ -163,6 +163,29 @@ for page = 0:n_pways-1
     end
     if(print_svg)
         delete(title_annot);
+        
+        % shrink figure to annotation limits
+        [L, B, W, H] = get_annotation_limits(gcf);
+        % rescale figure
+        fp = get(gcf,'Position');
+        width_new = fp(3) * W;
+        height_new = fp(4) * H;
+        set(gcf, 'Position', [fp(1) fp(2), width_new, height_new]);
+
+        % rescale axis
+        set(gca,'XLim',[L,L+W])
+        set(gca,'YLim',[B,B+H])
+        set(gcf,'PaperPositionMode','auto')
+        
+        % resize paper
+        set(gca,'Units','centimeters')
+        axpos = get(gca,'Position');
+        ax_width = axpos(3);
+        ax_height = axpos(4);
+        set(gcf,'PaperUnits','centimeters')
+        set(gcf,'PaperSize', [ax_width ax_height]);
+        set(gcf,'PaperPosition',[0 0 ax_width ax_height]);
+        
         plot2svg(fullfile(svg_root, [int2str(pway.id) '.svg'])) %'_' int2str(nrows) 'x' int2str(ncols)
     end
     %     dbstop
@@ -225,7 +248,8 @@ for j = 1:n_mutated
     end
     fill(X,Y,tab_col,'LineStyle','-','LineWidth',4,'EdgeColor',tab_edge_color); 
     text(textpos.X, textpos.Y, gene_name,'HorizontalAlignment',textpos.h,...
-        'VerticalAlignment',textpos.v, 'Rotation',textpos.rot)
+        'VerticalAlignment',textpos.v, 'Rotation',textpos.rot, ...
+        'Interpreter','none')
     text(coverage_pos.X,coverage_pos.Y,int2str(coverage_struct.(gene_name)),...
         'HorizontalAlignment','Center','VerticalAlignment','Middle','Color',count_color)
     
