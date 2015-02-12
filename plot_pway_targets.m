@@ -35,7 +35,7 @@ skip_gene = skipGene;
 nrows = 1;
 ncols = 1;
 max_diameter_units = 0.80;
-fig_width = 1024*nrows; %pixels
+fig_width = 600*nrows; %pixels
 cmap_name = 'hot';
 mixed_sizes = true;
 % n_pages = 362; %GET FROM FILE! 301 cut. melanoma. 655 luad. 688 melanoma. 684 lusc.
@@ -168,23 +168,29 @@ for page = 0:n_pways-1
         [L, B, W, H] = get_annotation_limits(gcf);
         % rescale figure
         fp = get(gcf,'Position');
-        width_new = fp(3) * W;
+%         width_new = fp(3) * W;
+        width_new = fp(3); % don't bother changing figure width -- constant for all figures.
         height_new = fp(4) * H;
-        set(gcf, 'Position', [fp(1) fp(2), width_new, height_new]);
-
+        set(gcf, 'Position', [0, 0, width_new, height_new]);
+        %---1.5x scaling seems to produce acceptable font sizes in svg
+        %---try font scaling instead.
+        set(findobj(gcf,'Type','text'),'FontSize',6)
+        
         % rescale axis
-        set(gca,'XLim',[L,L+W])
+        % don't bother rescaling X
+%         set(gca,'XLim',[L,L+W])
         set(gca,'YLim',[B,B+H])
         set(gcf,'PaperPositionMode','auto')
+%         set(gcf,'Position',1.5*get(gcf,'Position'))
         
         % resize paper
-        set(gca,'Units','centimeters')
-        axpos = get(gca,'Position');
-        ax_width = axpos(3);
-        ax_height = axpos(4);
-        set(gcf,'PaperUnits','centimeters')
-        set(gcf,'PaperSize', [ax_width ax_height]);
-        set(gcf,'PaperPosition',[0 0 ax_width ax_height]);
+%         set(gca,'Units','centimeters')
+%         axpos = get(gca,'Position');
+%         ax_width = axpos(3);
+%         ax_height = axpos(4);
+%         set(gcf,'PaperUnits','centimeters')
+%         set(gcf,'PaperSize', [ax_width ax_height]);
+%         set(gcf,'PaperPosition',[0 0 ax_width ax_height]);
         
         plot2svg(fullfile(svg_root, [int2str(pway.id) '.svg'])) %'_' int2str(nrows) 'x' int2str(ncols)
     end
