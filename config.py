@@ -36,7 +36,7 @@ class Config:
     SGG_DB_CNF = os.environ.get('MYSQLDB_CNF')
     SGG_DB_HOST = os.environ.get('MYSQLDB_HOST')
 
-    # SERVER_NAME = 'http://pathscore.local:80'
+    SERVER_NAME = os.environ.get('SERVER_NAME')
 
     PROJ_DELETE_INTERVAL = 1814400  # 3 weeks
 
