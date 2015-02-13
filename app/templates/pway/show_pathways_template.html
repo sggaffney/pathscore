@@ -58,6 +58,14 @@
 </div>
 <div id="imageContainer" class="padded">
 </div>
+
+<nav>
+  <ul class="pager">
+    <li><a id="nextPways">Previous</a></li>
+    <li><a id="prevPways">Next</a></li>
+  </ul>
+</nav>
+
 {% endblock %}
 
 
@@ -115,13 +123,21 @@
 		pageMax = 20;
 
 		updateProjId();
+
+		$("#nextPways").click(function(){
+			increment_page(1)
+		});
+		$("#prevPways").click(function(){
+			increment_page(-1)
+		});
+
 	})
 
 
 	function increment_page(increment){
 		//change page number if appropriate given increment
 		// SETS UP USE_PWAYS_PAGE
-		if(increment == -1 && increment == 1){
+		if(increment != -1 && increment != 1){
 			return;
 		}
 		if(use_pways.length <= pageMax){
