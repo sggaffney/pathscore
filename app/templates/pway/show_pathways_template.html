@@ -152,7 +152,6 @@
 
 		var geneList = $geneBox.val().split(','); //array of genes
 		var excludeList = $excludeBox.val().split(','); //array of genes
-		console.log(geneList);
 		// console.log(geneList)
 		var max_n_pways = 10000;  //limit number of pathways returned
 		var n_pways_found = 0;
@@ -225,17 +224,41 @@
 				'<h2 class="panel-title"><a href="'+ root_url + use_pways_page[pi]['url'] +'" target="_blank">'
 				+ use_pways_page[pi]['name'] + '</a>' + ' (' + use_pways_page[pi]['pval'] + ') </h2></div>' +
 				'<div class="panel-body" style="padding:0">'
-				+'<div class="svg_target ui-widget-content"><img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways_page[pi]['id'] + '.svgz" ' +
+				+'<div class="svg_target ui-widget-content">' +
+				'<img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways_page[pi]['id'] + '.svgz" ' +
 				'alt="' + use_pways_page[pi]['id'] + '.svgz" ></img>'
 				+'</div>'
-				+'<div class="svg_matrix ui-widget-content"><img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + use_pways_page[pi]['id'] + '.svgz" ' +
+				+'<div class="svg_matrix ui-widget-content"><div class="pway_size" style="display:none">'
+				+ JSON.stringify({"n_genes":use_pways_page[pi].geneSet.length, "expanded":false}) + '</div>' +
+				'<img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + use_pways_page[pi]['id'] + '.svgz" ' +
 				'px alt="' + use_pways_page[pi]['id'] + '.svgz" ></img>' //
 				+'</div></div>'
 				);
 				// 'height=1024px width=1024px
 				//'height=' + (use_pways_page[pi].geneSet.length*25+80) +
 		}
-		$(".svg_matrix, .svg_target").resizable();
+//		$(".svg_matrix, .svg_target").each(function() {
+//			var $this = $(this);
+//			$this.resizable();
+//		});
+
+		$(".svg_matrix").click(expandMatrixImage);
+
+	}
+
+	function expandMatrixImage(event){
+		var $im = $(event.target);
+		var $statusDiv = $im.parent().children()[0];
+		var im_status = jQuery.parseJSON($statusDiv.textContent);
+		var n_genes = im_status.n_genes;
+		var expanded = im_status.expanded;
+		if(!expanded)
+			$im.css('height',25*n_genes + 80);
+		else
+			$im.css('height','inherit');
+		im_status.expanded = !im_status.expanded;
+		$statusDiv.textContent = JSON.stringify(im_status);
+
 	}
 
 
