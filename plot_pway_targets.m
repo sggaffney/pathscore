@@ -166,7 +166,21 @@ for page = 0:n_pways-1
         % use font scaling to account for svg scale change. 14pt then 10pt
         set(findobj(gcf,'Type','text'),'FontSize',14)
         % shrink figure to annotation limits
-        [L, B, W, H] = get_annotation_limits(gcf);
+        [Lt, Bt, Wt, Ht] = get_annotation_limits(gcf);  % text area
+        [Lp, Bp, Wp, Hp] = get_patch_limits(gca);  % patch area
+        % nudge 2.5% to ensure patches aren't right against the view box
+        nudged = [Lp, Bp, Wp, Hp] + [-0.025, -0.025, 0.05, 0.05];
+        Lp = nudged(1); Bp = nudged(2); Wp = nudged(3); Hp = nudged(4);
+        Rt = Lt + Wt;  %right
+        Rp = Lp + Wp;
+        Tt = Bt + Ht;  %top
+        Tp = Bp + Hp;
+        
+        L = min(Lt, Lp);
+        B = min(Bt, Bp);
+        W = max(Rp, Rt) - L;
+        H = max(Tt, Tp) - B;
+        
         % rescale figure
         fp = get(gcf,'Position');
         
