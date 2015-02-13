@@ -230,14 +230,14 @@ t_x = text((0:ax_x.num-1) * ax_x.boxlen+ax_x.boxlen/2-3,...
     ones(1,ax_x.num)*ax_y.len,...
     ax_x.labels);
 set(t_x,'HorizontalAlignment','right','VerticalAlignment','top', ...
-      'Rotation',45,'FontSize',12,'FontName','Helvetica',...
+      'Rotation',45,'FontSize',14,'FontName','Helvetica',...
       'Interpreter','none');
 
 t_y = text(zeros(1,ax_y.num)-1,...
     (0:ax_y.num-1) * ax_y.boxlen+ax_y.boxlen/2,...
     ax_y.labels);
 set(t_y,'HorizontalAlignment','right','VerticalAlignment','middle',...
-    'FontSize',12,'FontName','Helvetica', 'Interpreter','none');
+    'FontSize',14,'FontName','Helvetica', 'Interpreter','none');
 %       'Rotation',45);
 % set(gca,'YTick',1:ax_y.num)
 % set(gca,'YTickLabel',ax_y.labels)
@@ -296,6 +296,9 @@ if(svg_bool)
     set(gcf,'PaperUnits','centimeters')
     set(gcf,'PaperSize', [fig_w_cm, fig_h_cm]);
     set(gcf,'PaperPosition',[0 0 fig_w_cm fig_h_cm]);
+    
+    % make font 6pt since text ends up oversized in svg
+    set(findobj(gca,'Type','text'),'FontSize',10)
     
     plot2svg([out_dir int2str(path_id) '.svg'])
 

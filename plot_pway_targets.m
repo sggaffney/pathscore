@@ -163,23 +163,33 @@ for page = 0:n_pways-1
     end
     if(print_svg)
         delete(title_annot);
-        
+        % use font scaling to account for svg scale change. 14pt then 10pt
+        set(findobj(gcf,'Type','text'),'FontSize',14)
         % shrink figure to annotation limits
         [L, B, W, H] = get_annotation_limits(gcf);
         % rescale figure
         fp = get(gcf,'Position');
-%         width_new = fp(3) * W;
-        width_new = fp(3); % don't bother changing figure width -- constant for all figures.
+        
+        % scale width only if text is outside
+        if L<0 || L+W>1
+            width_new = fp(3) * W;
+            xlim_new = [L,L+W];
+        else
+            width_new = fp(3); % else keep constant for all figures.
+            xlim_new = [0,1];
+        end
+        ylim_new = [B,B+H]; % rescale y-axis
+        
         height_new = fp(4) * H;
         set(gcf, 'Position', [0, 0, width_new, height_new]);
-        %---1.5x scaling seems to produce acceptable font sizes in svg
-        %---try font scaling instead.
-        set(findobj(gcf,'Type','text'),'FontSize',6)
+        
+        %---scale down font as saving in svg will upscale
+        set(findobj(gcf,'Type','text'),'FontSize',8)
         
         % rescale axis
         % don't bother rescaling X
-%         set(gca,'XLim',[L,L+W])
-        set(gca,'YLim',[B,B+H])
+        set(gca,'XLim', xlim_new)
+        set(gca,'YLim', ylim_new)
         set(gcf,'PaperPositionMode','auto')
 %         set(gcf,'Position',1.5*get(gcf,'Position'))
         
