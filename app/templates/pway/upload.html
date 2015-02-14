@@ -33,6 +33,7 @@
             {% endfor %}
             <p class="help-block">Tab-separated plain text file, with the following headers:
                 hugo_symbol, entrez_id, patient_id, variant_classification</p>
+            <p class="help-block"><a href="{{ url_for('pway.demo_file') }}">Download example file</a></p>
             </div>
 
         {{ form.submit(class_="btn btn-default") }}

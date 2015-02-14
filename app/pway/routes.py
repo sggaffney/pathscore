@@ -1,5 +1,5 @@
 from flask import render_template, flash, redirect, url_for, abort,\
-    request, current_app, send_file
+    request, current_app, send_file, send_from_directory
 from . import pway, FileTester
 from .forms import UploadForm
 from ..models import UserFile
@@ -39,6 +39,13 @@ def archive():
     filename = os.path.basename(zip_path)
     return send_file(zip_path, mimetype='application/zip',
                      as_attachment=True, attachment_filename=filename)
+
+@pway.route('/demofile')
+@login_required
+def demo_file():
+    # return render_template('pway/show_pathways_template.html')
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'],
+                               'skcm_ns_500.txt', as_attachment=True)
 
 
 @pway.route('/results')

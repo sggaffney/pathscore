@@ -61,8 +61,8 @@
 
 <nav>
   <ul class="pager">
-    <li><a id="nextPways">Previous</a></li>
-    <li><a id="prevPways">Next</a></li>
+    <!--<li><a id="prvPways">Previous</a></li>-->
+    <li><a id="nextPways">Show additional pathways</a></li>
   </ul>
 </nav>
 
@@ -127,9 +127,9 @@
 		$("#nextPways").click(function(){
 			increment_page(1)
 		});
-		$("#prevPways").click(function(){
-			increment_page(-1)
-		});
+//		$("#prevPways").click(function(){
+//			increment_page(-1)
+//		});
 
 	})
 
@@ -146,11 +146,11 @@
 		if(increment < 0 && pageNo==0){
 			return;
 		}
-		if(increment == 1 && pageNo==0){
+		if(increment == -1 && pageNo==0){
 			return;
 		}
 		pageNo += increment;
-		use_pways_page = use_pways.slice(pageNo, pageNo+pageMax-1);
+		use_pways_page = use_pways.slice(pageNo*pageMax, pageNo*pageMax + pageMax);
 		updateImages();
 	}
 
@@ -169,7 +169,7 @@
 
 	function fetchPathways(){
 		// UPDATE FILTERED USE_PWAY LIST BASED ON FORM CONTENTS
-
+		pageNo = 0;
 		var geneList = $geneBox.val().split(','); //array of genes
 		var excludeList = $excludeBox.val().split(','); //array of genes
 		// console.log(geneList)
@@ -225,7 +225,7 @@
 			$imageContainer.text(use_pways.length + " pathways found.");
 		}
 		// sets use_pways_page to first page set
-		use_pways_page = use_pways.slice(0, pageNo+pageMax-1);
+		use_pways_page = use_pways.slice(0, pageNo+pageMax);
 		updateImages()
 	}
 
