@@ -22,6 +22,6 @@ def zip_svgs(proj_dir):
     for plot_dir in svg_dirs:
         file_names = glob(os.path.join("{}".format(proj_dir), plot_dir, '*.svg'))
         for file_name in file_names:
-            check_call(['/usr/local/bin/svgo', file_name])
+            # check_call(['/usr/local/bin/svgo', file_name])
             check_call(['gzip', file_name])
             os.rename(file_name + '.gz', file_name + 'z')
