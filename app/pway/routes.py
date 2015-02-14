@@ -25,6 +25,11 @@ def index():
 def demo():
     return render_template('pway/show_pathways_demo.html')
 
+@pway.route('/faq')
+@login_required
+def faq():
+    return render_template('pway/faq.html')
+
 
 @pway.route('/archive')
 @login_required

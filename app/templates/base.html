@@ -31,6 +31,7 @@
         <li><a href="{{ url_for('pway.index') }}">Status</a></li>
         <li><a href="{{ url_for('pway.upload') }}">Upload</a></li>
         <li><a href="{{ url_for('pway.results') }}">Results</a></li>
+          <li><a href="{{ url_for('pway.faq') }}">FAQ</a></li>
           {% if current_user.is_admin %}
             <li>
                 <a href="{{ url_for('pway.index') }}">Moderate [Admin]
