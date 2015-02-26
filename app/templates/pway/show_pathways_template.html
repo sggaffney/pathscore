@@ -243,7 +243,11 @@
 				'<div class="panel-heading">' +
 				'<h2 class="panel-title"><a href="'+ root_url + use_pways_page[pi]['url'] +'" target="_blank">'
 				+ use_pways_page[pi]['name'] + '</a>' + ' (' + use_pways_page[pi]['pval'] + ') </h2></div>' +
-				'<div class="panel-body" style="padding:0">'
+				'<div class="panel-body" style="padding:0"><code class="p-lengths">Gene lengths: ' +
+				'<span class="keyword-text">min</span>=' + use_pways_page[pi]['lengths'][0] + 'kbp; ' +
+				'<span class="keyword-text">max</span>=' + use_pways_page[pi]['lengths'][1] + 'kbp; ' +
+				'<span class="keyword-text">avg=</span>' + use_pways_page[pi]['lengths'][2] + 'kbp; ' +
+				'<span class="keyword-text">var=</span>' + use_pways_page[pi]['lengths'][3] + '</code>'
 				+'<div class="svg_target ui-widget-content">' +
 				'<img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways_page[pi]['id'] + '.svgz" ' +
 				'alt="' + use_pways_page[pi]['id'] + '.svgz" ></img>'

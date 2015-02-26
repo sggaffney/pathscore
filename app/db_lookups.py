@@ -205,6 +205,50 @@ def get_pathway_name_dict():
         pathway_dict[path_id] = path_name
     return pathway_dict
 
+def get_pway_lengths_dict(mutation_table, ignore_genes):
+    """Get length stats for all mutated pathways."""
+    rows = None
+    pathway_lengths = dict()
+    genes_string = ""
+    if ignore_genes:
+        genes_string = repr(tuple(ignore_genes)).replace(",)", ")")
+        genes_string = "WHERE m.hugo_symbol NOT IN {}".format(genes_string)
+
+    # GET pway_size
+    cmd1 = """SELECT path_id,
+    cast(min(length_bp)/1000 AS DECIMAL(10,1)) AS `min`,
+    cast(max(length_bp)/1000 AS DECIMAL(10,1)) AS `max`,
+    cast(AVG(length_bp)/1000 AS DECIMAL(10,1)) AS `avg`,
+    cast(var_samp(length_bp/1000) AS DECIMAL(10,1)) AS `var`
+     FROM `{mutation_table}` m INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
+        INNER JOIN refs.`pathway_gene_link` pgl ON e.entrez_id = pgl.entrez_id
+        {exclude_str} GROUP BY path_id;""".format(mutation_table=mutation_table,
+                                                  exclude_str=genes_string)
+    try:
+        con = mdb.connect(**dbvars)
+        cur = con.cursor()
+        cur.execute(cmd1)
+        row_count = cur.rowcount
+        if not row_count > 1:
+            raise Exception(
+                "Result contains %g rows Ids for pathway lookup."
+                % row_count)
+        rows = cur.fetchall()
+    except mdb.Error as e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+    finally:
+        if con:
+            con.close()
+    # rows is [[id,min,max,avg],[id,min,max,avg],...]
+    for temp_lengths in rows:
+        path_id = int(temp_lengths[0])
+        len_min = str(temp_lengths[1])
+        len_max = str(temp_lengths[2])
+        len_avg = str(temp_lengths[3])
+        len_var = str(temp_lengths[4])
+        pathway_lengths[path_id] = (len_min, len_max, len_avg, len_var)
+    return pathway_lengths
+
 
 def get_gene_combs_hit(table_name):
         """Gets patient-pathway gene overlap info from databse.

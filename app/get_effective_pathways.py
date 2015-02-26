@@ -25,7 +25,7 @@ from app import dbvars
 from .db_lookups import lookup_path_sizes_global, lookup_path_sizes_exclude, \
     lookup_patient_counts, build_path_patient_dict, \
     fetch_path_ids_interest_genes, get_pathway_name_dict, get_gene_combs_hit, \
-    get_gene_counts
+    get_gene_counts, get_pway_lengths_dict
 
 import pyximport
 pyximport.install(setup_args={'include_dirs': np.get_include()})
@@ -610,6 +610,7 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         self.url = self.fetch_url()
         self.gene_set = set()
         self.gene_pc = dict()
+        self.lengths_tuple = tuple()  # set externally
 
     @property
     def nice_name(self):
@@ -625,8 +626,9 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         """Return string for javascript."""
         outstr = "{ id:" + self.path_id + ", " + "name:'" + self.nice_name \
                  + "', pval:'" + self.p_value + "', size:" + str(self.n_actual) \
-                 + ", effective:" + str(
-            self.n_effective) + ", url:'" + self.url + "', geneSet: "
+                 + ", effective:" + str(self.n_effective) + ", url:'" \
+                 + self.url + "' lengths:" + str(list(self.lengths_tuple)) \
+                 + ", geneSet: "
         if self.gene_set:
             gene_set_str = "','".join(self.gene_set)
             outstr = outstr + "['" + gene_set_str + "']}"
@@ -856,6 +858,11 @@ def run(dir_path, table_name, user_upload):
 
     allPathways = load_pathway_list_from_file(detail_path)
 
+    # LOOKUP MUTATED GENE LENGTHS
+    pathway_lengths = get_pway_lengths_dict(table_name, ignore_genes)
+    for p in allPathways:
+        p.length_tuple = pathway_lengths[int(p.path_id)]
+
     js_out_path = os.path.join(dir_path,
                                user_upload.get_local_filename() + ".js")
     make_js_file(allPathways, js_out_path)
@@ -926,7 +933,8 @@ def make_js_file(allPathways, out_path):
 def make_readable_file(allPathways, out_path):
     """Create file suitable for archiving for user."""
     header_str = "pathway_name, url, p_value, n_effective, n_actual, " \
-                 "genes_mutated_pc"
+                 "genes_mutated_pc, gene_len_min_kbp, gene_len_max_kbp, " \
+                 "gene_len_avg_kbp, gene_len_variance"
     header_line = '\t'.join(header_str.split(', ')) + '\n'
     with open(out_path, 'w') as out:
         out.write(header_line)
@@ -939,6 +947,7 @@ def make_readable_file(allPathways, out_path):
                 line_vals.append(pway.n_effective)
                 line_vals.append(pway.n_actual)
                 line_vals.append(pway.gene_pc)
+                line_vals.extend(list(pway.lengths_tuple))
                 out.write('\t'.join([str(v) for v in line_vals]) + '\n')
 
 
