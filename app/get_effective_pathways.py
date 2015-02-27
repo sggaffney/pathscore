@@ -627,7 +627,7 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         outstr = "{ id:" + self.path_id + ", " + "name:'" + self.nice_name \
                  + "', pval:'" + self.p_value + "', size:" + str(self.n_actual) \
                  + ", effective:" + str(self.n_effective) + ", url:'" \
-                 + self.url + "' lengths:" + str(list(self.lengths_tuple)) \
+                 + self.url + "', lengths:" + str(list(self.lengths_tuple)) \
                  + ", geneSet: "
         if self.gene_set:
             gene_set_str = "','".join(self.gene_set)
@@ -861,7 +861,7 @@ def run(dir_path, table_name, user_upload):
     # LOOKUP MUTATED GENE LENGTHS
     pathway_lengths = get_pway_lengths_dict(table_name, ignore_genes)
     for p in allPathways:
-        p.length_tuple = pathway_lengths[int(p.path_id)]
+        p.lengths_tuple = pathway_lengths[int(p.path_id)]
 
     js_out_path = os.path.join(dir_path,
                                user_upload.get_local_filename() + ".js")
