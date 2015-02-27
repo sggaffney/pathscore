@@ -933,7 +933,8 @@ def make_js_file(allPathways, out_path):
 def make_readable_file(allPathways, out_path):
     """Create file suitable for archiving for user."""
     header_str = "pathway_name, url, p_value, n_effective, n_actual, " \
-                 "genes_mutated_pc, gene_len_min_kbp, gene_len_max_kbp, " \
+                 "genes_mutated_pc, gene_len_min_kbp, shortest_gene(s), " \
+                 "gene_len_max_kbp, longest_gene(s), " \
                  "gene_len_avg_kbp, gene_len_variance"
     header_line = '\t'.join(header_str.split(', ')) + '\n'
     with open(out_path, 'w') as out:

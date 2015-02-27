@@ -214,16 +214,30 @@ def get_pway_lengths_dict(mutation_table, ignore_genes):
         genes_string = repr(tuple(ignore_genes)).replace(",)", ")")
         genes_string = "WHERE m.hugo_symbol NOT IN {}".format(genes_string)
 
-    # GET pway_size
-    cmd1 = """SELECT path_id,
-    cast(min(length_bp)/1000 AS DECIMAL(10,1)) AS `min`,
-    cast(max(length_bp)/1000 AS DECIMAL(10,1)) AS `max`,
-    cast(AVG(length_bp)/1000 AS DECIMAL(10,1)) AS `avg`,
-    cast(var_samp(length_bp/1000) AS DECIMAL(10,1)) AS `var`
-     FROM `{mutation_table}` m INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
+    cmd1 = """SELECT g.path_id,
+    cast(lmin/1000 AS DECIMAL(10,1)) AS `min`,
+	group_concat(DISTINCT CASE e.`length_bp` WHEN lmin THEN m.hugo_symbol
+	    ELSE NULL END ORDER BY m.hugo_symbol SEPARATOR ', ') AS min_gene,
+    cast(lmax/1000 AS DECIMAL(10,1)) AS `max`,
+	group_concat(DISTINCT CASE e.`length_bp` WHEN lmax THEN m.hugo_symbol
+	    ELSE NULL END ORDER BY m.hugo_symbol SEPARATOR ', ') AS max_gene,
+	lavg, lvar
+     FROM (SELECT DISTINCT entrez_id, hugo_symbol FROM `{mutation_table}`) m
+    INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
+    INNER JOIN refs.`pathway_gene_link` pgl ON e.entrez_id = pgl.entrez_id
+    INNER JOIN # pway_stats
+    (SELECT path_id,
+    min(length_bp) AS `lmin`,
+    max(length_bp) AS `lmax`,
+    cast(AVG(length_bp)/1000 AS DECIMAL(10,1)) AS `lavg`,
+    cast(var_samp(length_bp/1000) AS DECIMAL(10,1)) AS `lvar`
+     FROM (SELECT DISTINCT entrez_id FROM `{mutation_table}`) m
+     INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
         INNER JOIN refs.`pathway_gene_link` pgl ON e.entrez_id = pgl.entrez_id
-        {exclude_str} GROUP BY path_id;""".format(mutation_table=mutation_table,
-                                                  exclude_str=genes_string)
+        {exclude_str} GROUP BY path_id) g ON g.path_id = pgl.`path_id`
+    {exclude_str} GROUP BY g.path_id;""".format(mutation_table=mutation_table,
+                                                exclude_str=genes_string)
+
     try:
         con = mdb.connect(**dbvars)
         cur = con.cursor()
@@ -243,10 +257,13 @@ def get_pway_lengths_dict(mutation_table, ignore_genes):
     for temp_lengths in rows:
         path_id = int(temp_lengths[0])
         len_min = str(temp_lengths[1])
-        len_max = str(temp_lengths[2])
-        len_avg = str(temp_lengths[3])
-        len_var = str(temp_lengths[4])
-        pathway_lengths[path_id] = (len_min, len_max, len_avg, len_var)
+        gene_min = str(temp_lengths[2])
+        len_max = str(temp_lengths[3])
+        gene_max = str(temp_lengths[4])
+        len_avg = str(temp_lengths[5])
+        len_var = str(temp_lengths[6])
+        pathway_lengths[path_id] = (len_min, gene_min, len_max, gene_max,
+                                    len_avg, len_var)
     return pathway_lengths
 
 
