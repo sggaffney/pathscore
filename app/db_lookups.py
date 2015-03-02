@@ -222,7 +222,7 @@ def get_pway_lengths_dict(mutation_table, ignore_genes):
             group_concat(DISTINCT CASE e.`length_bp` WHEN lmax THEN m.hugo_symbol
                 ELSE NULL END ORDER BY m.hugo_symbol SEPARATOR ', ') AS max_gene,
                 lavg, lvar
-         FROM (SELECT DISTINCT entrez_id, hugo_symbol FROM `mutations_144`) m
+         FROM (SELECT DISTINCT entrez_id, hugo_symbol FROM `{mutation_table}`) m
          INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
         INNER JOIN refs.`pathway_gene_link` pgl ON e.entrez_id = pgl.entrez_id
         INNER JOIN # pway_stats
@@ -231,11 +231,11 @@ def get_pway_lengths_dict(mutation_table, ignore_genes):
         max(length_bp) AS `lmax`,
         cast(AVG(length_bp)/1000 AS DECIMAL(10,1)) AS `lavg`,
         cast(var_samp(length_bp/1000) AS DECIMAL(10,1)) AS `lvar`
-         FROM (SELECT DISTINCT hugo_symbol, entrez_id FROM `mutations_144`) m
+         FROM (SELECT DISTINCT hugo_symbol, entrez_id FROM `{mutation_table}`) m
          INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
             INNER JOIN refs.`pathway_gene_link` pgl ON e.entrez_id = pgl.entrez_id
-            WHERE m.hugo_symbol NOT IN ('CBL') GROUP BY path_id) g ON g.path_id = pgl.`path_id`
-            WHERE m.hugo_symbol NOT IN ('CBL') GROUP BY g.path_id;"""\
+            {exclude_str} GROUP BY path_id) g ON g.path_id = pgl.`path_id`
+            {exclude_str} GROUP BY g.path_id;"""\
         .format(mutation_table=mutation_table, exclude_str=genes_string)
 
     try:
