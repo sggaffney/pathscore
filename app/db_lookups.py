@@ -215,28 +215,28 @@ def get_pway_lengths_dict(mutation_table, ignore_genes):
         genes_string = "WHERE m.hugo_symbol NOT IN {}".format(genes_string)
 
     cmd1 = """SELECT g.path_id,
-    cast(lmin/1000 AS DECIMAL(10,1)) AS `min`,
-	group_concat(DISTINCT CASE e.`length_bp` WHEN lmin THEN m.hugo_symbol
-	    ELSE NULL END ORDER BY m.hugo_symbol SEPARATOR ', ') AS min_gene,
-    cast(lmax/1000 AS DECIMAL(10,1)) AS `max`,
-	group_concat(DISTINCT CASE e.`length_bp` WHEN lmax THEN m.hugo_symbol
-	    ELSE NULL END ORDER BY m.hugo_symbol SEPARATOR ', ') AS max_gene,
-	lavg, lvar
-     FROM (SELECT DISTINCT entrez_id, hugo_symbol FROM `{mutation_table}`) m
-    INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
-    INNER JOIN refs.`pathway_gene_link` pgl ON e.entrez_id = pgl.entrez_id
-    INNER JOIN # pway_stats
-    (SELECT path_id,
-    min(length_bp) AS `lmin`,
-    max(length_bp) AS `lmax`,
-    cast(AVG(length_bp)/1000 AS DECIMAL(10,1)) AS `lavg`,
-    cast(var_samp(length_bp/1000) AS DECIMAL(10,1)) AS `lvar`
-     FROM (SELECT DISTINCT entrez_id FROM `{mutation_table}`) m
-     INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
+        cast(lmin/1000 AS DECIMAL(10,1)) AS `min`,
+            group_concat(DISTINCT CASE e.`length_bp` WHEN lmin THEN m.hugo_symbol
+                ELSE NULL END ORDER BY m.hugo_symbol SEPARATOR ', ') AS min_gene,
+        cast(lmax/1000 AS DECIMAL(10,1)) AS `max`,
+            group_concat(DISTINCT CASE e.`length_bp` WHEN lmax THEN m.hugo_symbol
+                ELSE NULL END ORDER BY m.hugo_symbol SEPARATOR ', ') AS max_gene,
+                lavg, lvar
+         FROM (SELECT DISTINCT entrez_id, hugo_symbol FROM `mutations_144`) m
+         INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
         INNER JOIN refs.`pathway_gene_link` pgl ON e.entrez_id = pgl.entrez_id
-        {exclude_str} GROUP BY path_id) g ON g.path_id = pgl.`path_id`
-    {exclude_str} GROUP BY g.path_id;""".format(mutation_table=mutation_table,
-                                                exclude_str=genes_string)
+        INNER JOIN # pway_stats
+        (SELECT path_id,
+        min(length_bp) AS `lmin`,
+        max(length_bp) AS `lmax`,
+        cast(AVG(length_bp)/1000 AS DECIMAL(10,1)) AS `lavg`,
+        cast(var_samp(length_bp/1000) AS DECIMAL(10,1)) AS `lvar`
+         FROM (SELECT DISTINCT hugo_symbol, entrez_id FROM `mutations_144`) m
+         INNER JOIN refs.entrez_length e ON m.entrez_id = e.entrez_id
+            INNER JOIN refs.`pathway_gene_link` pgl ON e.entrez_id = pgl.entrez_id
+            WHERE m.hugo_symbol NOT IN ('CBL') GROUP BY path_id) g ON g.path_id = pgl.`path_id`
+            WHERE m.hugo_symbol NOT IN ('CBL') GROUP BY g.path_id;"""\
+        .format(mutation_table=mutation_table, exclude_str=genes_string)
 
     try:
         con = mdb.connect(**dbvars)
@@ -265,6 +265,35 @@ def get_pway_lengths_dict(mutation_table, ignore_genes):
         pathway_lengths[path_id] = (len_min, gene_min, len_max, gene_max,
                                     len_avg, len_var)
     return pathway_lengths
+
+
+def fetch_path_info_global():
+    """Get url, brief description and contributor as tuple."""
+    url_row = None
+    cmd = """SELECT path_id, info_url, `description_brief`, contributor FROM refs.pathways;"""
+    info_dict = dict()
+    try:
+        con = mdb.connect(**dbvars)
+        cur = con.cursor()
+        cur.execute(cmd)
+        rowCount = cur.rowcount
+        if not rowCount > 1:
+            raise Exception("Result contains %g rows Ids for pathway %s."
+                            % (rowCount, self.path_id))
+        rows = cur.fetchall()
+    except mdb.Error as e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+    finally:
+        if con:
+            con.close()
+    # rows is [[id,url,desc,contrib],[id,url,desc,contrib],...]
+    for row in rows:
+        path_id = row[0]
+        url = row[1]
+        desc = row[2]
+        contrib = row[3]
+        info_dict[path_id] = dict(url=url, desc=desc, contrib=contrib)
+    return info_dict
 
 
 def get_gene_combs_hit(table_name):

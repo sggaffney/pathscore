@@ -25,13 +25,14 @@ from app import dbvars
 from .db_lookups import lookup_path_sizes_global, lookup_path_sizes_exclude, \
     lookup_patient_counts, build_path_patient_dict, \
     fetch_path_ids_interest_genes, get_pathway_name_dict, get_gene_combs_hit, \
-    get_gene_counts, get_pway_lengths_dict
+    get_gene_counts, get_pway_lengths_dict, fetch_path_info_global
 
 import pyximport
 pyximport.install(setup_args={'include_dirs': np.get_include()})
 from comb_functions import get_pway_likelihood_cython
 
 path_size_dict = lookup_path_sizes_global()
+path_info_dict = fetch_path_info_global()
 
 
 class TableLoadException(Exception):
@@ -605,9 +606,12 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
     def __init__(self, pathway_number):
         PathwaySummaryBasic.__init__(self, pathway_number)
         # above adds path_id, n_actual, n_effective, p_value
+        pathway_number = int(pathway_number)  # ensure int
         self.name = None
         self.root_url = "http://www.broadinstitute.org/gsea/msigdb/cards/"
-        self.url = self.fetch_url()
+        self.url = path_info_dict[pathway_number]['url'].split(self.root_url)[1]
+        self.description = path_info_dict[pathway_number]['desc']
+        self.contrib = path_info_dict[pathway_number]['contrib']
         self.gene_set = set()
         self.gene_pc = dict()
         self.lengths_tuple = tuple()  # set externally
@@ -627,7 +631,8 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         outstr = "{ id:" + self.path_id + ", " + "name:'" + self.nice_name \
                  + "', pval:'" + self.p_value + "', size:" + str(self.n_actual) \
                  + ", effective:" + str(self.n_effective) + ", url:'" \
-                 + self.url + "', lengths:" + str(list(self.lengths_tuple)) \
+                 + self.url + "', contrib: '" + self.contrib + "' , brief: '" \
+                 + self.description + "', lengths:" + str(list(self.lengths_tuple)) \
                  + ", geneSet: "
         if self.gene_set:
             gene_set_str = "','".join(self.gene_set)
@@ -650,39 +655,15 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         name_str = name_str.replace('RNA PATHWAY', 'PKR SIGNALING PATHWAY')
         outstr = "{ id:" + self.path_id + ", " + "name:'" + name_str \
                  + "', pval:'" + self.p_value + "', size:" + str(self.n_actual) \
-                 + ", effective:" + str(
-            self.n_effective) + ", url:'" + self.url + "', geneSet: "
+                 + ", effective:" + str(self.n_effective) + ", url:'" \
+                 + self.url + "', brief:'" + self.description + "', contrib:'" \
+                 + self.contrib + "', geneSet: "
         if self.gene_set:
             gene_set_str = "','".join(self.gene_set)
             outstr = outstr + "['" + gene_set_str + "']}"
         else:
             outstr = outstr + "[]}"
         return outstr
-
-    def fetch_url(self):
-        """Look up database (refs.pathways) to get info_url for path_id."""
-        url_row = None
-        cmd = """SELECT info_url FROM refs.pathways WHERE path_id = {};""".format(
-            self.path_id)
-        url = None
-        try:
-            con = mdb.connect(**dbvars)
-            cur = con.cursor()
-            cur.execute(cmd)
-            rowCount = cur.rowcount
-            if not rowCount == 1:
-                raise Exception("Result contains %g rows Ids for pathway %s."
-                                % (rowCount, self.path_id))
-            url_row = cur.fetchone()
-            url = url_row[0]
-            url = url.split(self.root_url)[1]
-        except mdb.Error as e:
-            print "Error %d: %s" % (e.args[0], e.args[1])
-        finally:
-            if con:
-                con.close()
-
-        return url
 
 
 class BackgroundGenomeFetcher():
