@@ -16,7 +16,7 @@ import warnings
 from collections import OrderedDict
 import os
 import subprocess
-from .misc import zip_svgs
+from .misc import zip_svgs, html_quotes
 
 from . import db
 from .emails import run_finished_notification
@@ -628,11 +628,11 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
 
     def as_string_js(self):
         """Return string for javascript."""
-        outstr = "{ id:" + self.path_id + ", " + "name:'" + self.nice_name \
+        outstr = "{ id:" + self.path_id + ", " + "name:'" + html_quotes(self.nice_name) \
                  + "', pval:'" + self.p_value + "', size:" + str(self.n_actual) \
                  + ", effective:" + str(self.n_effective) + ", url:'" \
-                 + self.url + "', contrib: '" + self.contrib + "' , brief: '" \
-                 + self.description + "', lengths:" + str(list(self.lengths_tuple)) \
+                 + self.url + "', contrib: '" + html_quotes(self.contrib) + "' , brief: '" \
+                 + html_quotes(self.description) + "', lengths:" + str(list(self.lengths_tuple)) \
                  + ", geneSet: "
         if self.gene_set:
             gene_set_str = "','".join(self.gene_set)

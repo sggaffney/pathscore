@@ -25,3 +25,7 @@ def zip_svgs(proj_dir):
             # check_call(['/usr/local/bin/svgo', file_name])
             check_call(['gzip', file_name])
             os.rename(file_name + '.gz', file_name + 'z')
+
+def html_quotes(str_before):
+    """Replaces apostrophe with html for single right apostrophe (&#8217;)."""
+    return str_before.replace("'","&#39;").replace('"',"&quot;")
