@@ -123,3 +123,30 @@ body {
 .keyword-text {
     color:red;
 }
+
+.dendrogram {
+  display: inline-block;
+  vertical-align: top;
+  width: 250px;
+  height: 2058px;
+  margin: 0.2em;
+}
+.dendrotext {
+  height: 2058px;
+  display: inline-block;
+  vertical-align: top;
+  margin: 0.2em;
+  line-height: 1.5;
+  font-size: 14px;
+  white-space: pre-line;
+}
+
+.tree-holder {
+    white-space: nowrap;
+    overflow: scroll;
+    height: 100%;
+}
+
+#resizable-tree {
+    height: 200px;
+}
