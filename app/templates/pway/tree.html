@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block head %}
+    {{ super() }}
+	<title>Results</title>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.3/themes/smoothness/jquery-ui.css">
+{% endblock %}
+
+{% block page_content %}
+
+{% set tree_svg = 'static/test_dendrogram.svg' %}
+
+<!-- BETTER TO HAVE AN OBJECT-->
+
+
+<div class="page-header">
+	<h1>Pathway Dendrogram</h1>
+</div>
+
+<div class="panel panel-default">
+	<div class="panel-heading">Browse your available projects</div>
+	<div class="panel-body">
+		<form class="form-inline" action="">
+			<div class="form-group">
+				<select class="form-control" id="projSelection" name="characters">
+				{% for proj in projects %}
+					{% if show_proj == proj.get_local_filename() %}
+						<option value="{{ proj.file_id }}" selected="selected">
+					{% else %}
+						<option value="{{ proj.file_id }}">
+					{% endif %}
+						{{ proj.get_local_filename() }}
+						</option>
+				{% endfor %}
+				</select>
+			</div>
+        </form>
+    </div>
+</div>
+
+
+<div id="resizable-tree" class="ui-widget-content">
+    <div class="tree-holder">
+        <div class="dendrogram">
+            <img src="{{ tree_path }}" alt="dendrogram"></img>
+        </div>
+
+
+        <div class="dendrotext">{% for proj_id in names_odict %}<button data-pid="{{ proj_id }}">{{ names_odict[proj_id] }}</button></div>
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block scripts %}
+{{super()}}
+
+<script src="//code.jquery.com/ui/1.11.3/jquery-ui.js"></script>
+<script>
+$(function() {
+    $( "#resizable-tree" ).resizable({handles: "n, s"});
+});
+</script>
+
+{% endblock %}

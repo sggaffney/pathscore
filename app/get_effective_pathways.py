@@ -1,24 +1,22 @@
 """Runs pathway pipeline on CancerDB tables or TCGA tables."""
 
 
-from .decorators import async
 from flask import current_app
-from flask_login import current_user
-
 import MySQLdb as mdb
-from scipy.misc import comb
 import numpy as np
 from numpy import *
 from scipy import stats
 import timeit
-import argparse
 import warnings
 from collections import OrderedDict
 import os
 import subprocess
-from .misc import zip_svgs, html_quotes
+import pyximport
+pyximport.install(setup_args={'include_dirs': np.get_include()})
+from comb_functions import get_pway_likelihood_cython
 
 from . import db
+from .decorators import async
 from .emails import run_finished_notification
 from .models import UserFile
 from app import dbvars
@@ -26,11 +24,10 @@ from .db_lookups import lookup_path_sizes_global, lookup_path_sizes_exclude, \
     lookup_patient_counts, build_path_patient_dict, \
     fetch_path_ids_interest_genes, get_pathway_name_dict, get_gene_combs_hit, \
     get_gene_counts, get_pway_lengths_dict, fetch_path_info_global
+import misc
+import naming_rules
 
-import pyximport
-pyximport.install(setup_args={'include_dirs': np.get_include()})
-from comb_functions import get_pway_likelihood_cython
-
+# GLOBALS
 path_size_dict = lookup_path_sizes_global()
 path_info_dict = fetch_path_info_global()
 
@@ -628,11 +625,11 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
 
     def as_string_js(self):
         """Return string for javascript."""
-        outstr = "{ id:" + self.path_id + ", " + "name:'" + html_quotes(self.nice_name) \
+        outstr = "{ id:" + self.path_id + ", " + "name:'" + misc.html_quotes(self.nice_name) \
                  + "', pval:'" + self.p_value + "', size:" + str(self.n_actual) \
                  + ", effective:" + str(self.n_effective) + ", url:'" \
-                 + self.url + "', contrib: '" + html_quotes(self.contrib) + "' , brief: '" \
-                 + html_quotes(self.description) + "', lengths:" + str(list(self.lengths_tuple)) \
+                 + self.url + "', contrib: '" + misc.html_quotes(self.contrib) + "' , brief: '" \
+                 + misc.html_quotes(self.description) + "', lengths:" + str(list(self.lengths_tuple)) \
                  + ", geneSet: "
         if self.gene_set:
             gene_set_str = "','".join(self.gene_set)
@@ -839,6 +836,10 @@ def run(dir_path, table_name, user_upload):
 
     allPathways = load_pathway_list_from_file(detail_path)
 
+    scores_path, names_path, tree_svg_path = naming_rules.\
+        get_tree_score_paths(user_upload)
+    save_dissimilarity_files(allPathways, scores_path, names_path, min_len=50)
+
     # LOOKUP MUTATED GENE LENGTHS
     pathway_lengths = get_pway_lengths_dict(table_name, ignore_genes)
     for p in allPathways:
@@ -857,8 +858,9 @@ def run(dir_path, table_name, user_upload):
     # ONLY CREATE SVGS IF MATRIX TXT PATH EXISTS (i.e. pathways have mutations)
     if os.path.exists(os.path.join(final_writer.dir_path,
                                    final_writer.matrix_folder)):
-        create_pway_plots(str(detail_path))
-        zip_svgs(final_writer.dir_path)
+        create_pway_plots(str(detail_path), scores_path, names_path,
+                          tree_svg_path)
+        misc.zip_svgs(final_writer.dir_path)
     # create_svgs(str(detail_path))
     # create_matrix_svgs(str(detail_path))
 
@@ -897,6 +899,24 @@ def load_pathway_list_from_file(results_path):
     return allPathways
 
 
+def save_dissimilarity_files(pway_list, scores_path, names_path, min_len=50):
+    """Reads gene_sets from all pathways, calculating a matrix of dissimilarity
+    scores. Saves scores and path_id+names in text files at specified paths."""
+    pvals = [p.p_value for p in pway_list]
+    pvals = misc.get_at_least_n(pvals, min_len)
+    n_pways = len(pvals)
+    gene_set_list = [p.gene_set for p in pway_list if p.gene_set][:n_pways]
+    scores = misc.get_distance_matrix(gene_set_list)
+    # SAVE SCORES SQUARE MATRIX IN TEXT FILE. (savetxt from numpy)
+    savetxt(scores_path, scores, delimiter='\t')
+    # SAVE NAMES IN TEXT FILE.
+    names = [(p.path_id, p.nice_name) for p in pway_list if p.gene_set]
+    names = names[:n_pways]  # trim down to length n_pways
+    with open(names_path, 'w') as out:
+        for n in names:
+            out.write(n[0] + '\t' + n[1] + '\n')
+
+
 def make_js_file(allPathways, out_path):
     # BUILD JS FILE
     with open(out_path, 'w') as out:  # 'pathways_pvalues_{}.js'
@@ -933,44 +953,14 @@ def make_readable_file(allPathways, out_path):
                 out.write('\t'.join([str(v) for v in line_vals]) + '\n')
 
 
-def create_pway_plots(txt_path):
+def create_pway_plots(txt_path, scores_path, names_path, tree_path):
     """Run matlab script that builds matrix and target svgs."""
     # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
     cmd = 'matlab -nosplash -nodesktop -r \"pway_plots(' \
-          '{txtpath!r});\"'.format(txtpath=txt_path)
+          '{txtpath!r}, {scores!r}, {names!r}, {tree!r});\"'.\
+        format(txtpath=txt_path, scores=scores_path, names=names_path,
+               tree=tree_path)
     with open(os.devnull, "r") as fnullin:
         with open(os.devnull, "w") as fnullout:
             subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
                                   stderr=fnullout, shell=True)
-
-
-def create_svgs(txt_path):
-    """NOT USED. Run matlab script that builds svgs in directory containing
-    pathways txt."""
-    # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
-    cmd = 'matlab -nosplash -nodesktop -r \"plot_pway_targets({txtpath!r},' \
-          '\'--svg\',\'--skipfew\');\"'.format(txtpath=txt_path)
-    with open(os.devnull, "r") as fnullin:
-        with open(os.devnull, "w") as fnullout:
-            subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
-                                  stderr=fnullout, shell=True)
-
-
-def create_matrix_svgs(txt_path):
-    """NOT USED. Run matlab script that builds matrix svgs. SVGs stored in matrix_
-    txt/matrix_svg."""
-    # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
-    cmd = 'matlab -nosplash -nodesktop -r \"plot_patient_genes(' \
-          '{txtpath!r});\"'.format(txtpath=txt_path)
-    with open(os.devnull, "r") as fnullin:
-        with open(os.devnull, "w") as fnullout:
-            subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
-                                  stderr=fnullout, shell=True)
-
-
-if __name__ == '__main__':
-    main()
-
-    
-
-
