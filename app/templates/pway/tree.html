@@ -16,10 +16,10 @@
 
 <!--<div class="panel panel-default">-->
 	<!--<div class="panel-body">-->
-		<form class="form-inline" action="">
+		<form class="form-inline" action="/tree" method="get">
 			<div class="form-group" style="margin: 0px 0px 15px 0px;">
 				<label for="projSelection">Project:</label>
-                <select class="form-control" id="projSelection" name="characters">
+                <select class="form-control" id="projSelection" name="proj">
 				{% for proj in projects %}
 					{% if current_proj.file_id == proj.file_id %}
 						<option value="{{ proj.file_id }}" selected="selected">
@@ -58,23 +58,36 @@
 
 <script src="//code.jquery.com/ui/1.11.3/jquery-ui.js"></script>
 <script>
-$(function() {
-    $( "#resizable-tree" ).resizable({handles: "s"});
-    $imageContainer = $('#imageContainer');
-    $treebuttons = $('.tree-button');
-    $t = $treebuttons[0];
-    pway_dict = {};
-    initialView = true;
-    $.getScript('{{"static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ ".js" }}', function( data, textStatus, jqxhr ) {
-			// console.log( data ); // Data returned
-			// console.log( textStatus ); // Success
-			// console.log( jqxhr.status ); // 200
-			console.log( "Load was performed." );
-			n_pways = pwayList.length;
-            get_pway_dict();
-            set_hover_action();
-			});
+    $(function() {
+        $("#resizable-tree").resizable({handles: "s"});
+        $imageContainer = $('#imageContainer');
+        $treebuttons = $('.tree-button');
+        //pway_dict = {};  //set by get_pway_dict when projId refreshed
+        //initialView = true;
+
+        $.getScript('{{"static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ ".js" }}', function( data, textStatus, jqxhr ) {
+                // console.log( data ); // Data returned
+                // console.log( textStatus ); // Success
+                // console.log( jqxhr.status ); // 200
+                console.log( "Load was performed." );
+                n_pways = pwayList.length;
+                initialView = true;
+                get_pway_dict();
+                set_hover_action();}
+        );
+
+        $projSelection = $('#projSelection');
+        projId = $projSelection.val();
+        $projSelection.change(  // sets projId global
+            function () {
+                projId = $projSelection.val();
+                $('form').submit()
+            }
+        );
+
     });
+
+
     function set_hover_action() {
         $treebuttons.mouseenter(function () {
             $imageContainer.empty();  //clear old pathway images
@@ -107,13 +120,13 @@ $(function() {
                     }) + '</div>' +
                     '<img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + pway_dict[pid]['id'] + '.svgz" ' +
                     'px alt="' + pway_dict[pid]['id'] + '.svgz" ></img>' //
-                    + '</div></div>'
-            );
-        $(".svg_matrix").click(expandMatrixImage);
-        })
+                    + '</div></div>');
+            $(".svg_matrix").click(expandMatrixImage);
+        });
     }
 
     function get_pway_dict(){
+        pway_dict = {};
         for (var i=0,  tot=n_pways; i < tot; i++) {
             temp_pway = pwayList.pop();
             pway_dict[temp_pway.id] = temp_pway;
