@@ -899,9 +899,10 @@ def load_pathway_list_from_file(results_path):
     return allPathways
 
 
-def save_dissimilarity_files(pway_list, scores_path, names_path, min_len=50):
+def save_dissimilarity_files(pway_list_full, scores_path, names_path, min_len=50):
     """Reads gene_sets from all pathways, calculating a matrix of dissimilarity
     scores. Saves scores and path_id+names in text files at specified paths."""
+    pway_list = [p for p in pway_list_full if p.n_effective > p.n_actual]
     pvals = [p.p_value for p in pway_list]
     pvals = misc.get_at_least_n(pvals, min_len)
     n_pways = len(pvals)

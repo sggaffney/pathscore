@@ -20,7 +20,7 @@ def simplify_string(odd_string):
 
 def zip_svgs(proj_dir):
     """Zip and delete all svgs in matrix_svg, pathways_svg."""
-    svg_dirs = ['pathways_svg', 'matrix_svg']
+    svg_dirs = ['pathways_svg', 'matrix_svg', '.']
     for plot_dir in svg_dirs:
         file_names = glob(os.path.join("{}".format(proj_dir), plot_dir, '*.svg'))
         for file_name in file_names:
@@ -50,7 +50,7 @@ def get_distance_matrix(gene_sets):
                                        set(gene_sets[ind_pair[1]]))
         scores[ind_pair[0], ind_pair[1]] = score
     # turn diagonal matrix into symmetric matrix
-    scores = scores + np.fliplr(np.flipud(scores))
+    scores = scores + np.transpose(scores)
     return scores
 
 

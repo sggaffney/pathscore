@@ -7,23 +7,21 @@
 
 {% block page_content %}
 
-{% set tree_svg = 'static/test_dendrogram.svg' %}
-
 <!-- BETTER TO HAVE AN OBJECT-->
 
 
-<div class="page-header">
-	<h1>Pathway Dendrogram</h1>
-</div>
+<!--<div class="page-header">-->
+	<!--<h1>Pathway Dendrogram</h1>-->
+<!--</div>-->
 
-<div class="panel panel-default">
-	<div class="panel-heading">Browse your available projects</div>
-	<div class="panel-body">
+<!--<div class="panel panel-default">-->
+	<!--<div class="panel-body">-->
 		<form class="form-inline" action="">
-			<div class="form-group">
-				<select class="form-control" id="projSelection" name="characters">
+			<div class="form-group" style="margin: 0px 0px 15px 0px;">
+				<label for="projSelection">Project:</label>
+                <select class="form-control" id="projSelection" name="characters">
 				{% for proj in projects %}
-					{% if show_proj == proj.get_local_filename() %}
+					{% if show_proj|int == proj.file_id %}
 						<option value="{{ proj.file_id }}" selected="selected">
 					{% else %}
 						<option value="{{ proj.file_id }}">
@@ -34,22 +32,24 @@
 				</select>
 			</div>
         </form>
-    </div>
-</div>
+    <!--</div>-->
+<!--</div>-->
 
 
 <div id="resizable-tree" class="ui-widget-content">
     <div class="tree-holder">
         <div class="dendrogram">
-            <img src="{{ tree_path }}" alt="dendrogram"></img>
+            <img src="{{ tree_path }}" alt="dendrogram">
         </div>
 
 
-        <div class="dendrotext">{% for proj_id in names_odict %}<button data-pid="{{ proj_id }}">{{ names_odict[proj_id] }}</button></div>
+        <div class="dendrotext">{% for proj_id in names_odict %}<button class="tree-button" data-pid="{{ proj_id }}">{{ names_odict[proj_id]|safe }}</button>
+            {% endfor%}</div>
     </div>
 </div>
 
-
+<div id="imageContainer" class="padded">
+</div>
 
 {% endblock %}
 
@@ -59,8 +59,84 @@
 <script src="//code.jquery.com/ui/1.11.3/jquery-ui.js"></script>
 <script>
 $(function() {
-    $( "#resizable-tree" ).resizable({handles: "n, s"});
-});
+    $( "#resizable-tree" ).resizable({handles: "s"});
+    $imageContainer = $('#imageContainer');
+    $treebuttons = $('.tree-button');
+    $t = $treebuttons[0];
+    pway_dict = {};
+    initialView = true;
+    $.getScript('{{"static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[show_proj|int] ~ ".js" }}', function( data, textStatus, jqxhr ) {
+			// console.log( data ); // Data returned
+			// console.log( textStatus ); // Success
+			// console.log( jqxhr.status ); // 200
+			console.log( "Load was performed." );
+			n_pways = pwayList.length;
+            get_pway_dict();
+            set_hover_action();
+			});
+    });
+    function set_hover_action() {
+        $treebuttons.mouseenter(function () {
+            $imageContainer.empty();  //clear old pathway images
+            if(initialView){
+                $('div#resizable-tree').height(300);
+                initialView = false;
+            }
+            var pid = this.dataset.pid;
+            var projId = {{ current_proj.file_id }};
+            impath = "{{ 'static/data/' ~ current_user.id ~ '/' ~ current_proj.file_id ~ '/matrix_svg/' }}" + pid + '.svgz';
+            $imageContainer.append(
+                    '<div class="panel panel-primary">' +
+                    '<div class="panel-heading">' +
+                    '<h2 class="panel-title"><a href="' + root_url + pway_dict[pid]['url'] + '" target="_blank">'
+                    + pway_dict[pid]['name'] + '</a>' + ' (p=' + pway_dict[pid]['pval'] + ') </h2>' +
+                    pway_dict[pid]['brief'] + ' (' + pway_dict[pid]['contrib'] + ')</div>' +
+                    '<div class="panel-body" style="padding:0"><code class="p-lengths">Gene lengths: ' +
+                    '<span class="keyword-text">min</span>=' + pway_dict[pid]['lengths'][0] + 'kbp (' + pway_dict[pid]['lengths'][1] + '); ' +
+                    '<span class="keyword-text">max</span>=' + pway_dict[pid]['lengths'][2] + 'kbp (' + pway_dict[pid]['lengths'][3] + '); ' +
+                    '<span class="keyword-text">avg</span>=' + pway_dict[pid]['lengths'][4] + 'kbp; ' +
+                    '<span class="keyword-text">var</span>=' + pway_dict[pid]['lengths'][5] + '</code>'
+                    + '<div class="svg_target ui-widget-content">' +
+                    '<img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + pway_dict[pid]['id'] + '.svgz" ' +
+                    'alt="' + pway_dict[pid]['id'] + '.svgz" ></img>'
+                    + '</div>'
+                    + '<div class="svg_matrix ui-widget-content"><div class="pway_size" style="display:none">'
+                    + JSON.stringify({
+                        "n_genes": pway_dict[pid].geneSet.length,
+                        "expanded": false
+                    }) + '</div>' +
+                    '<img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + pway_dict[pid]['id'] + '.svgz" ' +
+                    'px alt="' + pway_dict[pid]['id'] + '.svgz" ></img>' //
+                    + '</div></div>'
+            );
+        $(".svg_matrix").click(expandMatrixImage);
+        })
+    }
+
+    function get_pway_dict(){
+        for (var i=0,  tot=n_pways; i < tot; i++) {
+            temp_pway = pwayList.pop();
+            pway_dict[temp_pway.id] = temp_pway;
+        }
+    }
+
+	function expandMatrixImage(event){
+		var $im = $(event.target);
+		var $statusDiv = $im.parent().children()[0];
+		var im_status = jQuery.parseJSON($statusDiv.textContent);
+		var n_genes = im_status.n_genes;
+		var expanded = im_status.expanded;
+		if(!expanded)
+			$im.css('height',25*n_genes + 80);
+		else
+			$im.css('height','inherit');
+		im_status.expanded = !im_status.expanded;
+		$statusDiv.textContent = JSON.stringify(im_status);
+
+	}
+
+
 </script>
 
 {% endblock %}
+

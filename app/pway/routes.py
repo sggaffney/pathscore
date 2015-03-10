@@ -59,7 +59,9 @@ def tree():
             current_temp = [u for u in upload_list if u.file_id == int(show_proj)]
             print(i); i += 1
             # if not among user's finished projects, use highest file_id
-            if len(current_temp) != 1:
+            if len(current_temp) == 1:
+                current_proj = current_temp[0]
+            else:
                 current_proj = upload_list[0]
                 print(i); i += 1
 

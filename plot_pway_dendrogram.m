@@ -10,7 +10,8 @@ leaf_sep = 21; % pixel line height for label text
 max_len = 60; % max number of characters, used for trimming pway name`
 scores=dlmread(scores_file,'\t');
 n_pways = size(scores, 1);
-tree = linkage(scores,'average');
+D = squareform(scores, 'tovector');
+tree = linkage(D,'average');
 hfig = figure('Visible','off');
 [H, ~, outperm] = dendrogram(tree, 0, 'Orientation','left','ColorThreshold','default'); 
 set(H,'LineWidth',2)
@@ -26,7 +27,7 @@ plot2svg(svg_out_path) %'_' int2str(nrows) 'x' int2str(ncols)
 
 %%
 names_cell = read_names_file(names_file);
-names_new = names_cell(outperm);
+names_new = names_cell(fliplr(outperm));
 
 %%
 fileID = fopen([names_file '.reorder'], 'w');

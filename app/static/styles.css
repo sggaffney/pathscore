@@ -118,6 +118,10 @@ body {
     max-width: 800px;
     margin-left: auto;
     margin-right:auto;
+    border:none !important;
+}
+.svg_matrix {
+    border:none !important;
 }
 
 .keyword-text {
@@ -128,11 +132,11 @@ body {
   display: inline-block;
   vertical-align: top;
   width: 250px;
-  height: 2058px;
+  /*height: 2058px;*/
   margin: 0.2em;
 }
 .dendrotext {
-  height: 2058px;
+  /*height: 2058px;*/
   display: inline-block;
   vertical-align: top;
   margin: 0.2em;
@@ -149,5 +153,11 @@ body {
 }
 
 #resizable-tree {
-    height: 200px;
+    /*height: 300px;*/
+}
+
+.tree-button {
+  padding: 0;
+  border: 0;
+  background-color: inherit;
 }
