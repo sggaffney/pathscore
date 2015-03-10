@@ -70,7 +70,7 @@ def tree():
         print(i); i += 1
         names_ordered_path = names_path + '.reorder'
         print(i); i += 1
-        tree_path = naming_rules.get_apache_path(tree_path)
+        tree_path = naming_rules.get_apache_path(tree_path) + 'z'
         print(tree_path)
         print(i); i += 1
         names_odict = OrderedDict()  # ordered dictionary of path_id: name
@@ -91,8 +91,8 @@ def tree():
     print('render time')
     return render_template('pway/tree.html', current_proj=current_proj,
                            projects=upload_list, user_id=current_user.id,
-                           show_proj=show_proj, proj_names=proj_names,
-                           names_odict=names_odict, tree_path=tree_path)
+                           proj_names=proj_names, names_odict=names_odict,
+                           tree_path=tree_path)
 
 
 @pway.route('/faq')

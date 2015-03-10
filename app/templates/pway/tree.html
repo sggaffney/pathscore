@@ -21,7 +21,7 @@
 				<label for="projSelection">Project:</label>
                 <select class="form-control" id="projSelection" name="characters">
 				{% for proj in projects %}
-					{% if show_proj|int == proj.file_id %}
+					{% if current_proj.file_id == proj.file_id %}
 						<option value="{{ proj.file_id }}" selected="selected">
 					{% else %}
 						<option value="{{ proj.file_id }}">
@@ -65,7 +65,7 @@ $(function() {
     $t = $treebuttons[0];
     pway_dict = {};
     initialView = true;
-    $.getScript('{{"static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[show_proj|int] ~ ".js" }}', function( data, textStatus, jqxhr ) {
+    $.getScript('{{"static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ ".js" }}', function( data, textStatus, jqxhr ) {
 			// console.log( data ); // Data returned
 			// console.log( textStatus ); // Success
 			// console.log( jqxhr.status ); // 200
