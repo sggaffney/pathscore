@@ -4,6 +4,7 @@ from glob import glob
 import os
 from itertools import combinations_with_replacement
 import numpy as np
+import subprocess
 
 
 def simplify_string(odd_string):
@@ -22,7 +23,13 @@ def zip_svgs(proj_dir):
     """Zip and delete all svgs in matrix_svg, pathways_svg."""
     svg_dirs = ['pathways_svg', 'matrix_svg', '.']
     for plot_dir in svg_dirs:
-        file_names = glob(os.path.join("{}".format(proj_dir), plot_dir, '*.svg'))
+        plot_path = os.path.join(proj_dir, plot_dir)
+        with open(os.devnull, "r") as fnullin:
+            with open(os.devnull, "w") as fnullout:
+                subprocess.check_call(['/usr/local/bin/svgo', '-f', plot_path],
+                                      stdin=fnullin, stdout=fnullout,
+                                      stderr=fnullout)
+        file_names = glob(os.path.join(plot_path, '*.svg'))
         for file_name in file_names:
             # check_call(['/usr/local/bin/svgo', file_name])
             check_call(['gzip', file_name])
