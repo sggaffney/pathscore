@@ -9,6 +9,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 # 	private final String SMTP_AUTH_PWD  = "";
 # 	private final String CONTENT_TYPE = "text/html; charset=utf-8";
 
+os.environ["PATH"] += os.pathsep + os.environ.get('SVGO_PARENT', '/usr/local/bin')
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY')

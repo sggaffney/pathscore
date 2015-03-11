@@ -115,7 +115,7 @@
                     '<img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + pway_dict[pid]['id'] + '.svgz" ' +
                     'alt="' + pway_dict[pid]['id'] + '.svgz"></img>'
                     + '</div>'
-                    + '<div class="svg_matrix ui-widget-content" data-ngenes="' + ngenes +'" data-expanded=' + false + '><div class="pway_size" style="display:none">'
+                    + '<div class="svg_matrix ui-widget-content" data-ngenes="' + ngenes +'" data-expanded=false><div class="pway_size" style="display:none">'
                     + JSON.stringify({
                         "n_genes": pway_dict[pid].geneSet.length,
                         "expanded": false
@@ -137,19 +137,17 @@
 
 	function expandMatrixImage(event){
 		var $im = $(event.target);
-		var $svg_matrix= $im.parent();
-//		var im_status = jQuery.parseJSON($statusDiv.textContent);
-//		var n_genes = im_status.n_genes;
-		var n_genes = $svg_matrix.data('n_genes');
-        var expanded = $svg_matrix.data('expanded');
+		var $statusDiv = $im.parent().children()[0];
+		var im_status = jQuery.parseJSON($statusDiv.textContent);
+		var n_genes = im_status.n_genes;
+		var expanded = im_status.expanded;
 		if(!expanded)
-			$im.css('height',25*ngenes + 80);
+			$im.css('height',25*n_genes + 80);
 		else
 			$im.css('height','inherit');
+		im_status.expanded = !im_status.expanded;
+		$statusDiv.textContent = JSON.stringify(im_status);
 
-//        im_status.expanded = !im_status.expanded;
-//		$statusDiv.textContent = JSON.stringify(im_status);
-        $svg_matrix[0].dataset.expanded = true;
 	}
 
 

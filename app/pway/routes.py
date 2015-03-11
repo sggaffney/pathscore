@@ -54,7 +54,7 @@ def tree():
             if len(current_temp) == 1:
                 current_proj = current_temp[0]
             else:
-                current_proj = upload_list[0]
+                current_proj = upload_list[-1]
         # load ordered dictionary of path_ids : pathway_display_name
         names_path, tree_path = naming_rules.get_tree_score_paths(current_proj)[1:3]
         names_ordered_path = names_path + '.reorder'
