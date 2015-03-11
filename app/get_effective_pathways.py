@@ -397,14 +397,14 @@ class LCalculator():
             return (ne, ult)
         # check last 2 vals to check for decline:
         penult = self._get_pway_likelihood(
-            pway_size=self.G - 2)  # WAS self.G - self.max_mutations - 1
+            pway_size=self.G - self.pway.n_actual - 2)  # WAS self.G - self.max_mutations - 1
         ult = self._get_pway_likelihood(
-            pway_size=self.G - 1)  # WAS self.G - self.max_mutations
+            pway_size=self.G - self.pway.n_actual - 1)  # WAS self.G - self.max_mutations
         if ult > penult:
             ne = self.G
             return (ne, ult)
         # at this stage, there will be a max before Genome size
-        for pway_size in xrange(1,self.G):
+        for pway_size in xrange(1, self.G):
             # WAS xrange(1,self.G - self.max_mutations):
             this_ll = self._get_pway_likelihood(pway_size=pway_size)
             # profile.append(this_ll)
