@@ -39,56 +39,38 @@ def tree_test():
 @pway.route('/tree')
 @login_required
 def tree():
-    i = 0
-    print(i); i += 1
     # if proj among arguments, show this tree first.
     show_proj = request.args.get('proj', None)
-    print(show_proj)
     # list of projects (and proj_names) used to create dropdown project selector
-    print(i); i += 1
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
         filter_by(run_complete=True).order_by(UserFile.file_id).all()
-    print(i); i += 1
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
-    print(i); i += 1
     if upload_list:
-        print "yes, upload list"
         # Use specified project from args or highest file_id as CURRENT PROJECT
         current_proj = upload_list[0]  # override if valid proj specified
         if show_proj:
             current_temp = [u for u in upload_list if u.file_id == int(show_proj)]
-            print(i); i += 1
             # if not among user's finished projects, use highest file_id
             if len(current_temp) == 1:
                 current_proj = current_temp[0]
             else:
                 current_proj = upload_list[0]
-                print(i); i += 1
-
         # load ordered dictionary of path_ids : pathway_display_name
         names_path, tree_path = naming_rules.get_tree_score_paths(current_proj)[1:3]
-        print(i); i += 1
         names_ordered_path = names_path + '.reorder'
-        print(i); i += 1
         tree_path = naming_rules.get_apache_path(tree_path) + 'z'
-        print(tree_path)
-        print(i); i += 1
         names_odict = OrderedDict()  # ordered dictionary of path_id: name
-        print(i); i += 1
         with open(names_ordered_path, 'rU') as f:
             for line in f:
                 vals = line.strip('\n').split('\t')
                 if len(vals) != 2:
                     continue
                 names_odict[vals[0]] = vals[1]
-
     else:  # no projects yet!
-        print "no upload list"
         flash("No project results to show yet.", "info")
         current_proj = None
         names_odict = OrderedDict()
         tree_path = None
-    print('render time')
     return render_template('pway/tree.html', current_proj=current_proj,
                            projects=upload_list, user_id=current_user.id,
                            proj_names=proj_names, names_odict=names_odict,
