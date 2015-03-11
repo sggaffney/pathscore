@@ -61,7 +61,7 @@ def get_distance_matrix(gene_sets):
     return scores
 
 
-def get_at_least_n(vals, n):
+def get_at_least_n(vals, n, nmax=200):
     """Get at least n values from list. Extend if following values are the same
     as nth value."""
     try:
@@ -70,7 +70,7 @@ def get_at_least_n(vals, n):
     except IndexError:
         return vals[:n]
 
-    if v_next == v_n:
-        return get_at_least_n(vals, n+1)
+    if v_next == v_n and n < nmax:
+        return get_at_least_n(vals, n+1, nmax)
     else:
         return vals[:n]
