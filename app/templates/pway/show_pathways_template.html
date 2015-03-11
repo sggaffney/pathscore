@@ -238,6 +238,8 @@
 			$imageContainer.append(show_text);
 		}
 		for(var pi=0; pi<use_pways_page.length; pi++){
+			var ngenes = use_pways_page[pi].geneSet.length;
+			var max_height = 25*ngenes + 80;
 			$imageContainer.append(
 				'<div class="panel panel-primary">' +
 				'<div class="panel-heading">' +
@@ -256,7 +258,7 @@
 				+'<div class="svg_matrix ui-widget-content"><div class="pway_size" style="display:none">'
 				+ JSON.stringify({"n_genes":use_pways_page[pi].geneSet.length, "expanded":false}) + '</div>' +
 				'<img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + use_pways_page[pi]['id'] + '.svgz" ' +
-				'px alt="' + use_pways_page[pi]['id'] + '.svgz" ></img>' //
+				'px alt="' + use_pways_page[pi]['id'] + '.svgz" style="max-height:' + max_height + 'px;"></img>' //
 				+'</div></div>'
 				);
 				// 'height=1024px width=1024px

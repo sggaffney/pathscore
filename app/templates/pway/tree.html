@@ -62,7 +62,7 @@
         $("#resizable-tree").resizable({handles: "s"});
         $imageContainer = $('#imageContainer');
         $treebuttons = $('.tree-button');
-        //pway_dict = {};  //set by get_pway_dict when projId refreshed
+        //pway_dict = {};  //set by get_pway_dict when projId set/refreshed
         //initialView = true;
 
         $.getScript('{{"static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ ".js" }}', function( data, textStatus, jqxhr ) {
@@ -97,6 +97,8 @@
             }
             var pid = this.dataset.pid;
             var projId = {{ current_proj.file_id }};
+            var ngenes = pway_dict[pid].geneSet.length;
+            var max_height = 25*ngenes + 80;
             impath = "{{ 'static/data/' ~ current_user.id ~ '/' ~ current_proj.file_id ~ '/matrix_svg/' }}" + pid + '.svgz';
             $imageContainer.append(
                     '<div class="panel panel-primary">' +
@@ -111,15 +113,15 @@
                     '<span class="keyword-text">var</span>=' + pway_dict[pid]['lengths'][5] + '</code>'
                     + '<div class="svg_target ui-widget-content">' +
                     '<img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + pway_dict[pid]['id'] + '.svgz" ' +
-                    'alt="' + pway_dict[pid]['id'] + '.svgz" ></img>'
+                    'alt="' + pway_dict[pid]['id'] + '.svgz"></img>'
                     + '</div>'
-                    + '<div class="svg_matrix ui-widget-content"><div class="pway_size" style="display:none">'
+                    + '<div class="svg_matrix ui-widget-content" data-ngenes="' + ngenes +'" data-expanded=' + false + '><div class="pway_size" style="display:none">'
                     + JSON.stringify({
                         "n_genes": pway_dict[pid].geneSet.length,
                         "expanded": false
                     }) + '</div>' +
                     '<img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + pway_dict[pid]['id'] + '.svgz" ' +
-                    'px alt="' + pway_dict[pid]['id'] + '.svgz" ></img>' //
+                    'px alt="' + pway_dict[pid]['id'] + '.svgz" style="max-height:' + max_height + 'px;"></img>' //
                     + '</div></div>');
             $(".svg_matrix").click(expandMatrixImage);
         });
@@ -135,17 +137,19 @@
 
 	function expandMatrixImage(event){
 		var $im = $(event.target);
-		var $statusDiv = $im.parent().children()[0];
-		var im_status = jQuery.parseJSON($statusDiv.textContent);
-		var n_genes = im_status.n_genes;
-		var expanded = im_status.expanded;
+		var $svg_matrix= $im.parent();
+//		var im_status = jQuery.parseJSON($statusDiv.textContent);
+//		var n_genes = im_status.n_genes;
+		var n_genes = $svg_matrix.data('n_genes');
+        var expanded = $svg_matrix.data('expanded');
 		if(!expanded)
-			$im.css('height',25*n_genes + 80);
+			$im.css('height',25*ngenes + 80);
 		else
 			$im.css('height','inherit');
-		im_status.expanded = !im_status.expanded;
-		$statusDiv.textContent = JSON.stringify(im_status);
 
+//        im_status.expanded = !im_status.expanded;
+//		$statusDiv.textContent = JSON.stringify(im_status);
+        $svg_matrix[0].dataset.expanded = true;
 	}
 
 
