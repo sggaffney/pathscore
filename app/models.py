@@ -4,7 +4,6 @@ from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import request, current_app
 from flask_login import UserMixin
 from flask_security import RoleMixin
-from . import db
 from . import db, login_manager
 import unicodedata as ud
 from unidecode import unidecode

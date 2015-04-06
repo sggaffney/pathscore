@@ -20,7 +20,7 @@ from .decorators import async
 from .emails import run_finished_notification
 from .models import UserFile
 import app
-from .db_lookups import lookup_path_sizes_global, lookup_path_sizes_exclude, \
+from .db_lookups import lookup_path_sizes, \
     lookup_patient_counts, build_path_patient_dict, \
     fetch_path_ids_interest_genes, get_pathway_name_dict, get_gene_combs_hit, \
     get_gene_counts, get_pway_lenstats_dict, fetch_path_info_global
@@ -28,7 +28,7 @@ import misc
 import naming_rules
 
 # GLOBALS
-path_size_dict = lookup_path_sizes_global()
+path_size_dict = lookup_path_sizes()
 path_info_dict = fetch_path_info_global()
 
 
@@ -787,7 +787,7 @@ def run(dir_path, table_name, user_upload):
 
     global path_size_dict  # module variable
     if ignore_genes:
-        path_size_dict = lookup_path_sizes_exclude(ignore_genes)
+        path_size_dict = lookup_path_sizes(ignore_genes)
     # otherwise use global.
     patient_size_dict = lookup_patient_counts(table_name, ignore_genes)
 
