@@ -19,7 +19,7 @@ from . import db
 from .decorators import async
 from .emails import run_finished_notification
 from .models import UserFile
-from app import dbvars
+import app
 from .db_lookups import lookup_path_sizes_global, lookup_path_sizes_exclude, \
     lookup_patient_counts, build_path_patient_dict, \
     fetch_path_ids_interest_genes, get_pathway_name_dict, get_gene_combs_hit, \
@@ -82,7 +82,7 @@ def run_analysis(proj_dir, data_path, upload_id):
 def drop_table(table_name):
     cmd = """drop table {};""".format(table_name)
     try:
-        con = mdb.connect(**dbvars)
+        con = mdb.connect(**app.dbvars)
         cur = con.cursor()
         cur.execute(cmd)
         con.commit()
@@ -126,7 +126,7 @@ class MutationTable():
             data_path, table_name
         )
         try:
-            con = mdb.connect(**dbvars)
+            con = mdb.connect(**app.dbvars)
             cur = con.cursor()
             cur.execute(create_str)
             cur.execute(load_str)
@@ -697,7 +697,7 @@ class BackgroundGenomeFetcher():
         cmd1 = """SELECT count(*) FROM {table_name};""".format(
             table_name=expressed_table)
         try:
-            con = mdb.connect(**dbvars)
+            con = mdb.connect(**app.dbvars)
             cur = con.cursor()
             cur.execute(cmd1)
             rowCount = cur.rowcount

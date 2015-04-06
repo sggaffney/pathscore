@@ -1,5 +1,5 @@
 __author__ = 'sgg'
-from app import dbvars
+import app
 import MySQLdb as mdb
 from collections import defaultdict
 
@@ -12,7 +12,7 @@ def lookup_path_sizes_global():
     GROUP BY path_id;""".format()
     size_dict = dict()
     try:
-        con = mdb.connect(**dbvars)
+        con = mdb.connect(**app.dbvars)
         cur = con.cursor()
         cur.execute(cmd)
         # assert isinstance(cur.rowcount, int)
@@ -44,7 +44,7 @@ def lookup_path_sizes_exclude(ignore_genes):
 
     size_dict = dict()
     try:
-        con = mdb.connect(**dbvars)
+        con = mdb.connect(**app.dbvars)
         cur = con.cursor()
         cur.execute(cmd)
         # assert isinstance(cur.rowcount, int)
@@ -78,7 +78,7 @@ def lookup_patient_counts(table_name, ignore_genes):
 
     patient_size_dict = dict()
     try:
-        con = mdb.connect(**dbvars)
+        con = mdb.connect(**app.dbvars)
         cur = con.cursor()
         cur.execute(cmd)
         # assert isinstance(cur.rowcount, int)
@@ -113,7 +113,7 @@ def build_path_patient_dict(table_name, ignore_genes):
         .format(table_name=table_name, genes_string=genes_string)
     path_patient_dict = dict()
     try:
-        con = mdb.connect(**dbvars)
+        con = mdb.connect(**app.dbvars)
         cur = con.cursor()
         cur.execute(cmd)
         # assert isinstance(cur.rowcount, int)
@@ -154,7 +154,7 @@ def fetch_path_ids_interest_genes(interest_genes):
         ON pgl.entrez_id = g.geneId ORDER BY path_id;""".format(
         genes_string=genes_string)
     try:
-        con = mdb.connect(**dbvars)
+        con = mdb.connect(**app.dbvars)
         cur = con.cursor()
         cur.execute(cmd1)
         rowCount = cur.rowcount
@@ -184,7 +184,7 @@ def get_pathway_name_dict():
     (SELECT DISTINCT path_id FROM refs.pathway_gene_link) l
     ON p.path_id = l.path_id;"""
     try:
-        con = mdb.connect(**dbvars)
+        con = mdb.connect(**app.dbvars)
         cur = con.cursor()
         cur.execute(cmd1)
         row_count = cur.rowcount
@@ -239,7 +239,7 @@ def get_pway_lengths_dict(mutation_table, ignore_genes):
         .format(mutation_table=mutation_table, exclude_str=genes_string)
 
     try:
-        con = mdb.connect(**dbvars)
+        con = mdb.connect(**app.dbvars)
         cur = con.cursor()
         cur.execute(cmd1)
         row_count = cur.rowcount
@@ -273,7 +273,7 @@ def fetch_path_info_global():
     cmd = """SELECT path_id, info_url, `description_brief`, contributor FROM refs.pathways;"""
     info_dict = dict()
     try:
-        con = mdb.connect(**dbvars)
+        con = mdb.connect(**app.dbvars)
         cur = con.cursor()
         cur.execute(cmd)
         rowCount = cur.rowcount
@@ -317,7 +317,7 @@ def get_gene_combs_hit(table_name):
             ) g;""". \
             format(table=table_name)
         try:
-            con = mdb.connect(**dbvars)
+            con = mdb.connect(**app.dbvars)
             cur = con.cursor()
             cur.execute(cmd_maxlen)
             cur.execute(cmd)
@@ -356,7 +356,7 @@ def get_gene_counts(table_name):
             GROUP BY path_id, hugo_symbol;""" \
             .format(table=table_name)
         try:
-            con = mdb.connect(**dbvars)
+            con = mdb.connect(**app.dbvars)
             cur = con.cursor()
             cur.execute(cmd0)
             cur.execute(cmd2)
