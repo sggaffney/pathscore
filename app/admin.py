@@ -8,6 +8,7 @@ from threading import Thread
 import time
 import zipfile
 from emails import run_finished_notification
+from app.get_effective_pathways import MutationTable
 
 
 _cleanup_thread = None
@@ -90,3 +91,12 @@ def zip_project(upload_obj):
     zipf.close()
     return zip_path
 
+
+def create_table(upload_obj):
+    """Create table using uploaded data file."""
+    proj_folder = get_project_folder(upload_obj)
+    file_path = os.path.join(proj_folder, upload_obj.get_local_filename())
+    table_name = upload_obj.get_table_name()
+    table = MutationTable(table_name, file_path)
+    if not table.loaded:
+        raise Exception("Failed to load table {!r}.".format(table_name))
