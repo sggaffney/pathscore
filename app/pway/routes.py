@@ -5,12 +5,18 @@ from werkzeug.utils import secure_filename
 import os
 from datetime import datetime, timedelta
 from collections import OrderedDict
+import numpy as np
+from bokeh.plotting import figure
+from bokeh.resources import CDN
+from bokeh.embed import components
+from bokeh.plotting import ColumnDataSource
+from bokeh.models.tools import HoverTool
 
 from . import pway, FileTester
 from .forms import UploadForm
 from ..models import UserFile
 from .. import db
-from ..get_effective_pathways import run_analysis
+from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
 from ..admin import get_project_folder, get_user_folder, zip_project, \
     delete_project_folder
 from .. import naming_rules
@@ -34,6 +40,74 @@ def demo():
 @login_required
 def tree_test():
     return render_template('pway/tree_test.html')
+
+
+@pway.route('/scatter')
+@login_required
+def scatter():
+    # if proj among arguments, show this tree first.
+    show_proj = request.args.get('proj', None)
+    # show_proj = '57'
+    # list of projects (and proj_names) used to create dropdown project selector
+    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
+        filter_by(run_complete=True).order_by(UserFile.file_id).all()
+    # proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
+    if upload_list:
+        # Use specified project from args or highest file_id as CURRENT PROJECT
+        current_proj = upload_list[-1]  # override if valid proj specified
+        if show_proj:
+            current_temp = [u for u in upload_list if u.file_id == int(show_proj)]
+            # if not among user's finished projects, use highest file_id
+            if len(current_temp) == 1:
+                current_proj = current_temp[0]
+            else:
+                current_proj = upload_list[-1]
+
+        detail_path = naming_rules.get_detailed_path(current_proj)
+        allPathways = load_pathway_list_from_file(detail_path)
+
+        data_pways, data_pvals, data_effect = [], [], []
+        for p in allPathways:
+            if p.n_effective >= p.n_actual:
+                pass
+            pval = float(p.p_value)
+            if pval >= 0.05:
+                continue
+            data_pvals.append(float(p.p_value))
+            data_effect.append(float(p.n_effective) / p.n_actual)
+            data_pways.append(p)
+
+        x = np.log2(np.array(data_effect))  # effect size
+        y = -np.log10(np.array(data_pvals))  # p-value
+        # adjust zero pvalues. e-15.9 seems to be minimum.
+        max_y = max([np.ceil(max([i for i in x if i != np.inf])),
+                     np.float64(17)])
+        y[y == np.inf] = max_y
+        source = ColumnDataSource(data={'x': x, 'y': y,
+                                        'pname': [p.name for p in data_pways]})
+        tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
+                "box_select"  # hover, poly_select,lasso_select, previewsave
+        plot = figure(tools=tools, plot_height=400, plot_width=600,
+                      title='Effect size vs p-value', logo=None,
+                      x_axis_label="log2 fold change",
+                      y_axis_label="-log10 p-value",)
+        plot.scatter("x", "y", source=source, size=10, color="red", alpha=0.1,
+                     marker="circle", line_color="firebrick", line_alpha=0.5)
+        hover = plot.select({'type': HoverTool})
+        hover.tooltips = OrderedDict([
+            ("name", "@pname")  # optional: ("index", "$index")
+        ])
+        script, div = components(plot, CDN)
+
+    else:  # no projects yet!
+        flash("No project results to show yet.", "info")
+        current_proj = None
+        script, div = None, None
+
+    return render_template('pway/scatter.html', current_proj=current_proj,
+                           projects=upload_list,
+                           user_id=current_user.id, bokeh_script=script,
+                           bokeh_div=div)
 
 
 @pway.route('/tree')
