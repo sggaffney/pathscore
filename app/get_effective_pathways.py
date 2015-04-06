@@ -23,7 +23,7 @@ import app
 from .db_lookups import lookup_path_sizes_global, lookup_path_sizes_exclude, \
     lookup_patient_counts, build_path_patient_dict, \
     fetch_path_ids_interest_genes, get_pathway_name_dict, get_gene_combs_hit, \
-    get_gene_counts, get_pway_lengths_dict, fetch_path_info_global
+    get_gene_counts, get_pway_lenstats_dict, fetch_path_info_global
 import misc
 import naming_rules
 
@@ -841,7 +841,7 @@ def run(dir_path, table_name, user_upload):
     save_dissimilarity_files(allPathways, scores_path, names_path, min_len=50)
 
     # LOOKUP MUTATED GENE LENGTHS
-    pathway_lengths = get_pway_lengths_dict(table_name, ignore_genes)
+    pathway_lengths = get_pway_lenstats_dict(table_name, ignore_genes)
     for p in allPathways:
         p.lengths_tuple = pathway_lengths[int(p.path_id)]
 

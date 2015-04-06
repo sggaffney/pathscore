@@ -205,7 +205,7 @@ def get_pathway_name_dict():
         pathway_dict[path_id] = path_name
     return pathway_dict
 
-def get_pway_lengths_dict(mutation_table, ignore_genes):
+def get_pway_lenstats_dict(mutation_table, ignore_genes):
     """Get length stats for all mutated pathways."""
     rows = None
     pathway_lengths = dict()
