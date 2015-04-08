@@ -6,6 +6,7 @@ import MySQLdb as mdb
 import numpy as np
 from numpy import *
 from scipy import stats
+from scipy.optimize import minimize_scalar
 import timeit
 import warnings
 from collections import OrderedDict
@@ -20,16 +21,19 @@ from .decorators import async
 from .emails import run_finished_notification
 from .models import UserFile
 import app
-from .db_lookups import lookup_path_sizes, \
-    lookup_patient_counts, build_path_patient_dict, \
-    fetch_path_ids_interest_genes, get_pathway_name_dict, get_gene_combs_hit, \
-    get_gene_counts, get_pway_lenstats_dict, fetch_path_info_global
+from .db_lookups import lookup_path_sizes, lookup_exome_length, \
+    lookup_patient_counts, lookup_patient_lengths, build_path_patient_dict, \
+    lookup_path_lengths, fetch_path_ids_interest_genes, get_pathway_name_dict, \
+    get_gene_combs_hit, get_gene_counts, get_pway_lenstats_dict, \
+    fetch_path_info_global
 import misc
 import naming_rules
 
 # GLOBALS
-path_size_dict = lookup_path_sizes()
+path_size_dict_full = lookup_path_sizes()
+path_len_dict_full = lookup_path_lengths()
 path_info_dict = fetch_path_info_global()
+exome_length = lookup_exome_length()
 
 
 class TableLoadException(Exception):
@@ -187,9 +191,6 @@ class GeneMatrix():
             outfile.write('\n')
 
 
-
-
-
 class PathwaySummaryBasic():
     """Holds pathway information."""
     def __init__(self, pathway_number):
@@ -229,7 +230,7 @@ class PathwaySummary(PathwaySummaryBasic):
         # self._populate_exclusive_cooccurring()
         # self._update_gene_coverage()
 
-    def set_pathway_size(self):
+    def set_pathway_size(self, path_size_dict):
         self.n_actual = path_size_dict[self.path_id]
 
 
@@ -371,12 +372,19 @@ class LCalculator():
         return n_patients, n_mutated_array, is_mutated_array
 
     def _get_pway_likelihood(self, pway_size=None):
-        """Calculate pathway likelihood at stated size."""
+        """Calculate pathway log likelihood at stated size."""
         return get_pway_likelihood_cython(self.G, pway_size,
                                           self.n_patients, self.n_mutated_array,
                                           self.is_mutated_array)
 
-    def _get_ne(self):
+    def _get_pway_likelihood_neg(self, pway_size=None):
+        """Calculate pathway log likelihood at stated size."""
+        ll =  get_pway_likelihood_cython(self.G, pway_size,
+                                         self.n_patients, self.n_mutated_array,
+                                         self.is_mutated_array)
+        return -1 * ll
+
+    def _get_ne_old(self):
         last_ll = None
         # improved = False
         ne = None
@@ -384,14 +392,14 @@ class LCalculator():
         # if pathway_size is zero, effective size is zero.
         if not self.pway.n_actual:
             ne = 0
-            ult = float64(0)
+            ult = np.float64(0)
             warnings.warn(
                 "Pathway {} contains zero genes. ".format(self.pway.path_id))
             return ne, ult
         # if all patients mutated, use ne=genome_size - max_mutations
         if False not in [patient.is_mutated for patient in self.pway.patients]:
             ne = self.G
-            ult = float64(0)
+            ult = np.float64(0)
             warnings.warn("All patients have mutation in pathway {}. ".format(
                 self.pway.path_id) + "Effective size is full genome.")
             return (ne, ult)
@@ -423,6 +431,40 @@ class LCalculator():
                 break
             last_ll = this_ll
         return (ne, last_ll)
+
+    def _get_ne(self):
+        """Find maximum likelihood pathway size and corresponding
+        log likelihood."""
+
+        # INITIAL BOUNDARY TESTS
+        # if pathway_size is zero, effective size is zero.
+        if not self.pway.n_actual:
+            ne = 0
+            final_ll = np.float64(0)
+            warnings.warn("Pathway {} contains zero genes. ".format(
+                self.pway.path_id))
+            return ne, final_ll
+        # if all patients mutated, use ne=genome_size - max_mutations
+        if False not in [patient.is_mutated for patient in self.pway.patients]:
+            ne = self.G
+            final_ll = np.float64(0)
+            warnings.warn("All patients have mutation in pathway {}. ".format(
+                self.pway.path_id) + "Effective size is full genome.")
+            return ne, final_ll
+
+        result = minimize_scalar(self._get_pway_likelihood_neg, method='Brent',
+                                 bounds=[1, self.G])
+        # res2 = minimize_scalar(self._get_pway_likelihood_neg, method='Bounded',
+        #                        bounds=[1, 17000000])
+        try_integers = [np.floor(result.x), np.ceil(result.x)]
+        out = [self._get_pway_likelihood_neg(i) for i in try_integers]
+        if out[1] < out[0]:
+            use_ind = 1
+        else:
+            use_ind = 0
+        ne = int(try_integers[use_ind])
+        final_ll = -1 * out[use_ind]
+        return ne, final_ll
 
 
 class GenericPathwayFileProcessor():
@@ -727,13 +769,21 @@ def get_patient_list(path_id, patient_size_dict, path_patient_dict):
     return patient_list
 
 
-def run(dir_path, table_name, user_upload):
+def run(dir_path, table_name, user_upload, alg='gene_count'):
     """ EXAMPLE ARGUMENTS
     dir_path = /Users/sgg/Downloads/uploads/1/41/
     table_name = mutations_41
+    alg='gene_count' --OR-- 'gene_length'
     user_upload is upload object (file_id, user_id, filename, ...etc)
     """
+    detail_path, matrix_folder = generate_initial_text_output(
+        dir_path, table_name, user_upload, alg=alg)
+    # matrix_folder is typically 'matrix_txt'
+    generate_plot_files(user_upload, detail_path, table_name, dir_path,
+                        matrix_folder)
 
+
+def generate_initial_text_output(dir_path, table_name, user_upload, alg='gene_count'):
     # max_mutations
     file_id = user_upload.file_id
     table_list = [table_name]  # code can iterate through list of tables
@@ -742,8 +792,12 @@ def run(dir_path, table_name, user_upload):
         ignore_genes = str(user_upload.ignore_genes).split(',')
     else:
         ignore_genes = []
-    genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
-                                          None).genome_size
+    if alg == 'gene_count':
+        genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
+                                              None).genome_size
+    elif alg == 'gene_length':
+        genome_size = exome_length
+
     proj_suffix = user_upload.get_local_filename()
     # # get patient list. maybe empty list.
     patient_list = []
@@ -769,8 +823,12 @@ def run(dir_path, table_name, user_upload):
     # EXCLUDE_GENES MEANS DON'T BASE PATHWAY-PATIENT PAIRS ON THIS GENE
 
     # LOAD ALL PATHWAY-PATIENT PAIRS INTO DICTIONARY.
+    # e.g.  {1L: set(['yucrena', 'yuhoin']), ...}
+    # used for building Patient list for pathway (popped down to nothing) in
+    #   tandem with
     path_patient_dict = build_path_patient_dict(table_name, ignore_genes)
     # CREATE LIST OF PATHWAYS TO INSPECT
+    #  - STRIPPED DOWN TO THOSE WITH INTEREST GENES, IF SPECIFIED
     all_path_ids = {id for id in path_patient_dict}  # all altered pathways set
     if interest_genes:
         interest_gene_path_ids = fetch_path_ids_interest_genes(interest_genes)
@@ -785,11 +843,22 @@ def run(dir_path, table_name, user_upload):
     # create sorted list of path_ids
     all_path_ids = sorted(list(all_path_ids))
 
-    global path_size_dict  # module variable
-    if ignore_genes:
-        path_size_dict = lookup_path_sizes(ignore_genes)
+    if alg == 'gene_count':
+        if ignore_genes:
+            path_size_dict = lookup_path_sizes(ignore_genes)
+        else:
+            path_size_dict = path_size_dict_full
+    elif alg == 'gene_length':
+        if ignore_genes:
+            path_size_dict = lookup_path_lengths(ignore_genes)
+        else:
+            path_size_dict = path_len_dict_full
+
     # otherwise use global.
-    patient_size_dict = lookup_patient_counts(table_name, ignore_genes)
+    if alg == 'gene_count':
+        patient_size_dict = lookup_patient_counts(table_name, ignore_genes)
+    elif alg == 'gene_length':
+        patient_size_dict = lookup_patient_lengths(table_name, ignore_genes)
 
     for pathway_number in all_path_ids:
         # Populate pathway object, and time pvalue calculation
@@ -798,7 +867,7 @@ def run(dir_path, table_name, user_upload):
                               # max_mutations=max_mutations,
                               expressed_table=None,
                               ignore_genes=ignore_genes)
-        pway.set_pathway_size()
+        pway.set_pathway_size(path_size_dict)
         pway.patients = get_patient_list(pathway_number, patient_size_dict,
                                          path_patient_dict)
         lcalc = LCalculator(pway, genome_size)  # include optional genome_size
@@ -832,8 +901,12 @@ def run(dir_path, table_name, user_upload):
     # generate_files(dir_path, final_writer.outfile_name, user_upload)
 
     detail_path = final_writer.outfile_name
-    descriptive_name = user_upload.get_local_filename()
+    # descriptive_name = user_upload.get_local_filename()
+    matrix_folder = final_writer.matrix_folder
+    return detail_path, matrix_folder
 
+
+def generate_plot_files(user_upload, detail_path, table_name, dir_path, matrix_folder):
     allPathways = load_pathway_list_from_file(detail_path)
 
     scores_path, names_path, tree_svg_path = naming_rules.\
@@ -841,6 +914,10 @@ def run(dir_path, table_name, user_upload):
     save_dissimilarity_files(allPathways, scores_path, names_path, min_len=50)
 
     # LOOKUP MUTATED GENE LENGTHS
+    if user_upload.ignore_genes:
+        ignore_genes = str(user_upload.ignore_genes).split(',')
+    else:
+        ignore_genes = []
     pathway_lengths = get_pway_lenstats_dict(table_name, ignore_genes)
     for p in allPathways:
         p.lengths_tuple = pathway_lengths[int(p.path_id)]
@@ -856,11 +933,10 @@ def run(dir_path, table_name, user_upload):
     #                         skipfew)
 
     # ONLY CREATE SVGS IF MATRIX TXT PATH EXISTS (i.e. pathways have mutations)
-    if os.path.exists(os.path.join(final_writer.dir_path,
-                                   final_writer.matrix_folder)):
+    if os.path.exists(os.path.join(dir_path, matrix_folder)):
         create_pway_plots(str(detail_path), scores_path, names_path,
                           tree_svg_path)
-        misc.zip_svgs(final_writer.dir_path)
+        misc.zip_svgs(dir_path)
     # create_svgs(str(detail_path))
     # create_matrix_svgs(str(detail_path))
 

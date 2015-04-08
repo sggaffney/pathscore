@@ -98,7 +98,7 @@ def lookup_exome_length(ignore_genes=None):
 
 
 def lookup_patient_counts(table_name, ignore_genes):
-    """Get pathway sizes when exclude genes are provided."""
+    """Get patient gene counts."""
 
     if(ignore_genes):
         genes_string = repr(tuple(ignore_genes)).replace(",)", ")")
@@ -106,7 +106,7 @@ def lookup_patient_counts(table_name, ignore_genes):
     else:
         genes_string = ""
     cmd = """SELECT patient_id, count(DISTINCT entrez_id)
-              FROM {table_name} {genes_string} GROUP BY patient_id"""\
+              FROM {table_name} {genes_string} GROUP BY patient_id;"""\
         .format(table_name=table_name, genes_string=genes_string)
 
     patient_size_dict = dict()
@@ -129,6 +129,40 @@ def lookup_patient_counts(table_name, ignore_genes):
         if con:
             con.close()
     return patient_size_dict
+
+
+def lookup_patient_lengths(table_name, ignore_genes):
+    """Get patient bp lengths."""
+    if(ignore_genes):
+        genes_string = repr(tuple(ignore_genes)).replace(",)", ")")
+        genes_string = "WHERE m.hugo_symbol NOT IN {}".format(genes_string)
+    else:
+        genes_string = ""
+    cmd = """SELECT patient_id, count(*)
+      FROM {table_name} m
+      INNER JOIN refs.`entrez_length` l ON m.entrez_id = l.entrez_id
+      {genes_string} GROUP BY patient_id;"""\
+        .format(table_name=table_name, genes_string=genes_string)
+    patient_len_dict = dict()
+    try:
+        con = mdb.connect(**app.dbvars)
+        cur = con.cursor()
+        cur.execute(cmd)
+        # assert isinstance(cur.rowcount, int)
+        row_count = cur.rowcount
+        if not row_count:
+            print "No pathways found."
+            return patient_len_dict
+        for row_no in xrange(row_count):
+            row = cur.fetchone()
+            patient_len_dict[row[0]] = row[1]
+
+    except mdb.Error as e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+    finally:
+        if con:
+            con.close()
+    return patient_len_dict
 
 
 def build_path_patient_dict(table_name, ignore_genes):
