@@ -42,11 +42,13 @@ def get_pway_likelihood_cython(int G,
 
         if G - pway_size >= n_patient:
             p_no_mut = get_p_no_mutations_cython(Gd, pway_size, n_patient)
-
-        if is_mutated_array[patient_no]>0:
-            p = 1 - p_no_mut
+            if is_mutated_array[patient_no]>0:
+                p = 1 - p_no_mut
+            else:
+                p = p_no_mut
         else:
-            p = p_no_mut
+            # patient has too many hits to get zero pathway mutations
+            p = 1  # observation (of mutation in pathway) certain
         prob_array[patient_no] = np.log(p)
         # prob_list.append(log(p))
     # prob_array = array(prob_list)
