@@ -115,6 +115,7 @@ class UserFile(db.Model):
     is_valid = db.Column(db.Boolean)
     run_accepted = db.Column(db.Boolean)
     run_complete = db.Column(db.Boolean)
+    algorithm = db.Column(db.String(255), default='gene_size')
     genome_size = db.Column(db.String(255), default=False)
     n_cutoff = db.Column(db.Integer)
     required_genes = db.Column(db.Text())

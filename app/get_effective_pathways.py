@@ -6,6 +6,7 @@ import MySQLdb as mdb
 import numpy as np
 from numpy import *
 from scipy import stats
+from scipy.optimize import minimize_scalar, brentq
 import timeit
 import warnings
 from collections import OrderedDict
@@ -20,16 +21,19 @@ from .decorators import async
 from .emails import run_finished_notification
 from .models import UserFile
 import app
-from .db_lookups import lookup_path_sizes, \
-    lookup_patient_counts, build_path_patient_dict, \
-    fetch_path_ids_interest_genes, get_pathway_name_dict, get_gene_combs_hit, \
-    get_gene_counts, get_pway_lenstats_dict, fetch_path_info_global
+from .db_lookups import lookup_path_sizes, lookup_exome_length, \
+    lookup_patient_counts, lookup_patient_lengths, build_path_patient_dict, \
+    lookup_path_lengths, fetch_path_ids_interest_genes, get_pathway_name_dict, \
+    get_gene_combs_hit, get_gene_counts, get_pway_lenstats_dict, \
+    fetch_path_info_global
 import misc
 import naming_rules
 
 # GLOBALS
-path_size_dict = lookup_path_sizes()
+path_size_dict_full = lookup_path_sizes()
+path_len_dict_full = lookup_path_lengths()
 path_info_dict = fetch_path_info_global()
+exome_length = lookup_exome_length()
 
 
 class TableLoadException(Exception):
@@ -187,9 +191,6 @@ class GeneMatrix():
             outfile.write('\n')
 
 
-
-
-
 class PathwaySummaryBasic():
     """Holds pathway information."""
     def __init__(self, pathway_number):
@@ -219,19 +220,24 @@ class PathwaySummary(PathwaySummaryBasic):
         self.geneMatrix = None
         self.runtime = None  # only set up by file reader
 
-    def set_up_from_file(self, pval, psize, peffect, runtime):
+    def set_up_from_file(self, pval, psize, peffect, ll_actual, ll_effective, d,
+                         ne_low, ne_high, runtime):
         """Manually specify pathway summary properties (after running init)."""
         self.p_value = pval
         self.n_actual = psize
         self.n_effective = peffect
+        self.ll_actual = ll_actual
+        self.ll_effective = ll_effective
+        self.D = d
+        self.ne_low = ne_low
+        self.ne_high = ne_high
         self.runtime = runtime
         # # fetch gene_coverage, exclusive_genes, cooccurring genes
         # self._populate_exclusive_cooccurring()
         # self._update_gene_coverage()
 
-    def set_pathway_size(self):
+    def set_pathway_size(self, path_size_dict):
         self.n_actual = path_size_dict[self.path_id]
-
 
     def _build_patient_filter_str(self, form="WHERE"):
         """build SQL substring to filter patients by ids in mutation lookup."""
@@ -343,6 +349,8 @@ class LCalculator():
         self.ne_ll = None
         self.D = None
         self.pvalue = None
+        self.ne_low = None
+        self.ne_high = None
         # self.max_mutations = pway.max_mutations
 
         self.n_patients, self.n_mutated_array, self.is_mutated_array = \
@@ -354,6 +362,9 @@ class LCalculator():
         (ne, lastll) = self._get_ne()
         self.ne = ne
         self.ne_ll = lastll
+        upper_CI, lower_CI = self._get_ne_CI()
+        self.ne_low = int(upper_CI)
+        self.ne_high = int(lower_CI)
         self.D = -2 * self.likelihood + 2 * self.ne_ll
         self.pvalue = 1 - stats.chi2.cdf(self.D, 1)
         self.pway.n_effective = self.ne
@@ -371,12 +382,35 @@ class LCalculator():
         return n_patients, n_mutated_array, is_mutated_array
 
     def _get_pway_likelihood(self, pway_size=None):
-        """Calculate pathway likelihood at stated size."""
+        """Calculate pathway log likelihood at stated size."""
         return get_pway_likelihood_cython(self.G, pway_size,
                                           self.n_patients, self.n_mutated_array,
                                           self.is_mutated_array)
 
-    def _get_ne(self):
+    def _get_pway_likelihood_neg(self, pway_size=None):
+        """Calculate pathway log likelihood at stated size."""
+        ll = get_pway_likelihood_cython(self.G, pway_size,
+                                         self.n_patients, self.n_mutated_array,
+                                         self.is_mutated_array)
+        return -1 * ll
+
+    def _get_ne_CI(self):
+        CI_low = np.floor(brentq(self._get_pway_likelihood_CI, 1, self.ne))
+        try:
+            CI_high = np.ceil(brentq(self._get_pway_likelihood_CI, self.ne, self.G))
+        except ValueError:
+            CI_high = self.G
+        return CI_low, CI_high
+
+    def _get_pway_likelihood_CI(self, pway_size=None):
+        """Calculate pathway log likelihood at stated size."""
+        ll = get_pway_likelihood_cython(self.G, pway_size,
+                                         self.n_patients, self.n_mutated_array,
+                                         self.is_mutated_array)
+        return ll - self.ne_ll + 1.92
+
+
+    def _get_ne_old(self):
         last_ll = None
         # improved = False
         ne = None
@@ -384,14 +418,14 @@ class LCalculator():
         # if pathway_size is zero, effective size is zero.
         if not self.pway.n_actual:
             ne = 0
-            ult = float64(0)
+            ult = np.float64(0)
             warnings.warn(
                 "Pathway {} contains zero genes. ".format(self.pway.path_id))
             return ne, ult
         # if all patients mutated, use ne=genome_size - max_mutations
         if False not in [patient.is_mutated for patient in self.pway.patients]:
             ne = self.G
-            ult = float64(0)
+            ult = np.float64(0)
             warnings.warn("All patients have mutation in pathway {}. ".format(
                 self.pway.path_id) + "Effective size is full genome.")
             return (ne, ult)
@@ -424,6 +458,40 @@ class LCalculator():
             last_ll = this_ll
         return (ne, last_ll)
 
+    def _get_ne(self):
+        """Find maximum likelihood pathway size and corresponding
+        log likelihood."""
+
+        # INITIAL BOUNDARY TESTS
+        # if pathway_size is zero, effective size is zero.
+        if not self.pway.n_actual:
+            ne = 0
+            final_ll = np.float64(0)
+            warnings.warn("Pathway {} contains zero genes. ".format(
+                self.pway.path_id))
+            return ne, final_ll
+        # if all patients mutated, use ne=genome_size - max_mutations
+        if False not in [patient.is_mutated for patient in self.pway.patients]:
+            ne = self.G
+            final_ll = np.float64(0)
+            warnings.warn("All patients have mutation in pathway {}. ".format(
+                self.pway.path_id) + "Effective size is full genome.")
+            return ne, final_ll
+
+        result = minimize_scalar(self._get_pway_likelihood_neg, method='Brent',
+                                 bounds=[1, self.G])
+        # res2 = minimize_scalar(self._get_pway_likelihood_neg, method='Bounded',
+        #                        bounds=[1, 17000000])
+        try_integers = [np.floor(result.x), np.ceil(result.x)]
+        out = [self._get_pway_likelihood_neg(i) for i in try_integers]
+        if out[1] < out[0]:
+            use_ind = 1
+        else:
+            use_ind = 0
+        ne = int(try_integers[use_ind])
+        final_ll = -1 * out[use_ind]
+        return ne, final_ll
+
 
 class GenericPathwayFileProcessor():
     """Generic object that can convert yale_proj_ids and tcga_proj_abbrvs
@@ -455,8 +523,11 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
         outfile_name = self.root_name + '.txt'
         path_id = lcalc.pway.path_id
         with open(outfile_name, 'a', bufsize) as out:
-            out.write('{}\t{:.3e}\t{}\t{}\t{:.2f}\n'.format(
-                path_id, lcalc.pvalue, lcalc.pway.n_actual, lcalc.ne, runtime))
+            out.write('{}\t{:.3e}\t{}\t{}\t{:.3g}\t{:.3g}\t{:.3g}\t{}\t{}\t{:.2f}\n'.format(
+                path_id, lcalc.pvalue, lcalc.pway.n_actual, lcalc.ne,
+                lcalc.likelihood, lcalc.ne_ll, lcalc.D,
+                lcalc.ne_low, lcalc.ne_high,
+                runtime))
 
 
 class PathwayListAssembler(GenericPathwayFileProcessor):
@@ -484,13 +555,19 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 pval = float(row[1])
                 psize = int(row[2])
                 peffect = int(row[3])
-                runtime = float(row[4])
+                ll_actual = float(row[4])
+                ll_effective = float(row[5])
+                D = float(row[6])
+                ne_low = int(row[7])
+                ne_high = int(row[8])
+                runtime = float(row[9])
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.proj_abbrvs,
                                       patient_ids=self.filter_patient_ids,
                                       expressed_table=self.expressed_table,
                                       ignore_genes=self.ignore_genes)
-                pway.set_up_from_file(pval, psize, peffect, runtime)
+                pway.set_up_from_file(pval, psize, peffect, ll_actual,
+                                      ll_effective, D, ne_low, ne_high, runtime)
                 all_pathways.append(pway)
         # sort pathways by effect_size : actual_size
         all_pathways.sort(
@@ -498,7 +575,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                                                   pway.n_actual),
             reverse=True)
         # sort pathways by p-value
-        all_pathways.sort(key=lambda pw: pw.p_value, reverse=False)
+        all_pathways.sort(key=lambda pw: pw.D, reverse=True)
         # # for pway in allPathways[0:max_lookup_rows+1]:
         # for pway in allPathways:
         # if pway.p_value < 0.1:
@@ -556,7 +633,8 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
         with open(self.outfile_name, 'w', bufsize) as out:
             for pway in self.allPathways:
                 # Get extra info, if p_value is low
-                if pway.p_value < 0.05:
+                if pway.p_value < 0.05 and pway.n_actual < pway.n_effective \
+                        and pway.n_actual < pway.ne_low:
                     pway.update_exclusive_cooccurring_coverage(
                         self.path_genelists_dict[pway.path_id],
                         self.n_patients,
@@ -578,15 +656,24 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                     [repr(i) for i in pway.exclusive_genes]) + '}'
                 cooccurring_string = '{' + ','.join(
                     [repr(i) for i in pway.cooccurring_genes]) + '}'
-                out.write("""{path_id}\t{name}\t{n_actual}\t{n_effective}\t{p_value:.3e}\t{runtime:.2f}\t{exclusive_string}\t{cooccurring_string}\t{coverage_string}\n"""
-                          .format(path_id=pway.path_id, name=path_name,
-                                  coverage_string=coverage_string,
-                                  n_actual=pway.n_actual,
-                                  n_effective=pway.n_effective,
-                                  p_value=pway.p_value,
-                                  runtime=pway.runtime,
-                                  exclusive_string=exclusive_string,
-                                  cooccurring_string=cooccurring_string))
+                format_str = "{path_id}\t{name}\t{n_actual}\t{n_effective}\t" \
+                             "{p_value:.3e}\t{ll_actual:.4g}\t{ll_effective:.4g}\t" \
+                             "{D:.4g}\t{ne_low}\t{ne_high}\t{runtime:.2f}\t{exclusive_string}\t" \
+                             "{cooccurring}\t{coverage_string}\n"""
+                out.write(format_str.format(path_id=pway.path_id,
+                                            name=path_name,
+                                            coverage_string=coverage_string,
+                                            n_actual=pway.n_actual,
+                                            n_effective=pway.n_effective,
+                                            p_value=pway.p_value,
+                                            ll_actual=pway.ll_actual,
+                                            ll_effective=pway.ll_effective,
+                                            D=pway.D,
+                                            ne_low=pway.ne_low,
+                                            ne_high=pway.ne_high,
+                                            runtime=pway.runtime,
+                                            exclusive_string=exclusive_string,
+                                            cooccurring=cooccurring_string))
 
     def write_matrix_files(self, pway):
         """Write text file containing presence matrix for patient-gene pair."""
@@ -727,13 +814,21 @@ def get_patient_list(path_id, patient_size_dict, path_patient_dict):
     return patient_list
 
 
-def run(dir_path, table_name, user_upload):
+def run(dir_path, table_name, user_upload, alg='gene_count'):
     """ EXAMPLE ARGUMENTS
     dir_path = /Users/sgg/Downloads/uploads/1/41/
     table_name = mutations_41
+    alg='gene_count' --OR-- 'gene_length'
     user_upload is upload object (file_id, user_id, filename, ...etc)
     """
+    detail_path, matrix_folder = generate_initial_text_output(
+        dir_path, table_name, user_upload, alg=alg)
+    # matrix_folder is typically 'matrix_txt'
+    generate_plot_files(user_upload, detail_path, table_name, dir_path,
+                        matrix_folder)
 
+
+def generate_initial_text_output(dir_path, table_name, user_upload, alg='gene_count'):
     # max_mutations
     file_id = user_upload.file_id
     table_list = [table_name]  # code can iterate through list of tables
@@ -742,8 +837,12 @@ def run(dir_path, table_name, user_upload):
         ignore_genes = str(user_upload.ignore_genes).split(',')
     else:
         ignore_genes = []
-    genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
-                                          None).genome_size
+    if alg == 'gene_count':
+        genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
+                                              None).genome_size
+    elif alg == 'gene_length':
+        genome_size = exome_length
+
     proj_suffix = user_upload.get_local_filename()
     # # get patient list. maybe empty list.
     patient_list = []
@@ -769,8 +868,12 @@ def run(dir_path, table_name, user_upload):
     # EXCLUDE_GENES MEANS DON'T BASE PATHWAY-PATIENT PAIRS ON THIS GENE
 
     # LOAD ALL PATHWAY-PATIENT PAIRS INTO DICTIONARY.
+    # e.g.  {1L: set(['yucrena', 'yuhoin']), ...}
+    # used for building Patient list for pathway (popped down to nothing) in
+    #   tandem with
     path_patient_dict = build_path_patient_dict(table_name, ignore_genes)
     # CREATE LIST OF PATHWAYS TO INSPECT
+    #  - STRIPPED DOWN TO THOSE WITH INTEREST GENES, IF SPECIFIED
     all_path_ids = {id for id in path_patient_dict}  # all altered pathways set
     if interest_genes:
         interest_gene_path_ids = fetch_path_ids_interest_genes(interest_genes)
@@ -785,11 +888,22 @@ def run(dir_path, table_name, user_upload):
     # create sorted list of path_ids
     all_path_ids = sorted(list(all_path_ids))
 
-    global path_size_dict  # module variable
-    if ignore_genes:
-        path_size_dict = lookup_path_sizes(ignore_genes)
+    if alg == 'gene_count':
+        if ignore_genes:
+            path_size_dict = lookup_path_sizes(ignore_genes)
+        else:
+            path_size_dict = path_size_dict_full
+    elif alg == 'gene_length':
+        if ignore_genes:
+            path_size_dict = lookup_path_lengths(ignore_genes)
+        else:
+            path_size_dict = path_len_dict_full
+
     # otherwise use global.
-    patient_size_dict = lookup_patient_counts(table_name, ignore_genes)
+    if alg == 'gene_count':
+        patient_size_dict = lookup_patient_counts(table_name, ignore_genes)
+    elif alg == 'gene_length':
+        patient_size_dict = lookup_patient_lengths(table_name, ignore_genes)
 
     for pathway_number in all_path_ids:
         # Populate pathway object, and time pvalue calculation
@@ -798,7 +912,7 @@ def run(dir_path, table_name, user_upload):
                               # max_mutations=max_mutations,
                               expressed_table=None,
                               ignore_genes=ignore_genes)
-        pway.set_pathway_size()
+        pway.set_pathway_size(path_size_dict)
         pway.patients = get_patient_list(pathway_number, patient_size_dict,
                                          path_patient_dict)
         lcalc = LCalculator(pway, genome_size)  # include optional genome_size
@@ -832,8 +946,12 @@ def run(dir_path, table_name, user_upload):
     # generate_files(dir_path, final_writer.outfile_name, user_upload)
 
     detail_path = final_writer.outfile_name
-    descriptive_name = user_upload.get_local_filename()
+    # descriptive_name = user_upload.get_local_filename()
+    matrix_folder = final_writer.matrix_folder
+    return detail_path, matrix_folder
 
+
+def generate_plot_files(user_upload, detail_path, table_name, dir_path, matrix_folder):
     allPathways = load_pathway_list_from_file(detail_path)
 
     scores_path, names_path, tree_svg_path = naming_rules.\
@@ -841,6 +959,10 @@ def run(dir_path, table_name, user_upload):
     save_dissimilarity_files(allPathways, scores_path, names_path, min_len=50)
 
     # LOOKUP MUTATED GENE LENGTHS
+    if user_upload.ignore_genes:
+        ignore_genes = str(user_upload.ignore_genes).split(',')
+    else:
+        ignore_genes = []
     pathway_lengths = get_pway_lenstats_dict(table_name, ignore_genes)
     for p in allPathways:
         p.lengths_tuple = pathway_lengths[int(p.path_id)]
@@ -856,11 +978,10 @@ def run(dir_path, table_name, user_upload):
     #                         skipfew)
 
     # ONLY CREATE SVGS IF MATRIX TXT PATH EXISTS (i.e. pathways have mutations)
-    if os.path.exists(os.path.join(final_writer.dir_path,
-                                   final_writer.matrix_folder)):
+    if os.path.exists(os.path.join(dir_path, matrix_folder)):
         create_pway_plots(str(detail_path), scores_path, names_path,
                           tree_svg_path)
-        misc.zip_svgs(final_writer.dir_path)
+        misc.zip_svgs(dir_path)
     # create_svgs(str(detail_path))
     # create_matrix_svgs(str(detail_path))
 

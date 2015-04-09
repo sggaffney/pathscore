@@ -86,7 +86,7 @@ def scatter():
         source = ColumnDataSource(data={'x': x, 'y': y,
                                         'pname': [p.name for p in data_pways]})
         tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
-                "box_select"  # hover, poly_select,lasso_select, previewsave
+                "box_select,hover"  # poly_select,lasso_select, previewsave
         plot = figure(tools=tools, plot_height=400, plot_width=600,
                       title='Effect size vs p-value', logo=None,
                       x_axis_label="log2 fold change",

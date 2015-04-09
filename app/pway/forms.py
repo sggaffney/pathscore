@@ -14,7 +14,12 @@ class UploadForm(Form):
         FileRequired(),
         FileAllowed(['txt', 'tsv'], 'Use txt or tsv extension')
     ])
-    genome_size = RadioField('Genome size', validators=[
+    algorithm = RadioField('Algorithm', validators=[
+        DataRequired(), Length(1, 128)], choices=[
+        ('gene_count', 'Gene count'),
+        ('gene_length', 'Gene length')],
+        default='gene_count')
+    genome_size = RadioField('Genome size (only applies to gene count algorithm)', validators=[
         DataRequired(), Length(1, 128)], choices=[
         ('protein-coding', 'Protein-coding (20462)'),
         ('no_pseudo', 'All minus pseudogenes (28795)'),

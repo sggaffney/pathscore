@@ -11,6 +11,7 @@
         <th>Project Name</th>
         <th>Date</th>
         <th>Filename</th>
+        <th>Algorithm</th>
         <th>Genome size</th>
         <th>n_cutoff</th>
         <th>Ignore</th>
@@ -28,6 +29,7 @@
         {% endif %}
             <td>{{ proj.upload_time }} </td>
             <td>{{ proj.filename }} </td>
+            <td>{{ proj.algorithm }} </td>
             <td>{{ proj.genome_size }} </td>
             <td>{{ proj.n_cutoff }} </td>
             <td>{{ proj.ignore_genes }} </td>
