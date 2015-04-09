@@ -395,11 +395,29 @@ class LCalculator():
         return -1 * ll
 
     def _get_ne_CI(self):
-        CI_low = np.floor(brentq(self._get_pway_likelihood_CI, 1, self.ne))
-        try:
-            CI_high = np.ceil(brentq(self._get_pway_likelihood_CI, self.ne, self.G))
-        except ValueError:
+        # if everyone has mutation in the pathway, set CI_low and high to be G
+        CI_low = None
+        CI_high = None
+        if 0 not in self.is_mutated_array:  # everyone has mutation in pathway
             CI_high = self.G
+        if 1 not in self.is_mutated_array:  # no one has a mutation in pathway
+            CI_low = 1
+        if self.ne == self.G:
+            CI_high = self.G
+
+        # we know there is at least one patient without a mutation, so ne
+        #     should exist, and be 1 or above.
+        if CI_low is None:
+            try:
+                CI_low = np.floor(brentq(self._get_pway_likelihood_CI, 1, self.ne))
+            except ValueError:  # if signs don't change, 1 is within CI
+                CI_low = 1
+
+        if CI_high is None:  # ne is below genome size, so find maximum
+            try:
+                CI_high = np.ceil(brentq(self._get_pway_likelihood_CI, self.ne, self.G))
+            except ValueError: # if signs don't change, G is within CI
+                CI_high = self.G
         return CI_low, CI_high
 
     def _get_pway_likelihood_CI(self, pway_size=None):
