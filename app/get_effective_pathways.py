@@ -1029,9 +1029,9 @@ def load_pathway_list_from_file(results_path):
             pway.n_actual = int(vals[2])
             pway.n_effective = int(vals[3])
             pway.p_value = vals[4]
-            gene_set = set.union(set(eval(vals[6])), set(eval(vals[7])))
+            gene_set = set.union(set(eval(vals[11])), set(eval(vals[12])))
             pway.gene_set = gene_set
-            pc_str = vals[8]  # e.g. struct('ACADS',2.44,'ACADVL',2.44)
+            pc_str = vals[13]  # e.g. struct('ACADS',2.44,'ACADVL',2.44)
             pc_str = "{" + pc_str.lstrip('struct(').rstrip(')')\
                 .replace("',", "':") + "}"  # e.g. {'ACADS':2.44,'ACADVL':2.44}
             pway.gene_pc = eval(pc_str)
