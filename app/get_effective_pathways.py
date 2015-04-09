@@ -6,7 +6,7 @@ import MySQLdb as mdb
 import numpy as np
 from numpy import *
 from scipy import stats
-from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize_scalar, brentq
 import timeit
 import warnings
 from collections import OrderedDict
@@ -220,11 +220,17 @@ class PathwaySummary(PathwaySummaryBasic):
         self.geneMatrix = None
         self.runtime = None  # only set up by file reader
 
-    def set_up_from_file(self, pval, psize, peffect, runtime):
+    def set_up_from_file(self, pval, psize, peffect, ll_actual, ll_effective, d,
+                         ne_low, ne_high, runtime):
         """Manually specify pathway summary properties (after running init)."""
         self.p_value = pval
         self.n_actual = psize
         self.n_effective = peffect
+        self.ll_actual = ll_actual
+        self.ll_effective = ll_effective
+        self.D = d
+        self.ne_low = ne_low
+        self.ne_high = ne_high
         self.runtime = runtime
         # # fetch gene_coverage, exclusive_genes, cooccurring genes
         # self._populate_exclusive_cooccurring()
@@ -232,7 +238,6 @@ class PathwaySummary(PathwaySummaryBasic):
 
     def set_pathway_size(self, path_size_dict):
         self.n_actual = path_size_dict[self.path_id]
-
 
     def _build_patient_filter_str(self, form="WHERE"):
         """build SQL substring to filter patients by ids in mutation lookup."""
@@ -344,6 +349,8 @@ class LCalculator():
         self.ne_ll = None
         self.D = None
         self.pvalue = None
+        self.ne_low = None
+        self.ne_high = None
         # self.max_mutations = pway.max_mutations
 
         self.n_patients, self.n_mutated_array, self.is_mutated_array = \
@@ -355,6 +362,9 @@ class LCalculator():
         (ne, lastll) = self._get_ne()
         self.ne = ne
         self.ne_ll = lastll
+        upper_CI, lower_CI = self._get_ne_CI()
+        self.ne_low = int(upper_CI)
+        self.ne_high = int(lower_CI)
         self.D = -2 * self.likelihood + 2 * self.ne_ll
         self.pvalue = 1 - stats.chi2.cdf(self.D, 1)
         self.pway.n_effective = self.ne
@@ -379,10 +389,26 @@ class LCalculator():
 
     def _get_pway_likelihood_neg(self, pway_size=None):
         """Calculate pathway log likelihood at stated size."""
-        ll =  get_pway_likelihood_cython(self.G, pway_size,
+        ll = get_pway_likelihood_cython(self.G, pway_size,
                                          self.n_patients, self.n_mutated_array,
                                          self.is_mutated_array)
         return -1 * ll
+
+    def _get_ne_CI(self):
+        CI_low = np.floor(brentq(self._get_pway_likelihood_CI, 1, self.ne))
+        try:
+            CI_high = np.ceil(brentq(self._get_pway_likelihood_CI, self.ne, self.G))
+        except ValueError:
+            CI_high = self.G
+        return CI_low, CI_high
+
+    def _get_pway_likelihood_CI(self, pway_size=None):
+        """Calculate pathway log likelihood at stated size."""
+        ll = get_pway_likelihood_cython(self.G, pway_size,
+                                         self.n_patients, self.n_mutated_array,
+                                         self.is_mutated_array)
+        return ll - self.ne_ll + 1.92
+
 
     def _get_ne_old(self):
         last_ll = None
@@ -497,8 +523,11 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
         outfile_name = self.root_name + '.txt'
         path_id = lcalc.pway.path_id
         with open(outfile_name, 'a', bufsize) as out:
-            out.write('{}\t{:.3e}\t{}\t{}\t{:.2f}\n'.format(
-                path_id, lcalc.pvalue, lcalc.pway.n_actual, lcalc.ne, runtime))
+            out.write('{}\t{:.3e}\t{}\t{}\t{:.3g}\t{:.3g}\t{:.3g}\t{}\t{}\t{:.2f}\n'.format(
+                path_id, lcalc.pvalue, lcalc.pway.n_actual, lcalc.ne,
+                lcalc.likelihood, lcalc.ne_ll, lcalc.D,
+                lcalc.ne_low, lcalc.ne_high,
+                runtime))
 
 
 class PathwayListAssembler(GenericPathwayFileProcessor):
@@ -526,13 +555,19 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 pval = float(row[1])
                 psize = int(row[2])
                 peffect = int(row[3])
-                runtime = float(row[4])
+                ll_actual = float(row[4])
+                ll_effective = float(row[5])
+                D = float(row[6])
+                ne_low = int(row[7])
+                ne_high = int(row[8])
+                runtime = float(row[9])
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.proj_abbrvs,
                                       patient_ids=self.filter_patient_ids,
                                       expressed_table=self.expressed_table,
                                       ignore_genes=self.ignore_genes)
-                pway.set_up_from_file(pval, psize, peffect, runtime)
+                pway.set_up_from_file(pval, psize, peffect, ll_actual,
+                                      ll_effective, D, ne_low, ne_high, runtime)
                 all_pathways.append(pway)
         # sort pathways by effect_size : actual_size
         all_pathways.sort(
@@ -540,7 +575,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                                                   pway.n_actual),
             reverse=True)
         # sort pathways by p-value
-        all_pathways.sort(key=lambda pw: pw.p_value, reverse=False)
+        all_pathways.sort(key=lambda pw: pw.D, reverse=True)
         # # for pway in allPathways[0:max_lookup_rows+1]:
         # for pway in allPathways:
         # if pway.p_value < 0.1:
@@ -598,7 +633,8 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
         with open(self.outfile_name, 'w', bufsize) as out:
             for pway in self.allPathways:
                 # Get extra info, if p_value is low
-                if pway.p_value < 0.05:
+                if pway.p_value < 0.05 and pway.n_actual < pway.n_effective \
+                        and pway.n_actual < pway.ne_low:
                     pway.update_exclusive_cooccurring_coverage(
                         self.path_genelists_dict[pway.path_id],
                         self.n_patients,
@@ -620,15 +656,24 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                     [repr(i) for i in pway.exclusive_genes]) + '}'
                 cooccurring_string = '{' + ','.join(
                     [repr(i) for i in pway.cooccurring_genes]) + '}'
-                out.write("""{path_id}\t{name}\t{n_actual}\t{n_effective}\t{p_value:.3e}\t{runtime:.2f}\t{exclusive_string}\t{cooccurring_string}\t{coverage_string}\n"""
-                          .format(path_id=pway.path_id, name=path_name,
-                                  coverage_string=coverage_string,
-                                  n_actual=pway.n_actual,
-                                  n_effective=pway.n_effective,
-                                  p_value=pway.p_value,
-                                  runtime=pway.runtime,
-                                  exclusive_string=exclusive_string,
-                                  cooccurring_string=cooccurring_string))
+                format_str = "{path_id}\t{name}\t{n_actual}\t{n_effective}\t" \
+                             "{p_value:.3e}\t{ll_actual:.4g}\t{ll_effective:.4g}\t" \
+                             "{D:.4g}\t{ne_low}\t{ne_high}\t{runtime:.2f}\t{exclusive_string}\t" \
+                             "{cooccurring}\t{coverage_string}\n"""
+                out.write(format_str.format(path_id=pway.path_id,
+                                            name=path_name,
+                                            coverage_string=coverage_string,
+                                            n_actual=pway.n_actual,
+                                            n_effective=pway.n_effective,
+                                            p_value=pway.p_value,
+                                            ll_actual=pway.ll_actual,
+                                            ll_effective=pway.ll_effective,
+                                            D=pway.D,
+                                            ne_low=pway.ne_low,
+                                            ne_high=pway.ne_high,
+                                            runtime=pway.runtime,
+                                            exclusive_string=exclusive_string,
+                                            cooccurring=cooccurring_string))
 
     def write_matrix_files(self, pway):
         """Write text file containing presence matrix for patient-gene pair."""
