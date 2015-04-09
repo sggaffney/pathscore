@@ -46,6 +46,7 @@ class UploadForm(Form):
         upload.mut_file = self.mut_file.data
         upload.genome_size = self.genome_size.data
         upload.n_cutoff = self.n_cutoff.data
+        upload.algorithm = self.algorithm.data
         if self.required_genes.data:
             upload.required_genes = str(self.required_genes.data)
         if self.ignore_genes.data:
