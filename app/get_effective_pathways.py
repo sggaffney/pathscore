@@ -832,13 +832,14 @@ def get_patient_list(path_id, patient_size_dict, path_patient_dict):
     return patient_list
 
 
-def run(dir_path, table_name, user_upload, alg='gene_count'):
+def run(dir_path, table_name, user_upload):
     """ EXAMPLE ARGUMENTS
     dir_path = /Users/sgg/Downloads/uploads/1/41/
     table_name = mutations_41
     alg='gene_count' --OR-- 'gene_length'
     user_upload is upload object (file_id, user_id, filename, ...etc)
     """
+    alg = user_upload.algorithm
     detail_path, matrix_folder = generate_initial_text_output(
         dir_path, table_name, user_upload, alg=alg)
     # matrix_folder is typically 'matrix_txt'
