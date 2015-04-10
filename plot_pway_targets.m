@@ -503,9 +503,9 @@ p_ids = cell2mat(dataArray(1));  % all pathway ids in file
 pathway_names = dataArray{2};  % all pathway names in file
 p_sizes = cell2mat(dataArray([3,4]));
 p_values = cell2mat(dataArray(5));
-exclusiveLists = dataArray{6};
-cooccurringLists = dataArray{7};
-coverageStructs = dataArray{8};
+exclusiveLists = dataArray{11};
+cooccurringLists = dataArray{12};
+coverageStructs = dataArray{13};
 
 clearvars fileID dataArray;
 
