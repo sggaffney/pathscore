@@ -494,7 +494,7 @@ global skip_gene skip_few_hits
 
 % READ IN FILE. 1st column is pathway_id, 2nd is pathway names. 3rd&4th are sizes.
 fileID = fopen(fileName,'r');
-dataArray = textscan(fileID, '%f%s%f%f%f%*f%s%s%s', 'Delimiter', '\t',  'ReturnOnError', false);
+dataArray = textscan(fileID, '%f%s%f%f%f%*f%f%f%f%f%f%s%s%s', 'Delimiter', '\t',  'ReturnOnError', false);
 fclose(fileID);
 %dataArray([2, 3, 4]) = cellfun(@(x) num2cell(x), dataArray([2, 3, 4]), 'UniformOutput', false);
 %output = [dataArray{1:end-1}];
