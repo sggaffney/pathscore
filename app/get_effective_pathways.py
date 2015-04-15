@@ -219,6 +219,11 @@ class PathwaySummary(PathwaySummaryBasic):
         self.cooccurring_genes = list()
         self.geneMatrix = None
         self.runtime = None  # only set up by file reader
+        self.ll_actual = None
+        self.ll_effective = None
+        self.D = None
+        self.ne_low = None
+        self.ne_high = None
 
     def set_up_from_file(self, pval, psize, peffect, ll_actual, ll_effective, d,
                          ne_low, ne_high, runtime):
@@ -1029,6 +1034,11 @@ def load_pathway_list_from_file(results_path):
             pway.n_actual = int(vals[2])
             pway.n_effective = int(vals[3])
             pway.p_value = vals[4]
+            pway.ll_actual = float(vals[5])
+            pway.ll_effective = float(vals[6])
+            pway.D = float(vals[7])
+            pway.ne_low = int(vals[8])
+            pway.ne_high = int(vals[9])
             gene_set = set.union(set(eval(vals[11])), set(eval(vals[12])))
             pway.gene_set = gene_set
             pc_str = vals[13]  # e.g. struct('ACADS',2.44,'ACADVL',2.44)
