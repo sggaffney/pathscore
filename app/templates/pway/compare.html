@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block head %}
+    {{ super() }}
+	<title>Results</title>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.3/themes/smoothness/jquery-ui.css">
+{% endblock %}
+
+
+{% block page_content %}
+
+<!-- BETTER TO HAVE AN OBJECT-->
+
+
+<!--<div class="page-header">-->
+	<!--<h1>Pathway Dendrogram</h1>-->
+<!--</div>-->
+
+<!--<div class="panel panel-default">-->
+	<!--<div class="panel-body">-->
+		<form class="form-inline" action="/compare" method="get">
+			<div class="form-group" style="margin: 0px 0px 15px 0px;">
+				<label for="projSelection">Project:</label>
+                <select class="form-control" id="projSelectionA" name="proj_a">
+				{% for proj in projects %}
+					{% if current_proj_a.file_id == proj.file_id %}
+						<option value="{{ proj.file_id }}" selected="selected">
+					{% else %}
+						<option value="{{ proj.file_id }}">
+					{% endif %}
+						{{ proj.get_local_filename() }}
+						</option>
+				{% endfor %}
+				</select>
+            </div>
+            <div class="form-group" style="margin: 0px 0px 15px 0px;">
+                <select class="form-control" id="projSelectionB" name="proj_b">
+				{% for proj in projects %}
+					{% if current_proj_b.file_id == proj.file_id %}
+						<option value="{{ proj.file_id }}" selected="selected">
+					{% else %}
+						<option value="{{ proj.file_id }}">
+					{% endif %}
+						{{ proj.get_local_filename() }}
+						</option>
+				{% endfor %}
+				</select>
+            </div>
+            <button type="submit" class="btn btn-default">Compare</button>
+        </form>
+    <!--</div>-->
+<!--</div>-->
+
+<div class="bokeh">
+ {{ bokeh_div|safe }}
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+{{super()}}
+
+ <link rel="stylesheet" href="http://cdn.pydata.org/bokeh-0.7.1.min.css" type="text/css" />
+ <script type="text/javascript" src="http://cdn.pydata.org/bokeh-0.7.1.min.js"></script>
+ {{ bokeh_script|safe }}
+
+{% endblock %}
+

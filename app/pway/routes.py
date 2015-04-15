@@ -110,6 +110,92 @@ def scatter():
                            bokeh_div=div)
 
 
+@pway.route('/compare')
+@login_required
+def compare():
+    # if proj among arguments, show this tree first.
+    proj_a = request.args.get('proj_a', None)
+    proj_b = request.args.get('proj_b', None)
+
+    # list of projects (and proj_names) used to create dropdown project selector
+    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
+        filter_by(run_complete=True).order_by(UserFile.file_id).all()
+    # proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
+
+    if upload_list:
+        # Use specified project from args or highest file_id as CURRENT PROJECT
+        current_proj = upload_list[-1]  # override if valid proj specified
+        if proj_a and proj_b:
+            current_temp_a = [u for u in upload_list if u.file_id == int(proj_a)]
+            current_temp_b = [u for u in upload_list if u.file_id == int(proj_b)]
+            # if not among user's finished projects, use highest file_id
+            if len(current_temp_a) == 1 and len(current_temp_b) == 1:
+                current_proj_a = current_temp_a[0]
+                current_proj_b = current_temp_b[0]
+            else:
+                current_proj_a = upload_list[-1]
+                current_proj_b = upload_list[-2]
+        else:
+            current_proj_a = upload_list[-1]
+            current_proj_b = upload_list[-2]
+        detail_path1 = naming_rules.get_detailed_path(current_proj_a)
+        detail_path2 = naming_rules.get_detailed_path(current_proj_b)
+
+        # load pathways with 1+ mutation in 1+ patients,
+        # ignoring ones with 'cancer' etc in name
+        all_paths1 = load_pathway_list_from_file(detail_path1)
+        all_paths2 = load_pathway_list_from_file(detail_path2)
+
+        names_dict = {p.path_id: p.name for p in all_paths1}
+        effect_dict1 = {p.path_id: np.log10(float(p.ne_low) / p.n_actual)
+                        for p in all_paths1}
+        effect_dict2 = {p.path_id: np.log10(float(p.ne_low) / p.n_actual)
+                        for p in all_paths2}
+        common_id_set = set.intersection(set(effect_dict1.keys()),
+                                         set(effect_dict2.keys()))
+        common_ids = sorted(list(common_id_set))
+        effects1 = [effect_dict1[i] for i in common_ids]
+        effects2 = [effect_dict2[i] for i in common_ids]
+        pnames = [names_dict[i] for i in common_ids]
+        source = ColumnDataSource(data={'x': effects1, 'y': effects2,
+                                        'pname': pnames})
+        maxx = max(effects1)*1.1
+        maxy = max(effects2)*1.1
+
+        tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
+                "box_select,hover"  # poly_select,lasso_select, previewsave
+        xlabel = "Log10 effect size ({})".format(current_proj_a.proj_suffix)
+        ylabel = "Log10 effect size ({})".format(current_proj_b.proj_suffix)
+        plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
+                 logo=None, toolbar_location="right",
+                 x_axis_label=xlabel,
+                 y_axis_label=ylabel,
+                 x_range=[0, maxx], y_range=[0, maxy])
+
+        # radius=radii, fill_color=colors, fill_alpha=0.6, line_color=None
+        plot.scatter("x", "y", source=source, size=10, color="red", alpha=0.1,
+                  marker="circle", line_color="firebrick", line_alpha=0.5)
+        hover = plot.select(dict(type=HoverTool))
+        hover.tooltips = OrderedDict([
+        #     ("index", "$index"),
+            ("name", "@pname")
+        ])
+
+        script, div = components(plot, CDN)
+
+    else:  # no projects yet!
+        flash("No project results to show yet.", "info")
+        current_proj = None
+        script, div = None, None
+
+    return render_template('pway/compare.html',
+                           current_proj_a=current_proj_a,
+                           current_proj_b=current_proj_b,
+                           projects=upload_list,
+                           user_id=current_user.id, bokeh_script=script,
+                           bokeh_div=div)
+
+
 @pway.route('/tree')
 @login_required
 def tree():
