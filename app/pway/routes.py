@@ -122,7 +122,7 @@ def compare():
         filter_by(run_complete=True).order_by(UserFile.file_id).all()
     # proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
 
-    if upload_list:
+    if len(upload_list) > 2:
         # Use specified project from args or highest file_id as CURRENT PROJECT
         current_proj = upload_list[-1]  # override if valid proj specified
         if proj_a and proj_b:
@@ -185,7 +185,8 @@ def compare():
 
     else:  # no projects yet!
         flash("No project results to show yet.", "info")
-        current_proj = None
+        current_proj_a = None
+        current_proj_b = None
         script, div = None, None
 
     return render_template('pway/compare.html',
