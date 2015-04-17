@@ -12,6 +12,16 @@ def get_project_folder(upload_obj):
     return os.path.join(user_folder, str(upload_obj.file_id))
 
 
+def get_js_name(upload_obj):
+    return upload_obj.get_local_filename() + ".js"
+
+
+def get_js_path(upload_obj):
+    dir_path = get_project_folder(upload_obj)
+    js_name = get_js_name(upload_obj)
+    return os.path.join(dir_path, js_name)
+
+
 def get_tree_score_paths(upload_obj):
     """Get path tuple (scores_path, scored_names) from upload object."""
     proj_suffix = upload_obj.get_local_filename()

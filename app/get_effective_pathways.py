@@ -991,8 +991,7 @@ def generate_plot_files(user_upload, detail_path, table_name, dir_path, matrix_f
     for p in allPathways:
         p.lengths_tuple = pathway_lengths[int(p.path_id)]
 
-    js_out_path = os.path.join(dir_path,
-                               user_upload.get_local_filename() + ".js")
+    js_out_path = naming_rules.get_js_path(user_upload)
     make_js_file(allPathways, js_out_path)
 
     readable_path = os.path.join(dir_path,
