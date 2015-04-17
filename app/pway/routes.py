@@ -120,7 +120,6 @@ def compare():
     # list of projects (and proj_names) used to create dropdown project selector
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
         filter_by(run_complete=True).order_by(UserFile.file_id).all()
-    # proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
 
     if len(upload_list) > 2:
         # Use specified project from args or highest file_id as CURRENT PROJECT
@@ -141,22 +140,32 @@ def compare():
         detail_path1 = naming_rules.get_detailed_path(current_proj_a)
         detail_path2 = naming_rules.get_detailed_path(current_proj_b)
 
+        js_name1 = naming_rules.get_js_name(current_proj_a)
+        js_name2 = naming_rules.get_js_name(current_proj_b)
+
         # load pathways with 1+ mutation in 1+ patients,
         # ignoring ones with 'cancer' etc in name
         all_paths1 = load_pathway_list_from_file(detail_path1)
         all_paths2 = load_pathway_list_from_file(detail_path2)
+        all_paths1 = [i for i in all_paths1 if i.gene_set]
+        all_paths2 = [i for i in all_paths2 if i.gene_set]
 
-        names_dict = {p.path_id: p.name for p in all_paths1}
-        effect_dict1 = {p.path_id: np.log10(float(p.ne_low) / p.n_actual)
-                        for p in all_paths1}
-        effect_dict2 = {p.path_id: np.log10(float(p.ne_low) / p.n_actual)
-                        for p in all_paths2}
-        common_id_set = set.intersection(set(effect_dict1.keys()),
-                                         set(effect_dict2.keys()))
-        common_ids = sorted(list(common_id_set))
-        effects1 = [effect_dict1[i] for i in common_ids]
-        effects2 = [effect_dict2[i] for i in common_ids]
-        pnames = [names_dict[i] for i in common_ids]
+        # temporary variables
+        all_ids1 = [p.path_id for p in all_paths1]
+        all_ids2 = [p.path_id for p in all_paths2]
+        common_ids = set.intersection(set(all_ids1), set(all_ids2))
+        ids_sorted = [i for i in all_ids1 if i in common_ids]  # uses project A
+        inds1 = [all_ids1.index(i) for i in ids_sorted]  # indices into all_paths1
+        inds2 = [all_ids2.index(i) for i in ids_sorted]  # indices into all_paths2
+
+        # key data for export
+        # inds_del1 = [i for i in xrange(len(all_paths1)) if i not in inds1]
+        # inds_del2 = [i for i in xrange(len(all_paths2)) if i not in inds2]
+        effects1 = [np.log10(float(all_paths1[i].ne_low)
+                             / all_paths1[i].n_actual) for i in inds1]
+        effects2 = [np.log10(float(all_paths2[i].ne_low)
+                             / all_paths2[i].n_actual) for i in inds2]
+        pnames = [all_paths1[i].name for i in inds1]
         source = ColumnDataSource(data={'x': effects1, 'y': effects2,
                                         'pname': pnames})
         maxx = max(effects1)*1.1
@@ -167,17 +176,16 @@ def compare():
         xlabel = "Log10 effect size ({})".format(current_proj_a.proj_suffix)
         ylabel = "Log10 effect size ({})".format(current_proj_b.proj_suffix)
         plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
-                 logo=None, toolbar_location="right",
-                 x_axis_label=xlabel,
-                 y_axis_label=ylabel,
-                 x_range=[0, maxx], y_range=[0, maxy])
+                      logo=None, toolbar_location="right",
+                      x_axis_label=xlabel,
+                      y_axis_label=ylabel,
+                      x_range=[0, maxx], y_range=[0, maxy])
 
         # radius=radii, fill_color=colors, fill_alpha=0.6, line_color=None
         plot.scatter("x", "y", source=source, size=10, color="red", alpha=0.1,
                   marker="circle", line_color="firebrick", line_alpha=0.5)
         hover = plot.select(dict(type=HoverTool))
         hover.tooltips = OrderedDict([
-        #     ("index", "$index"),
             ("name", "@pname")
         ])
 
@@ -188,10 +196,16 @@ def compare():
         current_proj_a = None
         current_proj_b = None
         script, div = None, None
+        inds_del1 = None
+        inds_del2 = None
 
     return render_template('pway/compare.html',
                            current_proj_a=current_proj_a,
                            current_proj_b=current_proj_b,
+                           inds_use_a=inds1,
+                           inds_use_b=inds2,
+                           js_name_a=js_name1,
+                           js_name_b=js_name2,
                            projects=upload_list,
                            user_id=current_user.id, bokeh_script=script,
                            bokeh_div=div)
