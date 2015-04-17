@@ -53,7 +53,7 @@
 <div class="bokeh">
  {{ bokeh_div|safe }}
 </div>
-<button id="selectButton" class="btn btn-default">Selection info</button>
+<!--<button id="selectButton" class="btn btn-default">Selection info</button>-->
 
 <div id="imageContainer" class="padded">
 </div>
@@ -70,14 +70,17 @@
 <script>
     $(function() {
 		{# current_projs, inds_use_a, inds_use_b, js_name_a, js_name_b #}
-        $selectButton = $('#selectButton');
+//        $selectButton = $('#selectButton');
 		$imageContainer = $('#imageContainer');
 		$projSelectionA = $('#projSelectionA');
 		$projSelectionB = $('#projSelectionB');
+		$bokehContainer = $('.bokeh');
 
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
 		var inds_use_a = {{inds_use[0]}};
 		var inds_use_b = {{inds_use[1]}};
+
+		selected_prv = [];
 
 		$.getScript( "static/data/{{ user_id }}/{{current_projs[0].file_id}}/{{js_name_a}}", function( data, textStatus, jqxhr ) {
 			console.log( "Loaded project A." );
@@ -92,7 +95,8 @@
 				for(var i=0; i<inds_use_b.length; i++){
 					pwayList_b[pwayList_b.length] = pwayList[inds_use_b[i]]; // reduce to common pways
 				}
-				$selectButton.click(updateImages);
+//				$selectButton.click(updateImages);
+				$bokehContainer.click(updateIfSelectionChange_afterWait);
 			});
 		});
 
@@ -163,13 +167,42 @@
 			}
 		}
 
+	}
 
+	function updateIfSelectionChange_afterWait(){
+		setTimeout(updateIfSelectionChange, 500); // wait to allow Bokeh indices to update
+	}
 
+	function updateIfSelectionChange(){
+		// compare selected_prv to current selection
+
+		var selected_now = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected;
+		console.log('Selected prev: ' + selected_prv);
+		console.log('Selected now: ' + selected_now);
+		if(selected_changed(selected_prv, selected_now)){
+			console.log('Selection changed');
+			updateImages();
+			selected_prv = selected_now;
+		}
+		else{
+			console.log('Selection unchanged')
+
+		}
 
 
 	}
 
-
+function selected_changed(array1, array2) {
+	// compare lengths
+    if (array1.length != array2.length)
+        return true;
+    for (var i = 0, l=array1.length; i < l; i++) {
+        if (array1[i] != array2[i]) {
+            return true;
+        }
+    }
+    return false;
+}
 
 
 
