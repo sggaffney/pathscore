@@ -20,6 +20,7 @@ from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
 from ..admin import get_project_folder, get_user_folder, zip_project, \
     delete_project_folder
 from .. import naming_rules
+from .. import misc
 
 
 @pway.route('/')
@@ -83,8 +84,8 @@ def scatter():
         max_y = max([np.ceil(max([i for i in x if i != np.inf])),
                      np.float64(17)])
         y[y == np.inf] = max_y
-        source = ColumnDataSource(data={'x': x, 'y': y,
-                                        'pname': [p.name for p in data_pways]})
+        pnames = [misc.strip_contributors(p.name) for p in data_pways]
+        source = ColumnDataSource(data={'x': x, 'y': y, 'pname': pnames})
         tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
                 "box_select,hover"  # poly_select,lasso_select, previewsave
         plot = figure(tools=tools, plot_height=400, plot_width=600,
@@ -165,7 +166,7 @@ def compare():
                              / all_paths1[i].n_actual) for i in inds1]
         effects2 = [np.log10(float(all_paths2[i].ne_low)
                              / all_paths2[i].n_actual) for i in inds2]
-        pnames = [all_paths1[i].name for i in inds1]
+        pnames = [misc.strip_contributors(all_paths1[i].name) for i in inds1]
         source = ColumnDataSource(data={'x': effects1, 'y': effects2,
                                         'pname': pnames})
         maxx = max(effects1)*1.1

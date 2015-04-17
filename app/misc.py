@@ -74,3 +74,11 @@ def get_at_least_n(vals, n, nmax=200):
         return get_at_least_n(vals, n+1, nmax)
     else:
         return vals[:n]
+
+def strip_contributors(string_in):
+    contribs = ['KEGG_', 'BIOCARTA_', 'ST_', 'SA_', 'SIG_', 'WNT_', 'PID_',
+                'REACTOME_']
+    for contrib in contribs:
+        if string_in.startswith(contrib):
+            return string_in[len(contrib):]
+    return string_in
