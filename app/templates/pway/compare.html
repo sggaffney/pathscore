@@ -18,11 +18,11 @@
 <!--<div class="panel panel-default">-->
 	<!--<div class="panel-body">-->
 		<form class="form-inline" action="/compare" method="get">
-			<div class="form-group" style="margin: 0px 0px 15px 0px;">
+			<div class="form-group">
 				<label for="projSelectionA">Project:</label>
                 <select class="form-control" id="projSelectionA" name="proj_a">
 				{% for proj in projects %}
-					{% if current_proj_a.file_id == proj.file_id %}
+					{% if current_projs[0].file_id == proj.file_id %}
 						<option value="{{ proj.file_id }}" selected="selected">
 					{% else %}
 						<option value="{{ proj.file_id }}">
@@ -32,10 +32,10 @@
 				{% endfor %}
 				</select>
             </div>
-            <div class="form-group" style="margin: 0px 0px 15px 0px;">
+            <div class="form-group">
                 <select class="form-control" id="projSelectionB" name="proj_b">
 				{% for proj in projects %}
-					{% if current_proj_b.file_id == proj.file_id %}
+					{% if current_projs[1].file_id == proj.file_id %}
 						<option value="{{ proj.file_id }}" selected="selected">
 					{% else %}
 						<option value="{{ proj.file_id }}">
@@ -53,7 +53,7 @@
 <div class="bokeh">
  {{ bokeh_div|safe }}
 </div>
-<button id="selectButton">Selection info</button>
+<button id="selectButton" class="btn btn-default">Selection info</button>
 
 <div id="imageContainer" class="padded">
 </div>
@@ -69,23 +69,23 @@
  {{ bokeh_script|safe }}
 <script>
     $(function() {
-		{# current_proj_a, current_proj_b, inds_use_a, inds_use_b, js_name_a, js_name_b #}
+		{# current_projs, inds_use_a, inds_use_b, js_name_a, js_name_b #}
         $selectButton = $('#selectButton');
 		$imageContainer = $('#imageContainer');
 		$projSelectionA = $('#projSelectionA');
 		$projSelectionB = $('#projSelectionB');
 
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
-		var inds_use_a = {{inds_use_a}};
-		var inds_use_b = {{inds_use_b}};
+		var inds_use_a = {{inds_use[0]}};
+		var inds_use_b = {{inds_use[1]}};
 
-		$.getScript( "static/data/{{ user_id }}/{{current_proj_a.file_id}}/{{js_name_a}}", function( data, textStatus, jqxhr ) {
+		$.getScript( "static/data/{{ user_id }}/{{current_projs[0].file_id}}/{{js_name_a}}", function( data, textStatus, jqxhr ) {
 			console.log( "Loaded project A." );
 			pwayList_a = [];
 			for(var i=0; i<inds_use_a.length; i++){
 				pwayList_a[pwayList_a.length] = pwayList[inds_use_a[i]]; // reduce to common pways
 			}
-			$.getScript( "static/data/{{ user_id }}/{{current_proj_b.file_id}}/{{js_name_b}}", function( data, textStatus, jqxhr ) {
+			$.getScript( "static/data/{{ user_id }}/{{current_projs[1].file_id}}/{{js_name_b}}", function( data, textStatus, jqxhr ) {
 				console.log( "Loaded project B." );
 				// pwayList loaded
 				pwayList_b = [];
@@ -101,7 +101,7 @@
 	function updateImages(){
 		$imageContainer.empty();  //clear old pathway images
 
-		var indices = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected
+		var indices = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected;
 
 		if(!indices.length){
 			$imageContainer.text("No pathways selected");
@@ -119,6 +119,7 @@
 			use_pways_b.push(pwayList_b[indices[i]])
 		}
 		var pway_lists = [use_pways_a, use_pways_b];
+		var proj_names = [ '{{ current_projs[0].get_local_filename() }}', '{{ current_projs[1].get_local_filename() }}'];
 
 //		console.log(use_pways[0])
 
@@ -127,11 +128,17 @@
 				var use_pways = pway_lists[proj_ind];
 				var ngenes = use_pways[pi].geneSet.length;
 				var max_height = 25 * ngenes + 80;
+				var pval = use_pways[pi]['pval'];
+				var pval_str = null;
+				if(pval == '0.000e+00')
+					pval_str = 'p<1e-16';
+				else
+					pval_str = 'p=' + pval;
 				$imageContainer.append(
 					'<div class="panel panel-primary">' +
-					'<div class="panel-heading">' +
+					'<div class="panel-heading">' + proj_names[proj_ind] +
 					'<h2 class="panel-title"><a href="' + root_url + use_pways[pi]['url'] + '" target="_blank">'
-					+ use_pways[pi]['name'] + '</a>' + ' (p=' + use_pways[pi]['pval'] + ') </h2>' +
+					+ use_pways[pi]['name'] + '</a>' + ' (' + pval_str + ') </h2>' +
 					use_pways[pi]['brief'] + ' (' + use_pways[pi]['contrib'] + ')</div>' +
 					'<div class="panel-body" style="padding:0"><code class="p-lengths">Gene lengths: ' +
 					'<span class="keyword-text">min</span>=' + use_pways[pi]['lengths'][0] + 'kbp (' + use_pways[pi]['lengths'][1] + '); ' +

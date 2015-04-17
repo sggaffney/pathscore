@@ -200,10 +200,8 @@ def compare():
         inds_del2 = None
 
     return render_template('pway/compare.html',
-                           current_proj_a=current_proj_a,
-                           current_proj_b=current_proj_b,
-                           inds_use_a=inds1,
-                           inds_use_b=inds2,
+                           current_projs=[current_proj_a, current_proj_b],
+                           inds_use=[inds1, inds2],
                            js_name_a=js_name1,
                            js_name_b=js_name2,
                            projects=upload_list,
