@@ -132,8 +132,8 @@ def compare():
                 current_proj_a = current_temp_a[0]
                 current_proj_b = current_temp_b[0]
             else:
-                current_proj_a = upload_list[-1]
-                current_proj_b = upload_list[-2]
+                current_proj_a = upload_list[-2]
+                current_proj_b = upload_list[-1]
         else:
             current_proj_a = upload_list[-1]
             current_proj_b = upload_list[-2]
