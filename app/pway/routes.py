@@ -135,8 +135,8 @@ def compare():
                 current_proj_a = upload_list[-2]
                 current_proj_b = upload_list[-1]
         else:
-            current_proj_a = upload_list[-1]
-            current_proj_b = upload_list[-2]
+            current_proj_a = upload_list[-2]
+            current_proj_b = upload_list[-1]
         detail_path1 = naming_rules.get_detailed_path(current_proj_a)
         detail_path2 = naming_rules.get_detailed_path(current_proj_b)
 
