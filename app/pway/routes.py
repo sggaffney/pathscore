@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timedelta
 from collections import OrderedDict
 import numpy as np
-from bokeh.plotting import figure
+from bokeh.plotting import figure, gridplot
 from bokeh.resources import CDN
 from bokeh.embed import components
 from bokeh.plotting import ColumnDataSource
@@ -63,11 +63,9 @@ def scatter():
                 current_proj = current_temp[0]
             else:
                 current_proj = upload_list[-1]
-
         detail_path = naming_rules.get_detailed_path(current_proj)
         all_pathways = load_pathway_list_from_file(detail_path)
-
-        data_pways, data_pvals, data_effect = [], [], []
+        data_pways, data_pvals, data_effect, data_D = [], [], [], []
         for p in all_pathways:
             pval = float(p.p_value)
             if pval >= 0.05:
@@ -75,27 +73,44 @@ def scatter():
             data_pvals.append(pval)
             data_effect.append(float(p.n_effective) / p.n_actual)
             data_pways.append(p)
-
+            data_D.append(p.D)
         x = np.log2(np.array(data_effect))  # effect size
         y = -np.log10(np.array(data_pvals))  # p-value
+        D = np.array(data_D)  # alternatively: np.log2...
         # adjust zero pvalues. e-15.9 seems to be minimum.
         max_y = max([np.ceil(max([i for i in x if i != np.inf])),
                      np.float64(17)])
         y[y == np.inf] = max_y
-        pnames = [misc.strip_contributors(p.name) for p in data_pways]
-        source = ColumnDataSource(data={'x': x, 'y': y, 'pname': pnames})
+        pnames = [misc.strip_contributors(p.nice_nn_ame) for p in data_pways]
+        xyvalues = ColumnDataSource({'effect': x,
+                                     'pvals': y,
+                                     'D': D,
+                                     'pname': pnames})
         tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
                 "box_select,hover"  # poly_select,lasso_select, previewsave
-        plot = figure(tools=tools, plot_height=400, plot_width=600,
-                      title='Effect size vs p-value', logo=None,
-                      x_axis_label="log2 fold change",
-                      y_axis_label="-log10 p-value",)
-        plot.scatter("x", "y", source=source, size=10, color="red", alpha=0.1,
+        plot_config = dict(plot_height=400, plot_width=400, logo=None, tools=tools)
+
+        plot1 = figure(title='Effect size vs p-value',
+                       x_axis_label="log2 fold change",
+                       y_axis_label="-log10 p-value",
+                       **plot_config)
+        plot1.scatter('effect', 'pvals', source=xyvalues, size=10, color="red", alpha=0.1,
                      marker="circle", line_color="firebrick", line_alpha=0.5)
-        hover = plot.select({'type': HoverTool})
-        hover.tooltips = OrderedDict([
-            ("name", "@pname")  # optional: ("index", "$index")
-        ])
+
+        plot2 = figure(title='Effect size vs deviance',
+                       x_axis_label="log2 fold change",
+                       y_axis_label="D",
+                       **plot_config)
+        plot2.scatter('effect', 'D', source=xyvalues, size=10, color="red", alpha=0.1,
+                      marker="circle", line_color="firebrick", line_alpha=0.5)
+
+        for plot in [plot1, plot2]:
+            hover = plot.select(dict(type=HoverTool))
+            hover.tooltips = OrderedDict([
+            #     ("index", "$index"),
+                ("name", "@pname")
+            ])
+        plot = gridplot([[plot1, plot2]])
         script, div = components(plot, CDN)
 
     else:  # no projects yet!
@@ -174,7 +189,7 @@ def compare():
             effects2 = [float(all_paths2[i].ne_low) / all_paths2[i].n_actual for i in inds2]
             xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
             ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
-        pnames = [misc.strip_contributors(all_paths1[i].name) for i in inds1]
+        pnames = [misc.strip_contributors(all_paths1[i].nice_name) for i in inds1]
         source = ColumnDataSource(data={'x': effects1, 'y': effects2,
                                         'pname': pnames})
         maxx = max(effects1)*1.1
