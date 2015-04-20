@@ -65,16 +65,14 @@ def scatter():
                 current_proj = upload_list[-1]
 
         detail_path = naming_rules.get_detailed_path(current_proj)
-        allPathways = load_pathway_list_from_file(detail_path)
+        all_pathways = load_pathway_list_from_file(detail_path)
 
         data_pways, data_pvals, data_effect = [], [], []
-        for p in allPathways:
-            if p.n_effective >= p.n_actual:
-                pass
+        for p in all_pathways:
             pval = float(p.p_value)
             if pval >= 0.05:
                 continue
-            data_pvals.append(float(p.p_value))
+            data_pvals.append(pval)
             data_effect.append(float(p.n_effective) / p.n_actual)
             data_pways.append(p)
 
