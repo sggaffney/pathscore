@@ -725,10 +725,8 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
 
     @property
     def nice_name(self):
-        name_str = self.name.replace('_', ' ')
-        name_str = name_str.replace('BIOCARTA ', '')
-        name_str = name_str.replace('REACTOME ', '')
-        name_str = name_str.replace('KEGG ', '')
+        name_str = misc.strip_contributors(self.name)
+        name_str = name_str.replace('_', ' ')
         name_str = name_str.replace('TEL PATHWAY', 'TELOMERASE PATHWAY')
         name_str = name_str.replace('RNA PATHWAY', 'PKR SIGNALING PATHWAY')
         return name_str
