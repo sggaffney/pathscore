@@ -118,6 +118,8 @@ def compare():
     proj_a = request.args.get('proj_a', None)
     proj_b = request.args.get('proj_b', None)
 
+    show_logged = False
+
     # list of projects (and proj_names) used to create dropdown project selector
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
         filter_by(run_complete=True).order_by(UserFile.file_id).all()
@@ -162,10 +164,18 @@ def compare():
         # key data for export
         # inds_del1 = [i for i in xrange(len(all_paths1)) if i not in inds1]
         # inds_del2 = [i for i in xrange(len(all_paths2)) if i not in inds2]
-        effects1 = [np.log10(float(all_paths1[i].ne_low)
-                             / all_paths1[i].n_actual) for i in inds1]
-        effects2 = [np.log10(float(all_paths2[i].ne_low)
-                             / all_paths2[i].n_actual) for i in inds2]
+        if show_logged:
+            effects1 = [np.log10(float(all_paths1[i].ne_low)
+                                 / all_paths1[i].n_actual) for i in inds1]
+            effects2 = [np.log10(float(all_paths2[i].ne_low)
+                                 / all_paths2[i].n_actual) for i in inds2]
+            xlabel = "Log10 effect size ({})".format(current_proj_a.proj_suffix)
+            ylabel = "Log10 effect size ({})".format(current_proj_b.proj_suffix)
+        else:
+            effects1 = [float(all_paths1[i].ne_low) / all_paths1[i].n_actual for i in inds1]
+            effects2 = [float(all_paths2[i].ne_low) / all_paths2[i].n_actual for i in inds2]
+            xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
+            ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
         pnames = [misc.strip_contributors(all_paths1[i].name) for i in inds1]
         source = ColumnDataSource(data={'x': effects1, 'y': effects2,
                                         'pname': pnames})
@@ -174,13 +184,19 @@ def compare():
 
         tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
                 "box_select,hover"  # poly_select,lasso_select, previewsave
-        xlabel = "Log10 effect size ({})".format(current_proj_a.proj_suffix)
-        ylabel = "Log10 effect size ({})".format(current_proj_b.proj_suffix)
-        plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
-                      logo=None, toolbar_location="right",
-                      x_axis_label=xlabel,
-                      y_axis_label=ylabel,
-                      x_range=[0, maxx], y_range=[0, maxy])
+
+        if show_logged:
+            plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
+                          logo=None, toolbar_location="right",
+                          x_axis_label=xlabel,
+                          y_axis_label=ylabel,
+                          x_range=[0, maxx], y_range=[0, maxy])
+        else:
+            plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
+                          logo=None, toolbar_location="right",
+                          x_axis_label=xlabel, y_axis_label=ylabel,
+                          x_axis_type="log", y_axis_type="log")
+
 
         # radius=radii, fill_color=colors, fill_alpha=0.6, line_color=None
         plot.scatter("x", "y", source=source, size=10, color="red", alpha=0.1,
