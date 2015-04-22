@@ -37,12 +37,6 @@ def demo():
     return render_template('pway/show_pathways_demo.html')
 
 
-@pway.route('/tree_test')
-@login_required
-def tree_test():
-    return render_template('pway/tree_test.html')
-
-
 @pway.route('/scatter')
 @login_required
 def scatter():
@@ -81,7 +75,7 @@ def scatter():
         max_y = max([np.ceil(max([i for i in x if i != np.inf])),
                      np.float64(17)])
         y[y == np.inf] = max_y
-        pnames = [misc.strip_contributors(p.nice_nn_ame) for p in data_pways]
+        pnames = [misc.strip_contributors(p.nice_name) for p in data_pways]
         xyvalues = ColumnDataSource({'effect': x,
                                      'pvals': y,
                                      'D': D,
