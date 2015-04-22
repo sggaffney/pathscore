@@ -218,8 +218,8 @@
 				}
 			}
 		}
-		if(!use_pways.length){
-			$imageContainer.text("No pathways found");
+        if(!use_pways.length){
+			$imageContainer.text("No pathways found.");
 		}
 		else {
 			$imageContainer.text(use_pways.length + " pathways found.");
@@ -234,7 +234,7 @@
 		var rank1 = pageNo*pageMax;
 		var n_shown = use_pways_page.length;
 		if (n_shown>1) {
-			var show_text = " Showing pathways " + (rank1+1) + " to " + (rank1 + n_shown);
+			var show_text = " Showing pathways " + (rank1+1) + " to " + (rank1 + n_shown) + ".";
 			$imageContainer.append(show_text);
 		}
 		for(var pi=0; pi<use_pways_page.length; pi++){
