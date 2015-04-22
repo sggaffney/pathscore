@@ -41,6 +41,12 @@ def get_detailed_path(upload_obj):
     return os.path.join(dir_path, base_str + proj_suffix + name_postfix)
 
 
+def get_hypermutated_path(upload_obj):
+    hyper_file = 'hypermutated_{}.txt'.format(upload_obj.get_local_filename())
+    dir_path = get_project_folder(upload_obj)
+    return os.path.join(dir_path, hyper_file)
+
+
 def get_apache_path(full_path):
     return full_path.replace('/www/pway', '/static/data')
 
