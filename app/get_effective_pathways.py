@@ -1035,7 +1035,7 @@ def load_pathway_list_from_file(results_path):
                 if ignore in name:
                     skipLine = True
                     break
-            if (skipLine):
+            if skipLine:
                 continue
             pway.name = name
             pway.n_actual = int(vals[2])
