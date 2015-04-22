@@ -96,7 +96,9 @@
 					pwayList_b[pwayList_b.length] = pwayList[inds_use_b[i]]; // reduce to common pways
 				}
 //				$selectButton.click(updateImages);
-				$bokehContainer.click(updateIfSelectionChange_afterWait);
+//				$bokehContainer.bind("click touchstart", updateIfSelectionChange_afterWait);
+                $(document).on("click touchstart", '.bokeh', updateIfSelectionChange_afterWait);
+
 			});
 		});
 
@@ -166,6 +168,7 @@
 				//'height=' + (use_pways[pi].geneSet.length*25+80) +
 			}
 		}
+    $(".svg_matrix").click(expandMatrixImage);
 
 	}
 
@@ -204,6 +207,21 @@ function selected_changed(array1, array2) {
     return false;
 }
 
+
+    function expandMatrixImage(event){
+		var $im = $(event.target);
+		var $statusDiv = $im.parent().children()[0];
+		var im_status = jQuery.parseJSON($statusDiv.textContent);
+		var n_genes = im_status.n_genes;
+		var expanded = im_status.expanded;
+		if(!expanded)
+			$im.css('height',25*n_genes + 80);
+		else
+			$im.css('height','inherit');
+		im_status.expanded = !im_status.expanded;
+		$statusDiv.textContent = JSON.stringify(im_status);
+
+	}
 
 
 
