@@ -8,16 +8,7 @@
 
 {% block page_content %}
 
-<!-- BETTER TO HAVE AN OBJECT-->
-
-
-<!--<div class="page-header">-->
-	<!--<h1>Pathway Dendrogram</h1>-->
-<!--</div>-->
-
-<!--<div class="panel panel-default">-->
-	<!--<div class="panel-body">-->
-		<form class="form-inline" action="/scatter" method="get">
+		<form class="form-inline" action="/scatter" id="projForm" method="get">
 			<div class="form-group" style="margin: 0px 0px 15px 0px;">
 				<label for="projSelection">Project:</label>
                 <select class="form-control" id="projSelection" name="proj">
@@ -31,13 +22,29 @@
 						</option>
 				{% endfor %}
 				</select>
+                <span style="margin-left:15px;">{{ current_proj.n_patients }} patients.</span>
 			</div>
         </form>
-    <!--</div>-->
-<!--</div>-->
 
 <div class="bokeh">
  {{ bokeh_div|safe }}
+</div>
+
+<form class="form-inline" style="margin-top: 15px;" id="geneForm">
+  <div class="form-group">
+    <!--<label for="userGenes">Email address</label>-->
+    <input type="text" class="form-control" id="userGenes" placeholder="Gene list e.g. TP53,BRAF">
+    <button class="btn btn-default" id="includeButton" type="button">Include</button>
+    <button class="btn btn-default" id="excludeButton" type="button">Exclude</button>
+    <label for="userGenes" class="control-label" id="selectCount"></label>
+  </div>
+</form>
+
+<div id="nPatientDiv" class="padded">
+{{ current_proj.n_patients }} patients.
+</div>
+
+<div id="imageContainer" class="padded">
 </div>
 
 {% endblock %}
@@ -52,15 +59,179 @@
 
 <script>
     $(function() {
-		$projSelection = $('#projSelection');
+		$imageContainer = $('#imageContainer');
+        $projSelection = $('#projSelection');
 		projId = $projSelection.val();
-		$projSelection.change(  // sets projId global
+        $bokehContainer = $('.bokeh');
+        $includeButton = $('#includeButton');
+        $excludeButton = $('#excludeButton');
+        $selectCount = $('#selectCount');
+        $projSelection.change(  // sets projId global
 				function () {
 					projId = $projSelection.val();
-					$('form').submit()
+					$('#projForm').submit()
 				}
 		);
+        $("#geneForm").submit(function(e){return false;});
+
+        pwayList = []; //updated by loaded script
+        js_inds = {{ js_inds }};
+        plot_inds = {{ plot_inds }};
+
+		selected_prv = [];
+
+		$.getScript( "static/data/{{ user_id }}/{{ current_proj.file_id }}/{{ js_name }}", function( data, textStatus, jqxhr ) {
+			console.log( "Loaded project." );
+//			pwayList = [];
+//			for(var i=0; i<js_inds.length; i++){
+//				pwayList[pwayList.length] = pwayList[js_inds[i]]; // reduce to common pways
+//			}
+            $bokehContainer.click(updateIfSelectionChange_afterWait);
+            $includeButton.click(true, selectPathwaysByGenes);
+            $excludeButton.click(false, selectPathwaysByGenes);
+		});
 	});
+
+
+    function updateImages(){
+		$imageContainer.empty();  //clear old pathway images
+		var indices = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected;
+		if(!indices.length){
+			$imageContainer.text("No pathways selected");
+			return
+		}
+		var use_pways = [];
+        var use_js_inds = [];
+		for(var i=0; i<indices.length; i++){
+			if(js_inds[indices[i]]>-1){  //
+                use_js_inds.push(js_inds[indices[i]]);
+            }
+		}
+        use_js_inds.sort(); // want pathways ordered by decreasing deviance
+        $.each(use_js_inds, function(i, js_index){use_pways.push(pwayList[js_index]);});
+        if(!use_pways.length){
+			$imageContainer.text("No enriched pathways selected");
+			return
+		}
+		var proj_name = '{{ current_proj.get_local_filename() }}';
+		for (var pi = 0; pi < use_pways.length; pi++) {
+            var ngenes = use_pways[pi].geneSet.length;
+            var max_height = 25 * ngenes + 80;
+            var pval = use_pways[pi]['pval'];
+            var pval_str = null;
+            if(pval == '0.000e+00')
+                pval_str = 'p<1e-16';
+            else
+                pval_str = 'p=' + pval;
+            $imageContainer.append(
+                '<div class="panel panel-primary">' +
+                '<div class="panel-heading">' + proj_name +
+                '<h2 class="panel-title"><a href="' + root_url + use_pways[pi]['url'] + '" target="_blank">'
+                + use_pways[pi]['name'] + '</a>' + ' (' + pval_str + ') </h2>' +
+                use_pways[pi]['brief'] + ' (' + use_pways[pi]['contrib'] + ')</div>' +
+                '<div class="panel-body" style="padding:0"><code class="p-lengths">Gene lengths: ' +
+                '<span class="keyword-text">min</span>=' + use_pways[pi]['lengths'][0] + 'kbp (' + use_pways[pi]['lengths'][1] + '); ' +
+                '<span class="keyword-text">max</span>=' + use_pways[pi]['lengths'][2] + 'kbp (' + use_pways[pi]['lengths'][3] + '); ' +
+                '<span class="keyword-text">avg</span>=' + use_pways[pi]['lengths'][4] + 'kbp; ' +
+                '<span class="keyword-text">var</span>=' + use_pways[pi]['lengths'][5] + '</code>'
+                + '<div class="svg_target ui-widget-content">' +
+                '<img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways[pi]['id'] + '.svgz" ' +
+                'alt="' + use_pways[pi]['id'] + '.svgz" ></img>'
+                + '</div>'
+                + '<div class="svg_matrix ui-widget-content"><div class="pway_size" style="display:none">'
+                + JSON.stringify({
+                    "n_genes": use_pways[pi].geneSet.length,
+                    "expanded": false
+                }) + '</div>' +
+                '<img src="static/data/{{ user_id }}/' + projId + '/matrix_svg/' + use_pways[pi]['id'] + '.svgz" ' +
+                'px alt="' + use_pways[pi]['id'] + '.svgz" style="max-height:' + max_height + 'px;"></img>' //
+                + '</div></div>'
+                + '<p></p>'
+            );
+		}
+        $(".svg_matrix").click(expandMatrixImage);
+	}
+
+
+	function updateIfSelectionChange_afterWait(){
+		setTimeout(updateIfSelectionChange, 500); // wait to allow Bokeh indices to update
+	}
+
+
+	function updateIfSelectionChange(){
+		// compare selected_prv to current selection
+		var selected_now = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected;
+		$selectCount.text(selected_now.length + " enriched pathways found.");
+        console.log('Selected prev: ' + selected_prv);
+		console.log('Selected now: ' + selected_now);
+		if(selected_changed(selected_prv, selected_now)){
+			console.log('Selection changed');
+			updateImages();
+			selected_prv = selected_now;
+		}
+		else{
+			console.log('Selection unchanged')
+		}
+	}
+
+
+    function selected_changed(array1, array2) {
+        // compare lengths
+        if (array1.length != array2.length)
+            return true;
+        for (var i = 0, l=array1.length; i < l; i++) {
+            if (array1[i] != array2[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    function expandMatrixImage(event){
+		var $im = $(event.target);
+		var $statusDiv = $im.parent().children()[0];
+		var im_status = jQuery.parseJSON($statusDiv.textContent);
+		var n_genes = im_status.n_genes;
+		var expanded = im_status.expanded;
+		if(!expanded)
+			$im.css('height',25*n_genes + 80);
+		else
+			$im.css('height','inherit');
+		im_status.expanded = !im_status.expanded;
+		$statusDiv.textContent = JSON.stringify(im_status);
+	}
+
+
+    function selectPathwaysByGenes(event){
+        var showIfIncluded = event.data;
+        var geneText = $('#userGenes').val();
+        if (geneText === ""){
+            return;
+        }
+        var geneList = geneText.split(',');
+        var showPlotIds = [];
+
+        $.each(pwayList, function(jsIndex, pway){
+            var geneFound = null;
+            var found = [];
+            $.each(geneList, function(geneIndex, geneName){
+                found.push($.inArray(geneName, pway.geneSet) > -1);
+            });
+            if(showIfIncluded && $.inArray(false, found)<0){
+                showPlotIds.push(plot_inds[jsIndex]);
+            }
+            else if (!showIfIncluded && $.inArray(true, found)<0){
+                showPlotIds.push(plot_inds[jsIndex]);
+            }
+        });
+        Bokeh.ColumnDataSource.Collection.models[0].set('selected', showPlotIds);
+        Bokeh.ColumnDataSource.Collection.models[0].trigger('change');
+        updateIfSelectionChange_afterWait()
+    }
+
+
+
 
 </script>
 

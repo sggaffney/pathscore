@@ -112,14 +112,31 @@ def scatter():
             ])
         plot = gridplot([[plot1, plot2]])
         script, div = components(plot, CDN)
+        js_name = naming_rules.get_js_name(current_proj)
+        # IDS
+        all_ids = [p.path_id for p in all_pathways]
+        js_ids = [p.path_id for p in all_pathways if p.gene_set]
+        # INDICES IN JS_OBJECT OF PLOT POINTS. plot->js
+        js_inds = []
+        for i in all_ids:
+            try:
+                js_inds.append(js_ids.index(i))
+            except ValueError:
+                js_inds.append(-1)
+        # INDICES IN PLOT OF JS_OBJECT ITEMS (A SUBSET)
+        plot_inds = [all_ids.index(i) for i in js_ids]
 
     else:  # no projects yet!
         flash("No project results to show yet.", "info")
         current_proj = None
         script, div = None, None
+        js_name = None
+        js_inds = None
+        plot_inds = None
 
     return render_template('pway/scatter.html', current_proj=current_proj,
-                           projects=upload_list,
+                           projects=upload_list, js_name=js_name,
+                           js_inds=js_inds, plot_inds=plot_inds,
                            user_id=current_user.id, bokeh_script=script,
                            bokeh_div=div)
 
