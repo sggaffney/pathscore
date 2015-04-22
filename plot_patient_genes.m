@@ -1,9 +1,27 @@
 %% SHOW GENE PRESENCE FOR PATIENTS
 
 
-function plot_patient_genes(pretty_file, optional_path_id)
+function plot_patient_genes(pretty_file, varargin)  % optional_path_id
 
-if(nargin==1)
+global hypermutated_patients;
+
+hypermutated_flag = find(strcmp('--hypermutated',varargin));  % empty if not present
+if hypermutated_flag
+    hypermutated_file = varargin{hypermutated_flag+1};
+else
+    hypermutated_file = nan;
+end
+
+if hypermutated_flag
+    fileID = fopen(hypermutated_file,'r');
+    dataArray = textscan(fileID, '%s\n', 'ReturnOnError', false);
+    hypermutated_patients = dataArray{1}';
+    fclose(fileID);
+else
+    hypermutated_patients = {};
+end
+
+if (isempty(varargin) || hypermutated_flag && length(varargin)==2)
     plot_patient_genes_default(pretty_file)
 else
     plot_patient_genes_for_pathway(pretty_file, optional_path_id)
@@ -37,7 +55,7 @@ if(~exist(svg_dir,'dir'))
 end
 
 % RUN ON ALL MATRIX TXT FILES
-fname = sprintf('pathways_pvalues_%s_matrix%g.txt',proj_suffix,path_id);
+fname = sprintf('pathways_pvalues_%s_matrix%g.txt', proj_suffix, path_id);
 gzip_bool = false;
 svg_bool = false;
 plot_patient_genes_for_file(fname, svg_dir, gzip_bool, svg_bool)
@@ -110,6 +128,7 @@ end
 function plot_patient_genes_for_file(matrix_file, out_dir, gzip_bool, svg_bool)
 
 % patient names stored in patient array
+global hypermutated_patients;
 
 sortGenes = true;
 orientation = 2; % transposes axes. 1 (genes on x axis) or 2 (patients on x axis)
@@ -141,6 +160,18 @@ presence = presence'; % 1 row for each patient (gives boolean for each gene)
 % CLEAN UP
 fclose(fid);
 clearvars fid formatSpec dataArray;
+
+%% mark hypermutated patients
+if ~isempty(hypermutated_patients)
+   for patient_ind = 1:length(patients)
+       patient = patients{patient_ind};
+       if(any(strcmp(patient, hypermutated_patients)))
+           patients{patient_ind} = [patient '**'];
+       end
+   end
+end
+
+
 
 %%
 % get pathway_id

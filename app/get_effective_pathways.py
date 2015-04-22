@@ -25,7 +25,7 @@ from .db_lookups import lookup_path_sizes, lookup_exome_length, \
     lookup_patient_counts, lookup_patient_lengths, build_path_patient_dict, \
     lookup_path_lengths, fetch_path_ids_interest_genes, get_pathway_name_dict, \
     get_gene_combs_hit, get_gene_counts, get_pway_lenstats_dict, \
-    fetch_path_info_global
+    fetch_path_info_global, lookup_hypermutated_patients
 import misc
 import naming_rules
 
@@ -843,14 +843,19 @@ def run(dir_path, table_name, user_upload):
     user_upload is upload object (file_id, user_id, filename, ...etc)
     """
     alg = user_upload.algorithm
+    if alg == 'gene_count':
+        genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
+                                              None).genome_size
+    elif alg == 'gene_length':
+        genome_size = exome_length
     detail_path, matrix_folder = generate_initial_text_output(
-        dir_path, table_name, user_upload, alg=alg)
+        dir_path, table_name, user_upload, genome_size, alg=alg)
     # matrix_folder is typically 'matrix_txt'
     generate_plot_files(user_upload, detail_path, table_name, dir_path,
-                        matrix_folder)
+                        matrix_folder, genome_size)
 
 
-def generate_initial_text_output(dir_path, table_name, user_upload, alg='gene_count'):
+def generate_initial_text_output(dir_path, table_name, user_upload, genome_size, alg='gene_count'):
     # max_mutations
     file_id = user_upload.file_id
     table_list = [table_name]  # code can iterate through list of tables
@@ -859,11 +864,6 @@ def generate_initial_text_output(dir_path, table_name, user_upload, alg='gene_co
         ignore_genes = str(user_upload.ignore_genes).split(',')
     else:
         ignore_genes = []
-    if alg == 'gene_count':
-        genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
-                                              None).genome_size
-    elif alg == 'gene_length':
-        genome_size = exome_length
 
     proj_suffix = user_upload.get_local_filename()
     # # get patient list. maybe empty list.
@@ -927,6 +927,12 @@ def generate_initial_text_output(dir_path, table_name, user_upload, alg='gene_co
     elif alg == 'gene_length':
         patient_size_dict = lookup_patient_lengths(table_name, ignore_genes)
 
+    hypermutated = lookup_hypermutated_patients(table_name)
+    hyper_path = naming_rules.get_hypermutated_path(user_upload)
+    with open(hyper_path, 'w') as out:
+        for patient_id in hypermutated:
+            out.write(patient_id + '\n')
+
     for pathway_number in all_path_ids:
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
@@ -973,7 +979,8 @@ def generate_initial_text_output(dir_path, table_name, user_upload, alg='gene_co
     return detail_path, matrix_folder
 
 
-def generate_plot_files(user_upload, detail_path, table_name, dir_path, matrix_folder):
+def generate_plot_files(user_upload, detail_path, table_name, dir_path,
+                        matrix_folder, genome_size):
     allPathways = load_pathway_list_from_file(detail_path)
 
     scores_path, names_path, tree_svg_path = naming_rules.\
@@ -1001,7 +1008,7 @@ def generate_plot_files(user_upload, detail_path, table_name, dir_path, matrix_f
     # ONLY CREATE SVGS IF MATRIX TXT PATH EXISTS (i.e. pathways have mutations)
     if os.path.exists(os.path.join(dir_path, matrix_folder)):
         create_pway_plots(str(detail_path), scores_path, names_path,
-                          tree_svg_path)
+                          tree_svg_path, genome_size)
         misc.zip_svgs(dir_path)
     # create_svgs(str(detail_path))
     # create_matrix_svgs(str(detail_path))
@@ -1101,13 +1108,13 @@ def make_readable_file(allPathways, out_path):
                 out.write('\t'.join([str(v) for v in line_vals]) + '\n')
 
 
-def create_pway_plots(txt_path, scores_path, names_path, tree_path):
+def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size):
     """Run matlab script that builds matrix and target svgs."""
     # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
     cmd = 'matlab -nosplash -nodesktop -r \"pway_plots(' \
-          '{txtpath!r}, {scores!r}, {names!r}, {tree!r});\"'.\
+          '{txtpath!r}, {scores!r}, {names!r}, {tree!r}, {gsize});\"'.\
         format(txtpath=txt_path, scores=scores_path, names=names_path,
-               tree=tree_path)
+               tree=tree_path, gsize=int(genome_size))
     with open(os.devnull, "r") as fnullin:
         with open(os.devnull, "w") as fnullout:
             subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,

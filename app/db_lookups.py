@@ -131,6 +131,32 @@ def lookup_patient_counts(table_name, ignore_genes):
     return patient_size_dict
 
 
+def lookup_hypermutated_patients(table_name, cutoff=500):
+    """Get patient ids for patients with >500 mutations (or specified cutoff)."""
+    cmd = """SELECT patient_id FROM {table_name}
+              GROUP BY patient_id HAVING count(*)>{cutoff};"""\
+        .format(table_name=table_name, cutoff=cutoff)
+    patient_list = []
+    try:
+        con = mdb.connect(**app.dbvars)
+        cur = con.cursor()
+        cur.execute(cmd)
+        # assert isinstance(cur.rowcount, int)
+        row_count = cur.rowcount
+        if not row_count:
+            # print "No hypermutated patients."
+            return patient_list
+        for row_no in xrange(row_count):
+            row = cur.fetchone()
+            patient_list.append(row[0])
+    except mdb.Error as e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+    finally:
+        if con:
+            con.close()
+    return patient_list
+
+
 def lookup_patient_lengths(table_name, ignore_genes):
     """Get patient bp lengths."""
     if(ignore_genes):
