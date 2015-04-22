@@ -191,6 +191,30 @@ def lookup_patient_lengths(table_name, ignore_genes):
     return patient_len_dict
 
 
+def count_patients(table_name):
+    """Get patient count for project."""
+    cmd = """SELECT count(distinct patient_id) FROM {table_name};"""\
+        .format(table_name=table_name)
+    patient_count = None
+    try:
+        con = mdb.connect(**app.dbvars)
+        cur = con.cursor()
+        cur.execute(cmd)
+        # assert isinstance(cur.rowcount, int)
+        row_count = cur.rowcount
+        if not row_count == 1:
+            print "Non single result from patient count query."
+            return patient_count
+        row = cur.fetchone()
+        patient_count = row[0]
+    except mdb.Error as e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+    finally:
+        if con:
+            con.close()
+    return patient_count
+
+
 def build_path_patient_dict(table_name, ignore_genes):
     """Returns dict. Maps path_id (int) -> {Set of patient_ids}."""
     if ignore_genes:

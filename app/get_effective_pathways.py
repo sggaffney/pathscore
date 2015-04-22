@@ -25,7 +25,7 @@ from .db_lookups import lookup_path_sizes, lookup_exome_length, \
     lookup_patient_counts, lookup_patient_lengths, build_path_patient_dict, \
     lookup_path_lengths, fetch_path_ids_interest_genes, get_pathway_name_dict, \
     get_gene_combs_hit, get_gene_counts, get_pway_lenstats_dict, \
-    fetch_path_info_global, lookup_hypermutated_patients
+    fetch_path_info_global, count_patients, lookup_hypermutated_patients
 import misc
 import naming_rules
 
@@ -61,6 +61,9 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
             if not table.loaded:
                 raise TableLoadException("Failed to load table {!r}."
                                          .format(table_name))
+            user_upload.n_patients = count_patients(table_name)
+            db.session.add(user_upload)
+            db.session.commit()
             run(proj_dir, table_name, user_upload)
             user_upload.run_complete = True
         except:

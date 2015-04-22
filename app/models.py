@@ -122,6 +122,7 @@ class UserFile(db.Model):
     ignore_genes = db.Column(db.Text())
     proj_suffix = db.Column(db.String(255))
     uploader = db.relationship('User', backref='uploads')
+    n_patients = db.Column(db.Integer)
 
     def get_local_filename(self):
         keepcharacters = (' ', '.', '_')
