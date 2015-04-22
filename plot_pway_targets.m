@@ -1,11 +1,12 @@
 %% Main function. Read in file, create figure, plot pathway circles.
 % varargs example: --svg --eps --skipfew --skipgene BRAF
 
-function plot_pway_targets(results_file, varargin)
+function plot_pway_targets(results_file, genome_size, varargin)
 
 global max_diameter_units fig_width cmap_name mixed_sizes ...
-    skip_gene skip_few_hits rot_scale rot_max;
+    skip_gene skip_few_hits rot_scale rot_max path_size_lookup;
 
+load path_size_lookup path_size_lookup;
 rot_scale = 20;
 rot_max = 55;
 
@@ -41,7 +42,7 @@ mixed_sizes = true;
 % n_pages = 362; %GET FROM FILE! 301 cut. melanoma. 655 luad. 688 melanoma. 684 lusc.
 % root_folder = '~/Dropbox/Townsend/autopsy_pathways/';
 % verbose = 1;
-rescale_cutoff = 20000; %use different size above cutoff pathway gene size
+rescale_cutoff = genome_size; %use different size above cutoff pathway gene size
 
 % Extract folder and project suffix
 path_array = strsplit(results_file,filesep); %for extracting folder + name
@@ -122,7 +123,7 @@ for page = 0:n_pways-1
             'FaceColor',[1 0.4 0.4]); %light red
 
         [X, Y] = getPathwayCoverageSegmentCoords(pway.n_mutated, ...
-            pway.path_size, r_effective);
+            pway.id, r_effective);
         fill(X,Y,'r','LineStyle','none','LineWidth',1,'EdgeColor','r'); 
 
         if(pway.path_size < pway.path_effective)
@@ -401,9 +402,10 @@ function [X, Y, textpos, coverage_pos] = getGeneSegmentCoordsGeneSize(r_effectiv
 end
 
 %% Get X and Y points for pie segment - to show proportion of pathway mutated.
-function [X, Y] = getPathwayCoverageSegmentCoords(n_mutated, n_path, r_effective)
+function [X, Y] = getPathwayCoverageSegmentCoords(n_mutated, path_id, r_effective)
 
-    hit_fraction = n_mutated / n_path; %wedge size, radians
+    global path_size_lookup;
+    hit_fraction = n_mutated / path_size_lookup(path_id); %wedge size, radians
     segs_per_2pi = 500;
     n_segs = round(hit_fraction * segs_per_2pi);  % number of line segments in gene arc
      
