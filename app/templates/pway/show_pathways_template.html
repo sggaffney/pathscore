@@ -90,6 +90,7 @@
 		$projSelection = $('#projSelection');
 		pwayList = null;
 		skip_few = true;
+        vogelstein = ['ABL1', 'ACVR1B', 'AKT1', 'ALK', 'APC', 'AR', 'ARID1A', 'ARID1B', 'ARID2', 'ASXL1', 'ATM', 'ATRX', 'AXIN1', 'B2M', 'BAP1', 'BCL2', 'BCOR', 'BRAF', 'BRCA1', 'BRCA2', 'CARD11', 'CASP8', 'CBL', 'CDC73', 'CDH1', 'CDKN2A', 'CEBPA', 'CIC', 'CREBBP', 'CRLF2', 'CSF1R', 'CTNNB1', 'CYLD', 'DAXX', 'DNMT1', 'DNMT3A', 'EGFR', 'EP300', 'ERBB2', 'EZH2', 'AMER1', 'FBXW7', 'FGFR2', 'FGFR3', 'FLT3', 'FOXL2', 'FUBP1', 'GATA1', 'GATA2', 'GATA3', 'GNA11', 'GNAQ', 'GNAS', 'H3F3A', 'HIST1H3B', 'HNF1A', 'HRAS', 'IDH1', 'IDH2', 'JAK1', 'JAK2', 'JAK3', 'KDM5C', 'KDM6A', 'KIT', 'KLF4', 'KRAS', 'MAP2K1', 'MAP3K1', 'MED12', 'MEN1', 'MET', 'MLH1', 'KMT2B', 'KMT2C', 'MPL', 'MSH2', 'MSH6', 'MYD88', 'NCOR1', 'NF1', 'NF2', 'NFE2L2', 'NOTCH1', 'NOTCH2', 'NPM1', 'NRAS', 'PAX5', 'PBRM1', 'PDGFRA', 'PHF6', 'PIK3CA', 'PIK3R1', 'PPP2R1A', 'PRDM1', 'PTCH1', 'PTEN', 'PTPN11', 'RB1', 'RET', 'RNF43', 'RUNX1', 'SETD2', 'SETBP1', 'SF3B1', 'SMAD2', 'SMAD4', 'SMARCA4', 'SMARCB1', 'SMO', 'SOCS1', 'SOX9', 'SPOP', 'SRSF2', 'STAG2', 'STK11', 'TET2', 'TNFAIP3', 'TRAF7', 'TP53', 'TSC1', 'TSHR', 'U2AF1', 'VHL', 'WT1', 'ALPK2', 'BCLAF1', 'CD1D', 'CEP76', 'CHD8', 'DNER', 'ELF3', 'EZH1', 'ARHGAP35', 'HIST1H4E', 'HLA-B', 'IRF6', 'MAP4K3', 'MBD1', 'MGA', 'MYOCD', 'PCBP1', 'QKI', 'RAD21', 'RHEB', 'RHOA', 'RPL5', 'RXRA', 'SETDB1', 'SOS1', 'STX2', 'TAP1', 'TNF', 'TP53BP1', 'TPX2', 'TRIM23', 'ZNF750', 'ZRANB3'];
 
 		var pi = null;
 		projId = $projSelection.val();  // global for project id
@@ -238,7 +239,21 @@
 			$imageContainer.append(show_text);
 		}
 		for(var pi=0; pi<use_pways_page.length; pi++){
-			var ngenes = use_pways_page[pi].geneSet.length;
+
+            var driver_list = [];
+            var temp_pway = use_pways_page[pi];
+            $.each(temp_pway.geneSet, function(gi, gene_name){
+                if( $.inArray(gene_name, vogelstein)>-1 ){
+                    driver_list.push(gene_name)
+                }
+            });
+            driver_list.sort();
+            var driver_text = "";
+            if (driver_list.length){
+                driver_text = '<br>&nbsp;Vogelstein drivers: ' + driver_list.join(', ');
+            }
+
+            var ngenes = use_pways_page[pi].geneSet.length;
 			var max_height = 25*ngenes + 80;
 			$imageContainer.append(
 				'<div class="panel panel-primary">' +
@@ -250,7 +265,7 @@
 				'<span class="keyword-text">min</span>=' + use_pways_page[pi]['lengths'][0] + 'kbp (' + use_pways_page[pi]['lengths'][1] + '); ' +
 				'<span class="keyword-text">max</span>=' + use_pways_page[pi]['lengths'][2] + 'kbp (' + use_pways_page[pi]['lengths'][3] + '); ' +
 				'<span class="keyword-text">avg</span>=' + use_pways_page[pi]['lengths'][4] + 'kbp; ' +
-				'<span class="keyword-text">var</span>=' + use_pways_page[pi]['lengths'][5] + '</code>'
+				'<span class="keyword-text">var</span>=' + use_pways_page[pi]['lengths'][5] + driver_text + '</code>'
 				+'<div class="svg_target ui-widget-content">' +
 				'<img src="static/data/{{ user_id }}/' + projId + '/pathways_svg/' + use_pways_page[pi]['id'] + '.svgz" ' +
 				'alt="' + use_pways_page[pi]['id'] + '.svgz" ></img>'
