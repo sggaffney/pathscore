@@ -9,11 +9,12 @@
 <table class="table table-hover vmiddle_sgg">
     <tr>
         <th>Project Name</th>
+        <th>Patients</th>
         <th>Date</th>
-        <th>Filename</th>
+        <!--<th>Filename</th>-->
         <th>Algorithm</th>
-        <th>Genome size</th>
-        <th>n_cutoff</th>
+        <!--<th>Genome size</th>-->
+        <!--<th>n_cutoff</th>-->
         <th>Ignore</th>
         <th>Required</th>
         <th>Status</th>
@@ -27,12 +28,13 @@
             <tr>
             <td>{{ proj.get_local_filename() }}</td>
         {% endif %}
+            <td>{{ proj.n_patients }} </td>
             <td>{{ proj.upload_time }} </td>
-            <td>{{ proj.filename }} </td>
+            <!--<td>{{ proj.filename }} </td>-->
             <td>{{ proj.algorithm }} </td>
-            <td>{{ proj.genome_size }} </td>
-            <td>{{ proj.n_cutoff }} </td>
-            <td>{{ proj.ignore_genes }} </td>
+            <!--<td>{{ proj.genome_size }} </td>-->
+            <!--<td>{{ proj.n_cutoff }} </td>-->
+            <td>{{ proj.ignore_short }} </td>
             <td>{{ proj.required_genes }} </td>
         {% if proj.run_complete %}
             <td>Complete</td>
