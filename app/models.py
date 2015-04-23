@@ -143,3 +143,10 @@ class UserFile(db.Model):
         temp_id = str(self.file_id)
         return 'mutations_{}'.format(temp_id)
 
+    @property
+    def ignore_short(self):
+        ignore_list = self.ignore_genes.split(',')
+        ignore_str = ','.join(ignore_list[0:5])
+        if len(ignore_list)>5:
+            ignore_str = ignore_str + '...'
+        return ignore_str
