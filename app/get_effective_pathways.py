@@ -1010,8 +1010,9 @@ def generate_plot_files(user_upload, detail_path, table_name, dir_path,
 
     # ONLY CREATE SVGS IF MATRIX TXT PATH EXISTS (i.e. pathways have mutations)
     if os.path.exists(os.path.join(dir_path, matrix_folder)):
+        hyper_path = naming_rules.get_hypermutated_path(user_upload)
         create_pway_plots(str(detail_path), scores_path, names_path,
-                          tree_svg_path, genome_size)
+                          tree_svg_path, genome_size, hyper_path)
         misc.zip_svgs(dir_path)
     # create_svgs(str(detail_path))
     # create_matrix_svgs(str(detail_path))
@@ -1111,13 +1112,13 @@ def make_readable_file(allPathways, out_path):
                 out.write('\t'.join([str(v) for v in line_vals]) + '\n')
 
 
-def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size):
+def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size, hyper_path):
     """Run matlab script that builds matrix and target svgs."""
     # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
     cmd = 'matlab -nosplash -nodesktop -r \"pway_plots(' \
-          '{txtpath!r}, {scores!r}, {names!r}, {tree!r}, {gsize});\"'.\
+          '{txtpath!r}, {scores!r}, {names!r}, {tree!r}, {gsize}, {hyper_path!r});\"'.\
         format(txtpath=txt_path, scores=scores_path, names=names_path,
-               tree=tree_path, gsize=int(genome_size))
+               tree=tree_path, gsize=int(genome_size), hyper_path=hyper_path)
     with open(os.devnull, "r") as fnullin:
         with open(os.devnull, "w") as fnullout:
             subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
