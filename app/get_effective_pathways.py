@@ -1127,9 +1127,8 @@ def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
 def create_dendrogram_plots(scores_path, names_path, tree_path, genome_size, hyper_path):
     """Run matlab script that builds matrix and target svgs."""
     cmd = 'matlab -nosplash -nodesktop -r \"plot_pway_dendrogram(' \
-          '{scores!r}, {names!r}, {tree!r}, {gsize}, {hyper_path!r});\"'.\
-        format(scores=scores_path, names=names_path, tree=tree_path,
-               gsize=int(genome_size), hyper_path=hyper_path)
+          '{scores!r}, {names!r}, {tree!r});\"'.\
+        format(scores=scores_path, names=names_path, tree=tree_path)
     with open(os.devnull, "r") as fnullin:
         with open(os.devnull, "w") as fnullout:
             subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
