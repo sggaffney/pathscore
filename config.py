@@ -39,7 +39,7 @@ class Config:
 
     SERVER_NAME = os.environ.get('SERVER_NAME')
 
-    PROJ_DELETE_INTERVAL = 1814400  # 3 weeks
+    PROJ_DELETE_INTERVAL = 18144000  # 30 weeks
 
 class DevelopmentConfig(Config):
     DEBUG = True

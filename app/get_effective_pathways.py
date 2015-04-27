@@ -595,13 +595,12 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 pway.set_up_from_file(pval, psize, peffect, ll_actual,
                                       ll_effective, D, ne_low, ne_high, runtime)
                 all_pathways.append(pway)
-        # sort pathways by effect_size : actual_size
-        all_pathways.sort(
-            key=lambda pway: self._get_size_ratio(pway.n_effective,
-                                                  pway.n_actual),
-            reverse=True)
-        # sort pathways by p-value
+        # sort pathways by p-value FIRST
         all_pathways.sort(key=lambda pw: pw.D, reverse=True)
+        # NEXT sort pathways by effect_size_lowCI : actual_size
+        all_pathways.sort(key=lambda p:
+                          self._get_size_ratio(p.ne_low, p.n_actual), reverse=True)
+
         # # for pway in allPathways[0:max_lookup_rows+1]:
         # for pway in allPathways:
         # if pway.p_value < 0.1:
@@ -1060,10 +1059,10 @@ def load_pathway_list_from_file(results_path):
 def save_dissimilarity_files(pway_list_full, scores_path, names_path, min_len=50):
     """Reads gene_sets from all pathways, calculating a matrix of dissimilarity
     scores. Saves scores and path_id+names in text files at specified paths."""
-    pway_list = [p for p in pway_list_full if p.n_effective > p.n_actual]
-    pvals = [p.p_value for p in pway_list]
-    pvals = misc.get_at_least_n(pvals, min_len)
-    n_pways = len(pvals)
+    pway_list = [p for p in pway_list_full if p.ne_low > p.n_actual]
+    effect_sizes = [float(p.ne_low)/p.n_actual for p in pway_list]
+    effect_sizes = misc.get_at_least_n(effect_sizes, min_len)  # top ~50 effects
+    n_pways = len(effect_sizes)
     gene_set_list = [p.gene_set for p in pway_list if p.gene_set][:n_pways]
     scores = misc.get_distance_matrix(gene_set_list)
     # SAVE SCORES SQUARE MATRIX IN TEXT FILE. (savetxt from numpy)
@@ -1119,6 +1118,23 @@ def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
           '{txtpath!r}, {scores!r}, {names!r}, {tree!r}, {gsize}, {hyper_path!r});\"'.\
         format(txtpath=txt_path, scores=scores_path, names=names_path,
                tree=tree_path, gsize=int(genome_size), hyper_path=hyper_path)
+    with open(os.devnull, "r") as fnullin:
+        with open(os.devnull, "w") as fnullout:
+            subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
+                                  stderr=fnullout, shell=True)
+
+
+def create_dendrogram_plots(scores_path, names_path, tree_path, genome_size, hyper_path):
+    """Run matlab script that builds matrix and target svgs."""
+    # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
+
+    print 'plot_pway_dendrogram({scores_file!r}, {names_file!r}, {svg_out_path!r});'.format(
+            scores_file=scores_path, names_file=names_path, svg_out_path=tree_svg_path)
+
+    cmd = 'matlab -nosplash -nodesktop -r \"plot_pway_dendrogram(' \
+          '{scores!r}, {names!r}, {tree!r}, {gsize}, {hyper_path!r});\"'.\
+        format(scores=scores_path, names=names_path, tree=tree_path,
+               gsize=int(genome_size), hyper_path=hyper_path)
     with open(os.devnull, "r") as fnullin:
         with open(os.devnull, "w") as fnullout:
             subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
