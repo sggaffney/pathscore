@@ -32,13 +32,23 @@ def get_tree_score_paths(upload_obj):
     return scores_path, scored_names, svg_out_path
 
 
-def get_detailed_path(upload_obj):
+def _get_pvalue_root(upload_obj):
     """Get detailed path for upload object."""
     dir_path = get_project_folder(upload_obj)
     base_str = 'pathways_pvalues_'
     proj_suffix = upload_obj.get_local_filename()
+    return os.path.join(dir_path, base_str + proj_suffix)
+
+
+def get_pvalue_path(upload_obj):
+    return _get_pvalue_root(upload_obj) + '.txt'
+
+
+def get_detailed_path(upload_obj):
+    """Get detailed path for upload object."""
+    name_prefix = _get_pvalue_root(upload_obj)
     name_postfix = '_detail.txt'
-    return os.path.join(dir_path, base_str + proj_suffix + name_postfix)
+    return name_prefix + name_postfix
 
 
 def get_hypermutated_path(upload_obj):
