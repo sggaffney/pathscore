@@ -1126,11 +1126,6 @@ def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
 
 def create_dendrogram_plots(scores_path, names_path, tree_path, genome_size, hyper_path):
     """Run matlab script that builds matrix and target svgs."""
-    # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
-
-    print 'plot_pway_dendrogram({scores_file!r}, {names_file!r}, {svg_out_path!r});'.format(
-            scores_file=scores_path, names_file=names_path, svg_out_path=tree_svg_path)
-
     cmd = 'matlab -nosplash -nodesktop -r \"plot_pway_dendrogram(' \
           '{scores!r}, {names!r}, {tree!r}, {gsize}, {hyper_path!r});\"'.\
         format(scores=scores_path, names=names_path, tree=tree_path,
