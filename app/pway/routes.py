@@ -65,7 +65,13 @@ def scatter():
             if pval >= 0.05:
                 continue
             data_pvals.append(pval)
-            data_effect.append(float(p.ne_low) / p.n_actual)
+            if p.n_actual < p.n_effective:
+                data_effect.append(float(p.ne_low) / p.n_actual)
+            else:  # undermutated
+                if p.ne_high < p.n_actual:  # high-effect less than n_actual
+                    data_effect.append(float(p.ne_high) / p.n_actual)
+                else:
+                    data_effect.append(float(p.n_effective) / p.n_actual)
             data_pways.append(p)
             data_D.append(p.D)
         x = np.log2(np.array(data_effect))  # effect size
