@@ -147,7 +147,7 @@ for page = 0:n_pways-1
                 'String', title_string,'EdgeColor','none',...
                 'HorizontalAlignment','center','VerticalAlignment','top',...
                 'FontSize',12,'FontName','Helvetica');
-        text(0.5, 0.5, int2str(pway.path_size),'HorizontalAlignment','Center',...
+        text(0.5, 0.5, int2str(pway.n_genes),'HorizontalAlignment','Center',...
             'VerticalAlignment','Middle','Color','w');
         %text(0.5,circ2.ylim(2)- 0.01, int2str(pway.path_effective),...
         % 'HorizontalAlignment','Center','VerticalAlignment','Top','Color','w');
@@ -496,7 +496,7 @@ global skip_gene skip_few_hits
 
 % READ IN FILE. 1st column is pathway_id, 2nd is pathway names. 3rd&4th are sizes.
 fileID = fopen(fileName,'r');
-dataArray = textscan(fileID, '%f%s%f%f%f%*f%f%f%f%f%f%s%s%s', 'Delimiter', '\t',  'ReturnOnError', false);
+dataArray = textscan(fileID, '%f%s%f%f%f%*f%f%f%f%f%f%s%s%s%f', 'Delimiter', '\t',  'ReturnOnError', false);
 fclose(fileID);
 %dataArray([2, 3, 4]) = cellfun(@(x) num2cell(x), dataArray([2, 3, 4]), 'UniformOutput', false);
 %output = [dataArray{1:end-1}];
@@ -508,6 +508,7 @@ p_values = cell2mat(dataArray(5));
 exclusiveLists = dataArray{11};
 cooccurringLists = dataArray{12};
 coverageStructs = dataArray{13};
+p_n_genes = cell2mat(dataArray(14));  % number of genes in pathway
 
 clearvars fileID dataArray;
 
@@ -539,6 +540,7 @@ while(ind < n_pathways)
     
     path_size = p_sizes(ind,1);
     path_effective = p_sizes(ind,2);
+    n_genes = p_n_genes(ind);
 
 % MIGHT WANT TO REINSTATE CONSTRAINT ON SURPRISINGLY SMALL PATHWAYS ONLY
 % % %     % ignore pathways where effective size is smaller than actual size
@@ -567,7 +569,7 @@ while(ind < n_pathways)
     pway_temp = struct('id',tempId,'name',tempName,'path_size',path_size,...
         'path_effective',path_effective, 'exclusiveGenes',{exclusive_genes},...
         'cooccurringGenes',{cooccurring_genes},'coverages',temp_coverages,...
-        'n_mutated',n_mutated,'p_value',p_values(ind));
+        'n_mutated',n_mutated,'p_value',p_values(ind),'n_genes',n_genes);
     
     
     for f=fieldnames(pway_temp.coverages)'

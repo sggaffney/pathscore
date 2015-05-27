@@ -684,7 +684,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                 format_str = "{path_id}\t{name}\t{n_actual}\t{n_effective}\t" \
                              "{p_value:.3e}\t{ll_actual:.4g}\t{ll_effective:.4g}\t" \
                              "{D:.4g}\t{ne_low}\t{ne_high}\t{runtime:.2f}\t{exclusive_string}\t" \
-                             "{cooccurring}\t{coverage_string}\n"""
+                             "{cooccurring}\t{coverage_string}\t{pway_ngenes}\n"""
                 out.write(format_str.format(path_id=pway.path_id,
                                             name=path_name,
                                             coverage_string=coverage_string,
@@ -698,7 +698,8 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                                             ne_high=pway.ne_high,
                                             runtime=pway.runtime,
                                             exclusive_string=exclusive_string,
-                                            cooccurring=cooccurring_string))
+                                            cooccurring=cooccurring_string,
+                                            pway_ngenes=path_size_dict_full[pway.path_id]))
 
     def write_matrix_files(self, pway):
         """Write text file containing presence matrix for patient-gene pair."""
