@@ -219,7 +219,7 @@ def compare():
             effects2 = [float(i.ne_low) / i.n_actual for i in use_paths2]
             xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
             ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
-        pnames = [misc.strip_contributors(all_paths1[i].nice_name) for i in inds1]
+        pnames = [misc.strip_contributors(i.nice_name) for i in use_paths1]
         source = ColumnDataSource(data={'x': effects1, 'y': effects2,
                                         'pname': pnames})
         maxx = max(effects1)*1.1
