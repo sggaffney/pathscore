@@ -222,6 +222,8 @@ def compare():
         pnames = [misc.strip_contributors(i.nice_name) for i in use_paths1]
         source = ColumnDataSource(data={'x': effects1, 'y': effects2,
                                         'pname': pnames})
+        minx = min(effects1)
+        miny = min(effects2)
         maxx = max(effects1)*1.1
         maxy = max(effects2)*1.1
 
@@ -239,6 +241,9 @@ def compare():
                           logo=None, toolbar_location="right",
                           x_axis_label=xlabel, y_axis_label=ylabel,
                           x_axis_type="log", y_axis_type="log")
+
+        plot.line([1,1], [miny, maxy], line_width=2, color="blue", alpha=1, line_dash=[6, 6])
+        plot.line([minx, maxx], [1, 1], line_width=2, color="blue", alpha=1, line_dash=[6, 6])
 
         # radius=radii, fill_color=colors, fill_alpha=0.6, line_color=None
         plot.scatter("x", "y", source=source, size=10, color="red", alpha=0.1,

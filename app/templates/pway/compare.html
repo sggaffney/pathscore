@@ -107,7 +107,16 @@
 	function updateImages(){
 		$imageContainer.empty();  //clear old pathway images
 
-		var indices = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected;
+		var models = Bokeh.ColumnDataSource.Collection.models
+		var model = null
+		for(var i=0; i<models.length; i++){
+			if(models[i].attributes.column_names.length > 2){
+				model = models[i]
+				break;
+			}
+		}
+
+		var indices = model.attributes.selected;
 
 		if(!indices.length){
 			$imageContainer.text("No pathways selected");
@@ -182,7 +191,15 @@
 	function updateIfSelectionChange(){
 		// compare selected_prv to current selection
 
-		var selected_now = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected;
+		var models = Bokeh.ColumnDataSource.Collection.models
+		var model = null
+		for(var i=0; i<models.length; i++){
+			if(models[i].attributes.column_names.length > 2){
+				model = models[i]
+				break;
+			}
+		}
+		var selected_now = model.attributes.selected;
 		console.log('Selected prev: ' + selected_prv);
 		console.log('Selected now: ' + selected_now);
 		if(selected_changed(selected_prv, selected_now)){
