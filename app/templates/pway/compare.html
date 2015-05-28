@@ -132,6 +132,9 @@
 		for (var pi = 0; pi < indices.length; pi++) {
 			for(var proj_ind=0; proj_ind<pway_lists.length; proj_ind++) {
 				var use_pways = pway_lists[proj_ind];
+				if(typeof(use_pways[pi]) == 'undefined'){
+					continue;
+				}
 				var ngenes = use_pways[pi].geneSet.length;
 				var max_height = 25 * ngenes + 80;
 				var pval = use_pways[pi]['pval'];
