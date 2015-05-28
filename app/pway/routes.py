@@ -180,16 +180,31 @@ def compare():
         # ignoring ones with 'cancer' etc in name
         all_paths1 = load_pathway_list_from_file(detail_path1)
         all_paths2 = load_pathway_list_from_file(detail_path2)
-        all_paths1 = [i for i in all_paths1 if i.gene_set]
-        all_paths2 = [i for i in all_paths2 if i.gene_set]
+        # all_paths1 = [i for i in all_paths1 if i.gene_set]
+        # all_paths2 = [i for i in all_paths2 if i.gene_set]
 
-        # temporary variables
-        all_ids1 = [p.path_id for p in all_paths1]
-        all_ids2 = [p.path_id for p in all_paths2]
-        common_ids = set.intersection(set(all_ids1), set(all_ids2))
-        ids_sorted = [i for i in all_ids1 if i in common_ids]  # uses project A
-        inds1 = [all_ids1.index(i) for i in ids_sorted]  # indices into all_paths1
-        inds2 = [all_ids2.index(i) for i in ids_sorted]  # indices into all_paths2
+        good_paths1 = [i.path_id for i in all_paths1 if i.gene_set]
+        good_paths2 = [i.path_id for i in all_paths2 if i.gene_set]
+        good_paths = set.union(set(good_paths1), set(good_paths2))
+
+        use_paths1 = [i for i in all_paths1 if i.path_id in good_paths]
+        use_path_ids = [i.path_id for i in use_paths1]
+
+        use_paths2 = list()
+        for pid in use_path_ids:
+            use_paths2.extend([i for i in all_paths2 if i.path_id == pid])
+
+        inds1 = list()
+        inds2 = list()  # [0, 1, 4, 11, -1, 7, 10, 5, 6, 319, ...]
+        for i in use_path_ids:
+            try:
+                inds1.append(good_paths1.index(i))
+            except ValueError:
+                inds1.append(-1)
+            try:
+                inds2.append(good_paths2.index(i))
+            except ValueError:
+                inds2.append(-1)
 
         # key data for export
         # inds_del1 = [i for i in xrange(len(all_paths1)) if i not in inds1]
@@ -227,7 +242,6 @@ def compare():
                           x_axis_label=xlabel, y_axis_label=ylabel,
                           x_axis_type="log", y_axis_type="log")
 
-
         # radius=radii, fill_color=colors, fill_alpha=0.6, line_color=None
         plot.scatter("x", "y", source=source, size=10, color="red", alpha=0.1,
                   marker="circle", line_color="firebrick", line_alpha=0.5)
@@ -243,8 +257,10 @@ def compare():
         current_proj_a = None
         current_proj_b = None
         script, div = None, None
-        inds_del1 = None
-        inds_del2 = None
+        js_name1 = None
+        js_name2 = None
+        inds1 = None
+        inds2 = None
 
     return render_template('pway/compare.html',
                            current_projs=[current_proj_a, current_proj_b],
