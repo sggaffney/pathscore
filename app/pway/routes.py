@@ -210,15 +210,13 @@ def compare():
         # inds_del1 = [i for i in xrange(len(all_paths1)) if i not in inds1]
         # inds_del2 = [i for i in xrange(len(all_paths2)) if i not in inds2]
         if show_logged:
-            effects1 = [np.log10(float(all_paths1[i].ne_low)
-                                 / all_paths1[i].n_actual) for i in inds1]
-            effects2 = [np.log10(float(all_paths2[i].ne_low)
-                                 / all_paths2[i].n_actual) for i in inds2]
+            effects1 = [np.log10(float(i.ne_low) / i.n_actual) for i in use_paths1]
+            effects2 = [np.log10(float(i.ne_low) / i.n_actual) for i in use_paths2]
             xlabel = "Log10 effect size ({})".format(current_proj_a.proj_suffix)
             ylabel = "Log10 effect size ({})".format(current_proj_b.proj_suffix)
         else:
-            effects1 = [float(all_paths1[i].ne_low) / all_paths1[i].n_actual for i in inds1]
-            effects2 = [float(all_paths2[i].ne_low) / all_paths2[i].n_actual for i in inds2]
+            effects1 = [float(i.ne_low) / i.n_actual for i in use_paths1]
+            effects2 = [float(i.ne_low) / i.n_actual for i in use_paths2]
             xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
             ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
         pnames = [misc.strip_contributors(all_paths1[i].nice_name) for i in inds1]
