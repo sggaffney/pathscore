@@ -183,26 +183,30 @@ def compare():
         # all_paths1 = [i for i in all_paths1 if i.gene_set]
         # all_paths2 = [i for i in all_paths2 if i.gene_set]
 
-        good_paths1 = [i.path_id for i in all_paths1 if i.gene_set]
-        good_paths2 = [i.path_id for i in all_paths2 if i.gene_set]
-        good_paths = set.union(set(good_paths1), set(good_paths2))
+        sig_pids1 = [i.path_id for i in all_paths1 if i.gene_set]  # sig path ids in proj1
+        sig_pids2 = [i.path_id for i in all_paths2 if i.gene_set]  # sig path ids in proj2
+        all_pids1 = [i.path_id for i in all_paths1]  # all path ids in proj1
+        all_pids2 = [i.path_id for i in all_paths2]  # all path ids in proj1
+        use_pids1 = set.intersection(set(sig_pids1), set(all_pids2))
+        use_pids2 = set.intersection(set(sig_pids2), set(all_pids1))
+        good_paths = set.union(set(use_pids1), set(use_pids2))  # sig pids contained in both projects
 
-        use_paths1 = [i for i in all_paths1 if i.path_id in good_paths]
-        use_path_ids = [i.path_id for i in use_paths1]
+        use_paths1 = [i for i in all_paths1 if i.path_id in good_paths]  # sig paths (either proj) in proj1
+        use_path_ids = [i.path_id for i in use_paths1]  # sig path ids (either proj) ordered by proj1 index
 
         use_paths2 = list()
         for pid in use_path_ids:
-            use_paths2.extend([i for i in all_paths2 if i.path_id == pid])
+            use_paths2.extend([i for i in all_paths2 if i.path_id == pid])  # paths from proj2
 
         inds1 = list()
         inds2 = list()  # [0, 1, 4, 11, -1, 7, 10, 5, 6, 319, ...]
         for i in use_path_ids:
             try:
-                inds1.append(good_paths1.index(i))
+                inds1.append(sig_pids1.index(i))
             except ValueError:
                 inds1.append(-1)
             try:
-                inds2.append(good_paths2.index(i))
+                inds2.append(sig_pids2.index(i))
             except ValueError:
                 inds2.append(-1)
 
@@ -223,9 +227,11 @@ def compare():
         source = ColumnDataSource(data={'x': effects1, 'y': effects2,
                                         'pname': pnames})
         minx = min(effects1)
+        minx *= 1 - minx/abs(minx)*0.2
         miny = min(effects2)
-        maxx = max(effects1)*1.1
-        maxy = max(effects2)*1.1
+        miny *= 1 - miny/abs(miny)*0.2
+        maxx = max(effects1)*1.2
+        maxy = max(effects2)*1.2
 
         tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
                 "box_select,hover"  # poly_select,lasso_select, previewsave
@@ -240,6 +246,7 @@ def compare():
             plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
                           logo=None, toolbar_location="right",
                           x_axis_label=xlabel, y_axis_label=ylabel,
+                          x_range=[minx, maxx], y_range=[miny, maxy],
                           x_axis_type="log", y_axis_type="log")
 
         plot.line([1,1], [miny, maxy], line_width=2, color="blue", alpha=1, line_dash=[6, 6])

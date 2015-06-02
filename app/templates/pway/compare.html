@@ -55,6 +55,16 @@
 </div>
 <!--<button id="selectButton" class="btn btn-default">Selection info</button>-->
 
+<form class="form-inline" style="margin-top: 15px;" id="geneForm">
+  <div class="form-group">
+    <!--<label for="userGenes">Email address</label>-->
+    <input type="text" class="form-control" id="userGenes" placeholder="Gene list e.g. TP53,BRAF">
+    <button class="btn btn-default" id="includeButton" type="button">Include</button>
+    <button class="btn btn-default" id="excludeButton" type="button">Exclude</button>
+    <label for="userGenes" class="control-label" id="selectCount"></label>
+  </div>
+</form>
+
 <div id="imageContainer" class="padded">
 </div>
 
@@ -75,6 +85,9 @@
 		$projSelectionA = $('#projSelectionA');
 		$projSelectionB = $('#projSelectionB');
 		$bokehContainer = $('.bokeh');
+
+        $includeButton = $('#includeButton');
+        $excludeButton = $('#excludeButton');
 
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
 		var inds_use_a = {{inds_use[0]}};
@@ -99,6 +112,9 @@
 //				$bokehContainer.bind("click touchstart", updateIfSelectionChange_afterWait);
                 $(document).on("click touchstart", '.bokeh', updateIfSelectionChange_afterWait);
 
+                $includeButton.click(true, selectPathwaysByGenes);
+                $excludeButton.click(false, selectPathwaysByGenes);
+
 			});
 		});
 
@@ -107,11 +123,11 @@
 	function updateImages(){
 		$imageContainer.empty();  //clear old pathway images
 
-		var models = Bokeh.ColumnDataSource.Collection.models
-		var model = null
+		var models = Bokeh.ColumnDataSource.Collection.models;
+		var model = null;
 		for(var i=0; i<models.length; i++){
 			if(models[i].attributes.column_names.length > 2){
-				model = models[i]
+				model = models[i];
 				break;
 			}
 		}
@@ -191,11 +207,11 @@
 	function updateIfSelectionChange(){
 		// compare selected_prv to current selection
 
-		var models = Bokeh.ColumnDataSource.Collection.models
-		var model = null
+		var models = Bokeh.ColumnDataSource.Collection.models;
+		var model = null;
 		for(var i=0; i<models.length; i++){
 			if(models[i].attributes.column_names.length > 2){
-				model = models[i]
+				model = models[i];
 				break;
 			}
 		}
@@ -242,6 +258,71 @@ function selected_changed(array1, array2) {
 		$statusDiv.textContent = JSON.stringify(im_status);
 
 	}
+
+    function selectPathwaysByGenes(event){
+        var showIfIncluded = event.data;
+        var geneText = $('#userGenes').val();
+        if (geneText === ""){
+            return;
+        }
+        var geneList = geneText.split(',');
+        var showPlotIds = [];
+
+
+        for(var i=0; i<pwayList_a.length; i++){
+            var p_a = pwayList_a[i];
+            var p_b = pwayList_b[i];
+            var geneFound = null;
+            var found = [];
+            if(typeof(p_a) != 'undefined'){
+                $.each(geneList, function(geneIndex, geneName){
+                    found.push($.inArray(geneName, p_a.geneSet) > -1);
+                });
+            }
+            if(typeof(p_b) != 'undefined'){
+                $.each(geneList, function(geneIndex, geneName){
+                    found.push($.inArray(geneName, p_b.geneSet) > -1);
+                });
+            }
+            if(showIfIncluded && $.inArray(false, found)<0){
+                showPlotIds.push(i);
+            }
+            else if (!showIfIncluded && $.inArray(true, found)<0){
+                showPlotIds.push(i);
+            }
+        }
+
+
+
+
+
+//        $.each(pwayList, function(jsIndex, pway){
+//            var geneFound = null;
+//            var found = [];
+//            $.each(geneList, function(geneIndex, geneName){
+//                found.push($.inArray(geneName, pway.geneSet) > -1);
+//            });
+//            if(showIfIncluded && $.inArray(false, found)<0){
+//                showPlotIds.push(plot_inds[jsIndex]);
+//            }
+//            else if (!showIfIncluded && $.inArray(true, found)<0){
+//                showPlotIds.push(plot_inds[jsIndex]);
+//            }
+//        });
+
+        var models = Bokeh.ColumnDataSource.Collection.models;
+		var model = null;
+		for(var i=0; i<models.length; i++){
+			if(models[i].attributes.column_names.length > 2){
+				model = models[i];
+				break;
+			}
+		}
+
+        model.set('selected', showPlotIds);
+        model.trigger('change');
+        updateIfSelectionChange_afterWait()
+    }
 
 
 
