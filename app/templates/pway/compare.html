@@ -120,10 +120,8 @@
 
 	});
 
-	function updateImages(){
-		$imageContainer.empty();  //clear old pathway images
-
-		var models = Bokeh.ColumnDataSource.Collection.models;
+    function getDataModel(){
+        var models = Bokeh.ColumnDataSource.Collection.models;
 		var model = null;
 		for(var i=0; i<models.length; i++){
 			if(models[i].attributes.column_names.length > 2){
@@ -131,8 +129,22 @@
 				break;
 			}
 		}
+        return model;
+    }
 
-		var indices = model.attributes.selected;
+    function getSelectedIndices(){
+        var model = getDataModel();
+        var indices = model.attributes.selected['1d'].indices.slice();
+        indices.sort(function(a,b){return a - b;});
+        return indices
+    }
+
+	function updateImages(){
+		var matrix_dir = matrix_dirs[matrix_dir_ind];
+        $imageContainer.empty();  //clear old pathway images
+        $cnvButton.removeClass('hidden');
+
+		var indices = getSelectedIndices();
 
 		if(!indices.length){
 			$imageContainer.text("No pathways selected");
@@ -157,7 +169,7 @@
 		for (var pi = 0; pi < indices.length; pi++) {
 			for(var proj_ind=0; proj_ind<pway_lists.length; proj_ind++) {
 				var use_pways = pway_lists[proj_ind];
-				if(typeof(use_pways[pi]) == 'undefined'){
+                if(typeof(use_pways[pi]) == 'undefined'){
 					continue;
 				}
 				var ngenes = use_pways[pi].geneSet.length;
@@ -207,15 +219,7 @@
 	function updateIfSelectionChange(){
 		// compare selected_prv to current selection
 
-		var models = Bokeh.ColumnDataSource.Collection.models;
-		var model = null;
-		for(var i=0; i<models.length; i++){
-			if(models[i].attributes.column_names.length > 2){
-				model = models[i];
-				break;
-			}
-		}
-		var selected_now = model.attributes.selected;
+		var selected_now = getSelectedIndices();
 		console.log('Selected prev: ' + selected_prv);
 		console.log('Selected now: ' + selected_now);
 		if(selected_changed(selected_prv, selected_now)){
@@ -310,16 +314,8 @@ function selected_changed(array1, array2) {
 //            }
 //        });
 
-        var models = Bokeh.ColumnDataSource.Collection.models;
-		var model = null;
-		for(var i=0; i<models.length; i++){
-			if(models[i].attributes.column_names.length > 2){
-				model = models[i];
-				break;
-			}
-		}
-
-        model.set('selected', showPlotIds);
+        var model = getDataModel();
+        model.attributes.selected['1d'].indices = showPlotIds;
         model.trigger('change');
         updateIfSelectionChange_afterWait()
     }

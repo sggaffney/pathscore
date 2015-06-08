@@ -95,10 +95,17 @@
 	});
 
 
+
+    function getSelectedIndices(){
+        var indices = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected['1d'].indices.slice();
+        indices.sort(function(a,b){return a - b;});
+        return indices
+    }
+
     function updateImages(){
 		$imageContainer.empty();  //clear old pathway images
-		var indices = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected;
-		if(!indices.length){
+		var indices = getSelectedIndices();
+        if(!indices.length){
 			$imageContainer.text("No pathways selected");
 			return
 		}
@@ -176,7 +183,7 @@
 
 	function updateIfSelectionChange(){
 		// compare selected_prv to current selection
-		var selected_now = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected;
+		var selected_now = getSelectedIndices();
 		$selectCount.text(selected_now.length + " enriched pathways found.");
         console.log('Selected prev: ' + selected_prv);
 		console.log('Selected now: ' + selected_now);
@@ -241,7 +248,8 @@
                 showPlotIds.push(plot_inds[jsIndex]);
             }
         });
-        Bokeh.ColumnDataSource.Collection.models[0].set('selected', showPlotIds);
+//        Bokeh.ColumnDataSource.Collection.models[0].set('selected', showPlotIds);
+        Bokeh.ColumnDataSource.Collection.models[0].attributes.selected['1d'].indices = showPlotIds;
         Bokeh.ColumnDataSource.Collection.models[0].trigger('change');
         updateIfSelectionChange_afterWait()
     }
