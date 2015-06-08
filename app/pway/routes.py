@@ -127,6 +127,11 @@ def scatter():
                 js_inds.append(-1)
         # INDICES IN PLOT OF JS_OBJECT ITEMS (A SUBSET)
         plot_inds = [all_ids.index(i) for i in js_ids]
+        proj_dir = get_project_folder(current_proj)
+        if os.path.exists(os.path.join(proj_dir, 'matrix_svg_cnv')):
+            has_cnv = True
+        else:
+            has_cnv = False
 
     else:  # no projects yet!
         flash("No project results to show yet.", "info")
@@ -135,10 +140,11 @@ def scatter():
         js_name = None
         js_inds = None
         plot_inds = None
+        has_cnv = False
 
     return render_template('pway/scatter.html', current_proj=current_proj,
                            projects=upload_list, js_name=js_name,
-                           js_inds=js_inds, plot_inds=plot_inds,
+                           js_inds=js_inds, plot_inds=plot_inds, has_cnv=has_cnv,
                            user_id=current_user.id, bokeh_script=script,
                            bokeh_div=div, include_genes=include,
                            resources=resources)
@@ -266,6 +272,14 @@ def compare():
 
         script, div = components(plot, resources)
 
+        proj_dir_a = get_project_folder(current_proj_a)
+        proj_dir_b = get_project_folder(current_proj_b)
+        if os.path.exists(os.path.join(proj_dir_a, 'matrix_svg_cnv')) and \
+                os.path.exists(os.path.join(proj_dir_b, 'matrix_svg_cnv')):
+            has_cnv = True
+        else:
+            has_cnv = False
+
     else:  # no projects yet!
         flash("No project results to show yet.", "info")
         current_proj_a = None
@@ -275,6 +289,7 @@ def compare():
         js_name2 = None
         inds1 = None
         inds2 = None
+        has_cnv = False
 
     return render_template('pway/compare.html',
                            current_projs=[current_proj_a, current_proj_b],

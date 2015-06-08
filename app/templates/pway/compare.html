@@ -65,6 +65,12 @@
   </div>
 </form>
 
+{% if has_cnv %}
+<div>
+	<button class="btn btn-default hidden" id="toggleCnvButton">Toggle CNV</button>
+</div>
+{% endif %}
+
 <div id="imageContainer" class="padded">
 </div>
 
@@ -85,7 +91,7 @@
 		$projSelectionA = $('#projSelectionA');
 		$projSelectionB = $('#projSelectionB');
 		$bokehContainer = $('.bokeh');
-
+        $cnvButton = $('#toggleCnvButton');
         $includeButton = $('#includeButton');
         $excludeButton = $('#excludeButton');
         var initial_include = '{{ include_genes }}';
@@ -123,6 +129,19 @@
                 }
 
 			});
+
+            matrix_dirs = ['matrix_svg', 'matrix_svg_cnv'];
+            matrix_dir_ind = 0;
+            $cnvButton.click(function(){
+                // toggle index 0<->1
+                if(matrix_dir_ind == 0){
+                    matrix_dir_ind = 1;
+                }
+                else{
+                    matrix_dir_ind = 0;
+                }
+                updateImages();
+            });
 		});
 
 	});
@@ -179,8 +198,15 @@
                 if(typeof(use_pways[pi]) == 'undefined'){
 					continue;
 				}
-				var ngenes = use_pways[pi].geneSet.length;
-				var max_height = 25 * ngenes + 80;
+                if(matrix_dir_ind==0){
+                    var n_genes = use_pways[pi].geneSet.length;
+                }
+                else{
+                    var n_genes = use_pways[pi].n_cnv;
+                }
+
+
+				var max_height = 25 * n_genes + 80;
 				var pval = use_pways[pi]['pval'];
 				var pval_str = null;
 				if(pval == '0.000e+00')
@@ -204,10 +230,10 @@
 					+ '</div>'
 					+ '<div class="svg_matrix ui-widget-content"><div class="pway_size" style="display:none">'
 					+ JSON.stringify({
-						"n_genes": use_pways[pi].geneSet.length,
+						"n_genes": n_genes,
 						"expanded": false
 					}) + '</div>' +
-					'<img src="static/data/{{ user_id }}/' + projIds[proj_ind] + '/matrix_svg/' + use_pways[pi]['id'] + '.svgz" ' +
+					'<img src="static/data/{{ user_id }}/' + projIds[proj_ind] + '/' + matrix_dir + '/' + use_pways[pi]['id'] + '.svgz" ' +
 					'px alt="' + use_pways[pi]['id'] + '.svgz" style="max-height:' + max_height + 'px;"></img>' //
 					+ '</div></div>'
 				);

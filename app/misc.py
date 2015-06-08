@@ -21,9 +21,11 @@ def simplify_string(odd_string):
 
 def zip_svgs(proj_dir):
     """Zip and delete all svgs in matrix_svg, pathways_svg."""
-    svg_dirs = ['pathways_svg', 'matrix_svg', '.']
+    svg_dirs = ['pathways_svg', 'matrix_svg', '.', 'matrix_svg_cnv']
     for plot_dir in svg_dirs:
         plot_path = os.path.join(proj_dir, plot_dir)
+        if not os.path.exists(plot_path):
+            continue
         with open(os.devnull, "r") as fnullin:
             with open(os.devnull, "w") as fnullout:
                 subprocess.check_call(['/usr/local/bin/svgo', '-f', plot_path],
