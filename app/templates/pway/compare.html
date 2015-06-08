@@ -74,8 +74,8 @@
 {% block scripts %}
 {{super()}}
 
- <link rel="stylesheet" href="http://cdn.pydata.org/bokeh-0.7.1.min.css" type="text/css" />
- <script type="text/javascript" src="http://cdn.pydata.org/bokeh-0.7.1.min.js"></script>
+ <link rel="stylesheet" href="{{ resources.css_files[0] }}" type="text/css" />
+ <script type="text/javascript" src="{{ resources.js_files[0] }}"></script>
  {{ bokeh_script|safe }}
 <script>
     $(function() {

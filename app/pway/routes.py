@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from collections import OrderedDict
 import numpy as np
 from bokeh.plotting import figure, gridplot
-from bokeh.resources import CDN
+from bokeh.resources import CDN, Resources
 from bokeh.embed import components
 from bokeh.plotting import ColumnDataSource
 from bokeh.models.tools import HoverTool
@@ -47,6 +47,7 @@ def scatter():
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
         filter_by(run_complete=True).order_by(UserFile.file_id).all()
     # proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
+    resources = Resources(mode="cdn")
     if upload_list:
         # Use specified project from args or highest file_id as CURRENT PROJECT
         current_proj = upload_list[-1]  # override if valid proj specified
@@ -111,7 +112,7 @@ def scatter():
                 ("name", "@pname")
             ])
         plot = gridplot([[plot1, plot2]])
-        script, div = components(plot, CDN)
+        script, div = components(plot, resources)
         js_name = naming_rules.get_js_name(current_proj)
         # IDS
         all_ids = [p.path_id for p in all_pathways]
@@ -138,7 +139,8 @@ def scatter():
                            projects=upload_list, js_name=js_name,
                            js_inds=js_inds, plot_inds=plot_inds,
                            user_id=current_user.id, bokeh_script=script,
-                           bokeh_div=div)
+                           bokeh_div=div,
+                           resources=resources)
 
 
 @pway.route('/compare')
@@ -147,7 +149,7 @@ def compare():
     # if proj among arguments, show this tree first.
     proj_a = request.args.get('proj_a', None)
     proj_b = request.args.get('proj_b', None)
-
+    resources = Resources(mode="cdn")
     show_logged = False
 
     # list of projects (and proj_names) used to create dropdown project selector
@@ -260,7 +262,7 @@ def compare():
             ("name", "@pname")
         ])
 
-        script, div = components(plot, CDN)
+        script, div = components(plot, resources)
 
     else:  # no projects yet!
         flash("No project results to show yet.", "info")
@@ -279,7 +281,8 @@ def compare():
                            js_name_b=js_name2,
                            projects=upload_list,
                            user_id=current_user.id, bokeh_script=script,
-                           bokeh_div=div)
+                           bokeh_div=div,
+                           resources=resources)
 
 
 @pway.route('/tree')
