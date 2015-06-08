@@ -42,6 +42,7 @@ def demo():
 def scatter():
     # if proj among arguments, show this tree first.
     show_proj = request.args.get('proj', None)
+    include = request.args.get('include', None)
     # show_proj = '57'
     # list of projects (and proj_names) used to create dropdown project selector
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
@@ -139,7 +140,7 @@ def scatter():
                            projects=upload_list, js_name=js_name,
                            js_inds=js_inds, plot_inds=plot_inds,
                            user_id=current_user.id, bokeh_script=script,
-                           bokeh_div=div,
+                           bokeh_div=div, include_genes=include,
                            resources=resources)
 
 
@@ -149,6 +150,7 @@ def compare():
     # if proj among arguments, show this tree first.
     proj_a = request.args.get('proj_a', None)
     proj_b = request.args.get('proj_b', None)
+    include = request.args.get('include', None)
     resources = Resources(mode="cdn")
     show_logged = False
 
@@ -277,11 +279,12 @@ def compare():
     return render_template('pway/compare.html',
                            current_projs=[current_proj_a, current_proj_b],
                            inds_use=[inds1, inds2],
+                           has_cnv=has_cnv,
                            js_name_a=js_name1,
                            js_name_b=js_name2,
                            projects=upload_list,
                            user_id=current_user.id, bokeh_script=script,
-                           bokeh_div=div,
+                           bokeh_div=div, include_genes=include,
                            resources=resources)
 
 
@@ -358,13 +361,15 @@ def demo_file():
 @login_required
 def results():
     show_proj = request.args.get('proj', None)
+    include = request.args.get('include', None)
     upload_list = UserFile.query.filter_by(user_id=current_user.id).filter_by(run_complete=True).all()
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
     if not(upload_list):
         flash("No project results to show yet.", "info")
     return render_template('pway/show_pathways_template.html',
                            projects=upload_list, user_id=current_user.id,
-                           show_proj=show_proj, proj_names=proj_names)
+                           show_proj=show_proj, proj_names=proj_names,
+                           include_genes=include)
 
 
 @pway.route('/upload', methods=('GET', 'POST'))

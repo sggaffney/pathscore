@@ -88,6 +88,8 @@
 
         $includeButton = $('#includeButton');
         $excludeButton = $('#excludeButton');
+        var initial_include = '{{ include_genes }}';
+        $("#geneForm").submit(function(e){return false;});
 
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
 		var inds_use_a = {{inds_use[0]}};
@@ -114,6 +116,11 @@
 
                 $includeButton.click(true, selectPathwaysByGenes);
                 $excludeButton.click(false, selectPathwaysByGenes);
+
+                if(initial_include != 'None'){
+                    $('#userGenes').val(initial_include);
+                    $includeButton.click()
+                }
 
 			});
 		});

@@ -132,6 +132,13 @@
 //			increment_page(-1)
 //		});
 
+        var initial_include = '{{ include_genes }}';
+        if(initial_include != 'None'){
+                $('#genes').val(initial_include);
+                $fetcherButton.click()
+        }
+
+
 	})
 
 
