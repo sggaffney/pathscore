@@ -7,11 +7,12 @@ import signal
 from datetime import datetime, timedelta
 from collections import OrderedDict
 import numpy as np
-from bokeh.plotting import figure, gridplot
-from bokeh.resources import CDN, Resources
+from bokeh.plotting import figure, gridplot, ColumnDataSource
+from bokeh.resources import Resources
 from bokeh.embed import components
-from bokeh.plotting import ColumnDataSource
 from bokeh.models.tools import HoverTool
+from bokeh.models.renderers import GlyphRenderer
+from bokeh.models.markers import Circle
 
 from . import pway, FileTester
 from .forms import UploadForm
@@ -282,6 +283,9 @@ def compare():
         hover.tooltips = OrderedDict([
             ("name", "@pname")
         ])
+        renderers = [i for i in plot.renderers
+                     if type(i) == GlyphRenderer and type(i._glyph) == Circle]
+        hover[0].renderers.extend(renderers)
 
         script, div = components(plot, resources)
 
