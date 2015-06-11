@@ -3,6 +3,7 @@ from flask import render_template, flash, redirect, url_for, abort,\
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
+import signal
 from datetime import datetime, timedelta
 from collections import OrderedDict
 import numpy as np
@@ -35,6 +36,18 @@ def index():
 @login_required
 def demo():
     return render_template('pway/show_pathways_demo.html')
+
+
+@pway.route('/restart')
+@login_required
+def reset():
+    role_names = [r.name for r in current_user.roles]
+    if 'townsend' not in role_names:
+        abort(404)
+    if request.environ['mod_wsgi.process_group'] != '':
+        os.kill(os.getpid(), signal.SIGINT)
+        flash("Restarted.", "info")
+        return redirect(url_for('.index'))
 
 
 @pway.route('/scatter')
