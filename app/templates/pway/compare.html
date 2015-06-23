@@ -10,6 +10,7 @@
 
 <!-- BETTER TO HAVE AN OBJECT-->
 
+{% if current_projs[0] %}
 
 <!--<div class="page-header">-->
 	<!--<h1>Pathway Dendrogram</h1>-->
@@ -50,6 +51,8 @@
     <!--</div>-->
 <!--</div>-->
 
+
+
 <div class="bokeh">
  {{ bokeh_div|safe }}
 </div>
@@ -74,11 +77,15 @@
 <div id="imageContainer" class="padded">
 </div>
 
+{% endif %}
+
 {% endblock %}
 
 
 {% block scripts %}
 {{super()}}
+
+{% if current_projs[0] %}
 
  <link rel="stylesheet" href="{{ resources.css_files[0] }}" type="text/css" />
  <script type="text/javascript" src="{{ resources.js_files[0] }}"></script>
@@ -356,6 +363,8 @@ function selected_changed(array1, array2) {
 
 
 </script>
+
+{% endif %}
 
 {% endblock %}
 
