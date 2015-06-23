@@ -328,7 +328,7 @@ function selected_changed(array1, array2) {
                     found.push($.inArray(geneName, p_b.geneSet) > -1);
                 });
             }
-            if(showIfIncluded && $.inArray(false, found)<0){
+            if(showIfIncluded && $.inArray(true, found)>-1){
                 showPlotIds.push(i);
             }
             else if (!showIfIncluded && $.inArray(true, found)<0){
