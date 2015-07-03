@@ -1092,7 +1092,7 @@ def make_js_file(allPathways, out_path):
 
 def make_readable_file(allPathways, out_path):
     """Create file suitable for archiving for user."""
-    header_str = "pathway_name, url, p_value, n_effective, n_actual, " \
+    header_str = "pathway_name, pathway_id, url, p_value, n_effective, n_actual, " \
                  "genes_mutated_pc, gene_len_min_kbp, shortest_gene(s), " \
                  "gene_len_max_kbp, longest_gene(s), " \
                  "gene_len_avg_kbp, gene_len_variance"
@@ -1103,6 +1103,7 @@ def make_readable_file(allPathways, out_path):
             if pway.gene_set:
                 line_vals = list()
                 line_vals.append(pway.nice_name)
+                line_vals.append(pway.path_id)
                 line_vals.append(pway.full_url)
                 line_vals.append(pway.p_value)
                 line_vals.append(pway.n_effective)
