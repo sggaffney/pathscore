@@ -17,9 +17,21 @@
         {{ render_field(form.proj_suffix, placeholder="e.g. LUAD_Feb2013") }}
         {{ render_field(form.algorithm) }}
         {{ render_field(form.genome_size) }}
-        <!--{ render_field(form.n_cutoff, placeholder="500") }-->
+        {# <!--{ render_field(form.n_cutoff, placeholder="500") }--> #}
         {{ render_field(form.required_genes, placeholder="e.g. BRAF,NRAS", rows="1") }}
-        {{ render_field(form.ignore_genes, placeholder="e.g. TP53", rows="1") }}
+        {# render_field(form.ignore_genes, placeholder="e.g. TP53", rows="1") #}
+        {% if form.mut_file.ignore_genes %}
+            <div class="form-group has-error">
+        {% else %}
+            <div class="form-group">
+        {% endif %}
+            {{ form.ignore_genes.label }}
+            <textarea class="form-control" id="ignore_genes" name="ignore_genes" placeholder="e.g. TP53" rows="1"></textarea>
+            {% for error in form.ignore_genes.errors %}
+                <p class="text-danger">{{ error }}</p>
+            {% endfor %}
+            <p class="help-block"><button type="button" class="form-filler-button" id="fill-fishy">Fill in sample fishy genes</button></p>
+            </div>
 
 
         {% if form.mut_file.errors %}
@@ -43,4 +55,23 @@
 </div>
 
 {# wtf.quick_form(form, enctype="multipart/form-data") #}
+{% endblock %}
+
+{% block scripts %}
+{{super()}}
+<script>
+$(function() {
+    $ignoreGenes = $('#ignore_genes');
+    $fillFishy = $('#fill-fishy');
+    $fillFishy.click(fillFishy);
+    $fillFishy.mouseup(function(){
+        $(this).blur();
+    })
+});
+
+function fillFishy(){
+    $ignoreGenes.attr('rows','2');
+    $ignoreGenes.val('PCLO,FLG,BAGE2,TPTE,TTN,CSMD1,CSMD3,RYR2,RYR3,MUC16,MUC4,MUC17,MUC5B,OR10G9,OR2G6,OR4C6,OR4M2,OR2T4,OR5L2,OR2T33');
+}
+</script>
 {% endblock %}
