@@ -161,3 +161,9 @@ body {
   border: 0;
   background-color: inherit;
 }
+
+.form-filler-button {
+  border: none;
+  background-color: white;
+  text-decoration: underline;
+}
