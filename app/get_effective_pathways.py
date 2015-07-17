@@ -423,7 +423,7 @@ class LCalculator():
 
         if CI_high is None:  # ne is below genome size, so find maximum
             try:
-                CI_high = np.ceil(brentq(self._get_pway_likelihood_CI, self.ne, self.G))
+                CI_high = np.ceil(brentq(self._get_pway_likelihood_CI, self.ne, self.G - self.pway.n_actual))
             except ValueError: # if signs don't change, G is within CI
                 CI_high = self.G
         return CI_low, CI_high
