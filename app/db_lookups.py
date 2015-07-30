@@ -395,8 +395,7 @@ def fetch_path_info_global():
         cur.execute(cmd)
         rowCount = cur.rowcount
         if not rowCount > 1:
-            raise Exception("Result contains %g rows Ids for pathway %s."
-                            % (rowCount, self.path_id))
+            raise Exception("Failed info lookup for all pathways.")
         rows = cur.fetchall()
     except mdb.Error as e:
         print "Error %d: %s" % (e.args[0], e.args[1])
