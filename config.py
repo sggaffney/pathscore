@@ -32,7 +32,8 @@ class Config:
     SECURITY_REGISTERABLE = os.environ.get('SECURITY_REGISTERABLE') == 'True'
     SECURITY_CHANGEABLE = os.environ.get('SECURITY_CHANGEABLE') == 'True'
 
-    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER')
+    DATA_ROOT = os.environ.get('DATA_ROOT')
+    TEMP_FOLDER = os.environ.get('TEMP_FOLDER')
 
     SGG_DB_CNF = os.environ.get('MYSQLDB_CNF')
     SGG_DB_HOST = os.environ.get('MYSQLDB_HOST')

@@ -9,18 +9,10 @@ import time
 import zipfile
 from emails import run_finished_notification
 from app.get_effective_pathways import MutationTable
+from app.naming_rules import get_user_folder, get_project_folder
 
 
 _cleanup_thread = None
-
-def get_user_folder(user_id):
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    return os.path.join(upload_folder, str(user_id))
-
-
-def get_project_folder(upload_obj):
-    user_folder = get_user_folder(upload_obj.user_id)
-    return os.path.join(user_folder, str(upload_obj.file_id))
 
 
 def remove_oldies():

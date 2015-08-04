@@ -3,8 +3,8 @@ import os
 
 
 def get_user_folder(user_id):
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    return os.path.join(upload_folder, str(user_id))
+    data_root = current_app.config['DATA_ROOT']
+    return os.path.join(data_root, str(user_id))
 
 
 def get_project_folder(upload_obj):

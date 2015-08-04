@@ -1,4 +1,6 @@
 from datetime import datetime
+import random
+import string
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import request, current_app
@@ -9,6 +11,7 @@ import unicodedata as ud
 from unidecode import unidecode
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 from flask.ext.security.utils import encrypt_password
+from flask.ext import uploads
 
 # Define models
 roles_users = db.Table('roles_users',
@@ -30,7 +33,7 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(64),
-                      nullable=False, unique=True, index=True)
+                      nullable=True, unique=True, index=True)
     is_admin = db.Column(db.Boolean)
     password = db.Column(db.String(255))
     name = db.Column(db.String(64))
@@ -83,6 +86,17 @@ class User(UserMixin, db.Model):
         if id:
             return User.query.get(id)
         return None
+
+    @staticmethod
+    def generate_random_password(size=12):
+        # via http://stackoverflow.com/a/2257449
+        chars = string.ascii_uppercase + string.digits + string.ascii_lowercase
+        return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
+
+    @staticmethod
+    def get_guest_username(int_id):
+        return 'guest_' + hex(int(int_id))[2:]
+
 
 @login_manager.user_loader
 def load_user(user_id):

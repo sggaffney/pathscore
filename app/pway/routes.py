@@ -1,6 +1,6 @@
 from flask import render_template, flash, redirect, url_for, abort,\
     request, current_app, send_file, send_from_directory
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, login_user
 from werkzeug.utils import secure_filename
 import os
 import signal
@@ -14,12 +14,12 @@ from bokeh.models.tools import HoverTool
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.models.markers import Circle
 
-from . import pway, FileTester
+from . import pway, FileTester, TempFile
 from .forms import UploadForm
-from ..models import UserFile
+from ..models import UserFile, User, Role
 from .. import db
 from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
-from ..admin import get_project_folder, get_user_folder, zip_project, \
+from ..admin import zip_project, \
     delete_project_folder
 from .. import naming_rules
 from .. import misc
@@ -141,7 +141,7 @@ def scatter():
                 js_inds.append(-1)
         # INDICES IN PLOT OF JS_OBJECT ITEMS (A SUBSET)
         plot_inds = [all_ids.index(i) for i in js_ids]
-        proj_dir = get_project_folder(current_proj)
+        proj_dir = naming_rules.get_project_folder(current_proj)
         if os.path.exists(os.path.join(proj_dir, 'matrix_svg_cnv')):
             has_cnv = True
         else:
@@ -289,8 +289,8 @@ def compare():
 
         script, div = components(plot, resources)
 
-        proj_dir_a = get_project_folder(current_proj_a)
-        proj_dir_b = get_project_folder(current_proj_b)
+        proj_dir_a = naming_rules.get_project_folder(current_proj_a)
+        proj_dir_b = naming_rules.get_project_folder(current_proj_b)
         if os.path.exists(os.path.join(proj_dir_a, 'matrix_svg_cnv')) and \
                 os.path.exists(os.path.join(proj_dir_b, 'matrix_svg_cnv')):
             has_cnv = True
@@ -378,7 +378,7 @@ def archive():
 @login_required
 def demo_file():
     # return render_template('pway/show_pathways_template.html')
-    return send_from_directory(current_app.config['UPLOAD_FOLDER'],
+    return send_from_directory(current_app.config['DATA_ROOT'],
                                'skcm_ns_500.txt', as_attachment=True)
 
 
@@ -398,91 +398,98 @@ def results():
 
 
 @pway.route('/upload', methods=('GET', 'POST'))
-@login_required
 def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
-    # only accept this file if user has no running jobs.
-    user_id = current_user.id
-    incomplete = UserFile.query.filter_by(user_id=user_id)\
-        .filter_by(run_complete=0).all()
-    role_names = [r.name for r in current_user.roles]
-    if 'townsend' not in role_names and incomplete:
-        flash("Sorry, you must wait until your currently running projects "
-              "have finished.", "danger")
-        return index()
 
-    # ENFORCE WEEKLY LIMIT AND DISPLAY INFO MESSAGE
-    week_ago = datetime.now() - timedelta(days=7)
-    week_complete = UserFile.query.filter_by(user_id=user_id)\
-        .filter_by(run_complete=True).filter(UserFile.upload_time > week_ago)\
-        .all()
-    n_week = len(week_complete)
-    n_week_max = int(max([r.uploads_pw for r in current_user.roles]))
-    # if len(week_complete>9):
-    if n_week >= n_week_max:
-        first_time = min([p.upload_time for p in week_complete])
-        wait_time = first_time + timedelta(days=7) - datetime.now()
-        diff_str = '{:.1f}'.format(wait_time.seconds/(60*60.))
+    # CHECK IF RUNNING PROJECT COUNT IS WITHIN USER LIMITS
+    if current_user.is_authenticated():
+        incomplete = UserFile.query.filter_by(user_id=current_user.id)\
+            .filter_by(run_complete=0).all()
+        role_names = [r.name for r in current_user.roles]
+        if 'townsend' not in role_names and incomplete:
+            flash("Sorry, you must wait until your currently running projects "
+                  "have finished.", "danger")
+            return index()
 
-        flash("Sorry, you've used your allotted runs for this week. You can "
-              "try again in {} hours.".format(diff_str), "danger")
-        return index()
+        # ENFORCE WEEKLY LIMIT AND DISPLAY INFO MESSAGE
+        week_ago = datetime.now() - timedelta(days=7)
+        week_complete = UserFile.query.filter_by(user_id=current_user.id)\
+            .filter_by(run_complete=True).filter(UserFile.upload_time > week_ago)\
+            .all()
+        n_week = len(week_complete)
+        n_week_max = int(max([r.uploads_pw for r in current_user.roles]))
+        # if len(week_complete>9):
+        if n_week >= n_week_max:
+            first_time = min([p.upload_time for p in week_complete])
+            wait_time = first_time + timedelta(days=7) - datetime.now()
+            diff_str = '{:.1f}'.format(wait_time.seconds/(60*60.))
+            flash("Sorry, you've used your allotted runs for this week. "
+                  "You can try again in {} hours.".format(diff_str), "danger")
+            return index()
 
-    form = UploadForm()
-    if form.validate_on_submit():
-        # upload = Upload(uploader=current_user)
-        mut_filename = secure_filename(form.mut_file.data.filename)
-
-        # will create folder for job: <run_id>
-        user_upload = UserFile(filename=mut_filename, user_id=user_id)
-        form.to_model(user_upload)
-        db.session.add(user_upload)
-        db.session.commit()
-
-        user_folder = get_user_folder(user_id)
-        proj_folder = get_project_folder(user_upload)
-        if not os.path.exists(user_folder):
-            os.mkdir(user_folder)
-        os.mkdir(proj_folder)
-        file_path = os.path.join(proj_folder,
-                                 user_upload.get_local_filename())
-        form.mut_file.data.save(file_path)
-
-        # FILE SHOULD BE IN UPLOADS FOLDER NOW.
-        # RESPOND BASED ON FILE VALIDITY:
-        #     VALID: START RUN, FLASH 'EXPECT EMAIL' on STATUS PAGE
-        #     INVALID: FLASH 'BAD FILE', LIST ERRORS ON UPLOAD PAGE
-        file_tester = FileTester(file_path)
-
-        if file_tester.good_headers:
-            if file_tester.good_headers and file_tester.data_present:
-                user_upload.is_valid = True
-                user_upload.run_complete = False
-                upload_id = user_upload.file_id
-                db.session.add(user_upload)
-                db.session.commit()
-                flash('File accepted and validated. Analysis in progress.',
-                      'success')
-                # want analysis to run asynchronously!
-                # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
-                run_analysis(proj_folder, file_path, upload_id)
-                return redirect(url_for('.index'))
-            else:  # good headers but no data
-                flash('Your file seems to be missing data. Please try again.',
-                      'danger')
-        else:  # bad headers
-            flash("Your headers don't look right. Expected headers are:\n{}"
-                  .format('\t'.join(FileTester.want_headers)), 'danger')
-            delete_project_folder(user_upload)
-            db.session.delete(user_upload)
-            db.session.commit()
-    else:
         message = "You've run {} projects in the last week. ".format(n_week)
         message += "Your weekly limit is {}.".format(n_week_max)
         if incomplete:
             message += "\nYou have {} jobs still running."\
                 .format(len(incomplete))
         flash(message, "info")
+
+    else:
+        flash("You can upload here as a new guest user, but with severe "
+              "usage limits and no email alerts. Consider registering instead.",
+              "danger")
+
+    form = UploadForm()
+    if form.validate_on_submit():
+        # upload = Upload(uploader=current_user)
+        mut_filename = secure_filename(form.mut_file.data.filename)
+        temp_file = TempFile(form.mut_file.data)
+        file_tester = FileTester(temp_file.path)
+
+        # ABORT IF FILE HAS ISSUES
+        if file_tester.data_issues:
+            for issue in file_tester.data_issues:
+                flash(issue, 'danger')
+            return render_template('pway/upload.html', form=form)
+
+        # CREATE NEW USER IF UNAUTHENTICATED
+        if not current_user.is_authenticated():
+            # create guest user
+            temp_pswd = User.generate_random_password()
+            temp_user = User(password_raw=temp_pswd)
+            db.session.add(temp_user)
+            db.session.commit()
+            temp_uname = User.get_guest_username(temp_user.id)
+            temp_user.email = temp_uname
+            temp_user.confirmed_at = datetime.utcnow()
+            temp_user.roles.append(Role.query.filter_by(name='anonymous').one())
+            db.session.commit()
+            flash('Your temporary username is {} and password is {}.'.format(
+                temp_uname, temp_pswd), 'info')
+            login_user(temp_user, force=True, remember=True)
+
+        # CREATE USERFILE OBJECT
+        user_id = current_user.id
+        user_upload = UserFile(filename=mut_filename, user_id=user_id)
+        form.to_model(user_upload)
+        db.session.add(user_upload)
+        db.session.commit()
+        user_folder = naming_rules.get_user_folder(user_id)
+        proj_folder = naming_rules.get_project_folder(user_upload)
+        if not os.path.exists(user_folder):
+            os.mkdir(user_folder)
+        os.mkdir(proj_folder)
+        file_path = os.path.join(proj_folder,
+                                 user_upload.get_local_filename())
+        # MOVE TEMP FILE
+        os.rename(temp_file.path, file_path)
+
+        flash('File accepted and validated. Analysis in progress.',
+              'success')
+        # want analysis to run asynchronously!
+        # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
+        run_analysis(proj_folder, file_path, user_upload.file_id)
+        return redirect(url_for('.index'))
     return render_template('pway/upload.html', form=form)
 
 
