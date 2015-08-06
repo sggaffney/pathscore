@@ -472,6 +472,8 @@ def upload():
         user_id = current_user.id
         user_upload = UserFile(filename=mut_filename, user_id=user_id)
         form.to_model(user_upload)
+        user_upload.is_valid = True
+        user_upload.run_complete = False
         db.session.add(user_upload)
         db.session.commit()
         user_folder = naming_rules.get_user_folder(user_id)

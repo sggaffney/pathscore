@@ -11,7 +11,6 @@ import unicodedata as ud
 from unidecode import unidecode
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 from flask.ext.security.utils import encrypt_password
-from flask.ext import uploads
 
 # Define models
 roles_users = db.Table('roles_users',
