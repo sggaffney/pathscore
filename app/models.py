@@ -117,7 +117,7 @@ def load_token(token):
 class UserFile(db.Model):
     __tablename__ = 'uploads'
     # save mut_filename, time, size, user_id in uploads table
-    # with 'is_valid' field, 'run_accepted', 'run_complete'
+    # with 'is_valid' field, 'run_complete'
     # run_id primary key
     # only accept this file if user has no running jobs.
     # will create folder for job: <run_id>
@@ -126,7 +126,6 @@ class UserFile(db.Model):
     filename = db.Column(db.String(255))
     upload_time = db.Column(db.DateTime(), default=datetime.utcnow)
     is_valid = db.Column(db.Boolean)
-    run_accepted = db.Column(db.Boolean)
     run_complete = db.Column(db.Boolean)
     algorithm = db.Column(db.String(255), default='gene_size')
     genome_size = db.Column(db.String(255), default=False)
