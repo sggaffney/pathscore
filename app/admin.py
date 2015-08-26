@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from models import UserFile
+from models import UserFile, User, Role
 from flask import current_app
 from . import db
 import os
@@ -16,18 +16,44 @@ _cleanup_thread = None
 
 
 def remove_oldies():
-    """Delete uploads and project directories over 3 weeks old."""
-    cutoff = datetime.now() - timedelta(days=4, hours=0)
-    oldies = UserFile.query.filter(UserFile.upload_time < cutoff).all()
+    """Delete uploads and project directories over age limit."""
+    max_age_days = current_app.config['PROJ_MAX_AGE_DAYS']
+    cutoff = datetime.now() - timedelta(days=max_age_days)
+    oldies = UserFile.query.join(User).join(User.roles).\
+        filter(Role.name == 'general').\
+        filter(UserFile.upload_time < cutoff).all()
     for upload in oldies:
+        if upload.run_complete:
+            save_project_params_txt(upload)
+            zip_project(upload)
         delete_project_folder(upload)
         db.session.delete(upload)
+        db.session.commit()
+
+
+def delete_old_anonymous_users():
+    max_age_days = current_app.config['ANONYMOUS_MAX_AGE_DAYS']
+    cutoff = datetime.now() - timedelta(days=max_age_days)
+    # old_users = User.query.join(Role.users).\
+    user_upload_tuples = db.session.query(User, UserFile).join(UserFile).\
+        join(Role, User.roles).filter(Role.name=='vip').\
+        filter(User.member_since < cutoff).all()
+    old_users = {i[0] for i in user_upload_tuples}
+    old_uploads = {i[1] for i in user_upload_tuples}
+    for upload in old_uploads:
+        db.session.delete(upload)
+    for user in old_users:
+        user_folder = get_user_folder(user.id)
+        if os.path.exists(user_folder):
+            shutil.rmtree(user_folder)
+        db.session.delete(user)
     db.session.commit()
 
 
+
 def delete_project_folder(upload):
-        proj_folder = get_project_folder(upload)
-        shutil.rmtree(proj_folder)
+    proj_folder = get_project_folder(upload)
+    shutil.rmtree(proj_folder)
 
 
 def start_cleanup_thread():
@@ -41,9 +67,10 @@ def start_cleanup_thread():
 
 def tidy_projects_loop(app):
     while True:
-        time.sleep(app.config['PROJ_DELETE_INTERVAL'])
+        time.sleep(app.config['CLEANUP_INTERVAL'])
         with app.app_context():
             remove_oldies()
+            delete_old_anonymous_users()
 
 
 def force_all_stopped_status():

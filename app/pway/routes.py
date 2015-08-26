@@ -43,7 +43,7 @@ def demo():
 @login_required
 def reset():
     role_names = [r.name for r in current_user.roles]
-    if 'townsend' not in role_names:
+    if 'vip' not in role_names:
         abort(404)
     if request.environ['mod_wsgi.process_group'] != '':
         os.kill(os.getpid(), signal.SIGINT)
@@ -406,7 +406,7 @@ def upload():
         incomplete = UserFile.query.filter_by(user_id=current_user.id)\
             .filter_by(run_complete=0).all()
         role_names = [r.name for r in current_user.roles]
-        if 'townsend' not in role_names and incomplete:
+        if 'vip' not in role_names and incomplete:
             flash("Sorry, you must wait until your currently running projects "
                   "have finished.", "danger")
             return index()

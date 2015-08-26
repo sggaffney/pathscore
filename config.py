@@ -40,7 +40,9 @@ class Config:
 
     SERVER_NAME = os.environ.get('SERVER_NAME')
 
-    PROJ_DELETE_INTERVAL = 18144000  # 30 weeks
+    CLEANUP_INTERVAL = 21600  # 6 hours
+    PROJ_MAX_AGE_DAYS = 31
+    ANONYMOUS_MAX_AGE_DAYS = 3
 
 class DevelopmentConfig(Config):
     DEBUG = True
