@@ -84,12 +84,15 @@ def force_all_stopped_status():
         db.session.commit()
 
 
-
-# def zipdir(path, zip):
-#     """Called by zip_project."""
-#     for root, dirs, files in os.walk(path):
-#         for file in files:
-#             zip.write(os.path.join(root, file))
+def save_project_params_txt(upload_obj):
+    """Save key upload parameters to text file."""
+    use_fields = ['proj_suffix', 'filename', 'n_patients', 'algorithm',
+                  'ignore_genes', 'required_genes', 'genome_size']
+    proj_folder = get_project_folder(upload_obj)
+    out_path = os.path.join(proj_folder, 'params.txt')
+    with open(out_path, 'w') as out:
+        for field in use_fields:
+            out.write("{}: {}\n".format(field, getattr(upload_obj, field)))
 
 
 def zip_project(upload_obj):
