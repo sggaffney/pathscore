@@ -96,10 +96,12 @@ def save_project_params_txt(upload_obj):
 
 
 def zip_project(upload_obj):
-    # TODO: only zip if file not there already
+    """Zip project and save in user folder. Return path to zip file."""
     proj_name = upload_obj.get_local_filename()
     user_folder = get_user_folder(upload_obj.user_id)
     zip_path = os.path.join(user_folder, proj_name + '.zip')
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
     zipf = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
     proj_path = get_project_folder(upload_obj)
     for root, dirs, files in os.walk(proj_path):
