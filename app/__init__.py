@@ -6,7 +6,7 @@ from flask_bootstrap import Bootstrap
 from flask_mail import Mail
 from flask.ext.security.signals import user_registered
 from config import config
-
+import logging
 
 bootstrap = Bootstrap()
 db = SQLAlchemy()
@@ -23,6 +23,12 @@ def create_app(config_name):
     app = Flask(__name__)
     # development, testing, production, default
     app.config.from_object(config[config_name])
+
+    logging_level = getattr(logging, app.config['LOGGING_LEVEL'],
+                            'DEBUG')
+    logging.basicConfig(level=logging_level,
+                        format='[%(levelname)s] (%(threadName)-10s) %(message)s'
+                        )
 
     global dbvars
     dbvars = dict(host=app.config['SGG_DB_HOST'],

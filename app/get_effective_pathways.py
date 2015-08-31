@@ -1,6 +1,6 @@
 """Runs pathway pipeline on CancerDB tables or TCGA tables."""
 
-
+import logging
 from flask import current_app
 import MySQLdb as mdb
 import numpy as np
@@ -14,6 +14,7 @@ import os
 import subprocess
 import pyximport
 pyximport.install(setup_args={'include_dirs': np.get_include()})
+from sqlalchemy.orm.exc import StaleDataError
 from comb_functions import get_pway_likelihood_cython
 
 from . import db
@@ -34,7 +35,6 @@ path_size_dict_full = lookup_path_sizes()
 path_len_dict_full = lookup_path_lengths()
 path_info_dict = fetch_path_info_global()
 exome_length = lookup_exome_length()
-
 
 class TableLoadException(Exception):
     def __init__(self, msg):
@@ -70,11 +70,14 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
             user_upload.run_complete = None
             raise
         finally:
-            db.session.add(user_upload)
-            db.session.commit()
             if table:
                 drop_table(table_name)
-            run_finished_notification(upload_id)
+            try:
+                db.session.add(user_upload)
+                db.session.commit()
+                run_finished_notification(upload_id)
+            except StaleDataError as e:
+                logging.debug("Early termination of stale project: {}".format(e.message))
 
 
 
@@ -1113,7 +1116,8 @@ def make_readable_file(allPathways, out_path):
                 out.write('\t'.join([str(v) for v in line_vals]) + '\n')
 
 
-def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size, hyper_path):
+def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
+                      hyper_path):
     """Run matlab script that builds matrix and target svgs."""
     # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
     cmd = 'matlab -nosplash -nodesktop -r \"pway_plots(' \
@@ -1121,9 +1125,13 @@ def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
         format(txtpath=txt_path, scores=scores_path, names=names_path,
                tree=tree_path, gsize=int(genome_size), hyper_path=hyper_path)
     with open(os.devnull, "r") as fnullin:
-        with open(os.devnull, "w") as fnullout:
-            subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
-                                  stderr=fnullout, shell=True)
+        # with open(os.devnull, "w") as fnullout:
+        try:
+            output = subprocess.check_output(cmd, stdin=fnullin,
+                                             stderr=subprocess.STDOUT,
+                                             shell=True) # stdout=fnullout,
+        except subprocess.CalledProcessError as e:
+            logging.debug(("pway_plot error: ", e.output))
 
 
 def create_dendrogram_plots(scores_path, names_path, tree_path, genome_size, hyper_path):

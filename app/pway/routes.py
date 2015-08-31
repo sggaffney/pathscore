@@ -7,6 +7,7 @@ import signal
 from datetime import datetime, timedelta
 from collections import OrderedDict
 import numpy as np
+import logging
 from bokeh.plotting import figure, gridplot, ColumnDataSource
 from bokeh.resources import Resources
 from bokeh.embed import components
@@ -427,18 +428,6 @@ def upload():
                   "You can try again in {} hours.".format(diff_str), "danger")
             return index()
 
-        message = "You've run {} projects in the last week. ".format(n_week)
-        message += "Your weekly limit is {}.".format(n_week_max)
-        if incomplete:
-            message += "\nYou have {} jobs still running."\
-                .format(len(incomplete))
-        flash(message, "info")
-
-    else:
-        flash("You can upload here as a new guest user, but with severe "
-              "usage limits and no email alerts. Consider registering instead.",
-              "danger")
-
     form = UploadForm()
     if form.validate_on_submit():
         # upload = Upload(uploader=current_user)
@@ -470,6 +459,7 @@ def upload():
 
         # CREATE USERFILE OBJECT
         user_id = current_user.id
+        logging.debug("File uploaded by {}".format(current_user.email))
         user_upload = UserFile(filename=mut_filename, user_id=user_id)
         form.to_model(user_upload)
         user_upload.is_valid = True
@@ -492,6 +482,19 @@ def upload():
         # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
         run_analysis(proj_folder, file_path, user_upload.file_id)
         return redirect(url_for('.index'))
+
+    # MESSAGES FOR INITIAL UPLOAD PAGE ACCESS OR FAILED UPLOAD
+    if current_user.is_authenticated():
+        message = "You've run {} projects in the last week. ".format(n_week)
+        message += "Your weekly limit is {}.".format(n_week_max)
+        if incomplete:
+            message += "\nYou have {} jobs still running."\
+                .format(len(incomplete))
+        flash(message, "info")
+    else:
+        flash("You can upload here as a new guest user, but with severe "
+              "usage limits and no email alerts. Consider registering instead.",
+              "danger")
     return render_template('pway/upload.html', form=form)
 
 

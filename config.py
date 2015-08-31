@@ -44,6 +44,8 @@ class Config:
     PROJ_MAX_AGE_DAYS = 31
     ANONYMOUS_MAX_AGE_DAYS = 3
 
+    LOGGING_LEVEL = 'DEBUG'
+
 class DevelopmentConfig(Config):
     DEBUG = True
     SECRET_KEY = os.environ.get('SECRET_KEY') or 't0p s3cr3t'
