@@ -28,8 +28,7 @@ class TempFile:
 
 
 class FileTester():
-    want_headers = ['hugo_symbol', 'entrez_id', 'patient_id',
-                    'variant_classification']
+    want_headers = ['hugo_symbol', 'entrez_id', 'patient_id']
     int_columns = [1]
 
     def __init__(self, file_path):
