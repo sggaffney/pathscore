@@ -166,13 +166,8 @@ class MutationTable():
         return: remaining mutation count
         :rtype : int
         """
-        import pdb; pdb.set_trace()
+        """
 
-        """
-        # 1671 mutations rejected -- SAVE THESE TO OUTFILE THEN DELETE
-        SELECT m.* FROM mutations_5 m LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
-            ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;
-        """
         cmd0 = u"select count(*) from `{}` m;".format(self.table_name)
         cmd1 = u"""SELECT m.* FROM `{}` m
           LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
