@@ -166,7 +166,6 @@ class MutationTable():
         return: remaining mutation count
         :rtype : int
         """
-        """
 
         cmd0 = u"select count(*) from `{}` m;".format(self.table_name)
         cmd1 = u"""SELECT m.* FROM `{}` m
