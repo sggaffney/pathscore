@@ -55,9 +55,11 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
         #               read_default_file=current_app.config['SGG_DB_CNF'])
         # table_name = 'mutations_{}'.format(user_upload.file_id)
         table = None
+        unused_gene_path = naming_rules.get_unused_gene_path(user_upload)
         try:
             table_name = user_upload.get_table_name()
-            table = MutationTable(table_name, data_path)
+            table = MutationTable(table_name, data_path,
+                                  unused_path=unused_gene_path)
             if not table.loaded:
                 raise TableLoadException("Failed to load table {!r}."
                                          .format(table_name))
@@ -116,10 +118,11 @@ class Patient():
 
 class MutationTable():
     """Loads data from file into table, given table_name and file path."""
-    def __init__(self, table_name, data_path):
+    def __init__(self, table_name, data_path, unused_path=None):
         self.table_name = table_name
         self.data_path = data_path
         self.loaded = False
+        initial_success = False
         # CREATE AND POPULATE TABLE
         create_str = u"""CREATE TABLE `{}` (
           `hugo_symbol` VARCHAR(255) DEFAULT NULL,
@@ -133,19 +136,84 @@ class MutationTable():
         lines terminated by '\n' ignore 1 lines;""".format(
             data_path, table_name
         )
+        con = None
         try:
             con = mdb.connect(**app.dbvars)
             cur = con.cursor()
             cur.execute(create_str)
             cur.execute(load_str)
             con.commit()
-            self.loaded = True
+            initial_success = True
         except mdb.Error as e:
-            print "Error %d: %s" % (e.args[0], e.args[1])
+            logging.debug("Error %d: %s" % (e.args[0], e.args[1]))
+            raise
+        finally:
+            if con:
+                con.close()
+        n_remaining = self.remove_genes_outwith_pathways(unused_path)
+        if initial_success and n_remaining:
+            self.loaded = True
+
+    def remove_genes_unrecognized(self):
+        # TODO(sgg)
+        pass
+
+    def remove_genes_outwith_pathways(self, rejected_path=None):
+        """
+        Remove genes outwith pathways, save to reject file,
+        return remaining mutation count.
+
+        return: remaining mutation count
+        :rtype : int
+        """
+        import pdb; pdb.set_trace()
+
+        """
+        # 1671 mutations rejected -- SAVE THESE TO OUTFILE THEN DELETE
+        SELECT m.* FROM mutations_5 m LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
+            ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;
+        """
+        cmd0 = u"select count(*) from `{}` m;".format(self.table_name)
+        cmd1 = u"""SELECT m.* FROM `{}` m
+          LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
+          ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;"""\
+            .format(self.table_name)
+        cmd2 = u"""delete from m using `{}` m
+          LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
+          ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;"""\
+            .format(self.table_name)
+        con = None
+        try:
+            con = mdb.connect(**app.dbvars)
+            cur = con.cursor()
+            cur.execute(cmd0)
+            result = cur.fetchone()
+            n_mut_initial = result[0]
+            # EXPORT EXTRA GENE LINES
+            cur.execute(cmd1)
+            n_rejected = cur.rowcount
+            if n_rejected > 0:
+                if rejected_path:
+                    self.save_mutations_subset(cur, rejected_path)
+                # DELETE EXTRA GENE LINES
+                cur = con.cursor()
+                cur.execute(cmd2)
+                con.commit()
+            n_remaining = n_mut_initial - n_rejected
+            return n_remaining
+        except mdb.Error as e:
+            logging.debug("Error %d: %s" % (e.args[0], e.args[1]))
+            raise
         finally:
             if con:
                 con.close()
 
+    @staticmethod
+    def save_mutations_subset(cursor, save_path):
+        """Export mutation subset."""
+        with open(save_path, 'w') as out:
+            for row in cursor:
+                out.write('\t'.join([str(i) for i in row]) + '\n')
 
 
 class GeneMatrix():
