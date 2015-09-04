@@ -19,7 +19,7 @@ _cleanup_thread = None
 def remove_oldies():
     """Delete uploads and project directories over age limit."""
     max_age_days = current_app.config['PROJ_MAX_AGE_DAYS']
-    cutoff = datetime.now() - timedelta(days=max_age_days)
+    cutoff = datetime.utcnow() - timedelta(days=max_age_days)
     oldies = UserFile.query.join(User).join(User.roles).\
         filter(Role.name == 'general').\
         filter(UserFile.upload_time < cutoff).all()
@@ -36,7 +36,7 @@ def remove_oldies():
 
 def delete_old_anonymous_users():
     max_age_days = current_app.config['ANONYMOUS_MAX_AGE_DAYS']
-    cutoff = datetime.now() - timedelta(days=max_age_days)
+    cutoff = datetime.utcnow() - timedelta(days=max_age_days)
     # old_users = User.query.join(Role.users).\
     user_upload_tuples = db.session.query(User, UserFile).join(UserFile).\
         join(Role, User.roles).filter(Role.name == 'anonymous').\

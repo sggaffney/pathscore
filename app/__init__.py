@@ -45,6 +45,9 @@ def create_app(config_name):
     from .auth import auth as auth_blueprint
     app.register_blueprint(auth_blueprint)
 
+    from .momentjs import momentjs
+    app.jinja_env.globals['momentjs'] = momentjs
+
     # Setup Flask-Security
 
     user_datastore = SQLAlchemyUserDatastore(db, User, Role)

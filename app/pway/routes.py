@@ -413,7 +413,7 @@ def upload():
             return index()
 
         # ENFORCE WEEKLY LIMIT AND DISPLAY INFO MESSAGE
-        week_ago = datetime.now() - timedelta(days=7)
+        week_ago = datetime.utcnow() - timedelta(days=7)
         week_complete = UserFile.query.filter_by(user_id=current_user.id)\
             .filter_by(run_complete=True).filter(UserFile.upload_time > week_ago)\
             .all()
@@ -422,7 +422,7 @@ def upload():
         # if len(week_complete>9):
         if n_week >= n_week_max:
             first_time = min([p.upload_time for p in week_complete])
-            wait_time = first_time + timedelta(days=7) - datetime.now()
+            wait_time = first_time + timedelta(days=7) - datetime.utcnow()
             diff_str = '{:.1f}'.format(wait_time.seconds/(60*60.))
             flash("Sorry, you've used your allotted runs for this week. "
                   "You can try again in {} hours.".format(diff_str), "danger")
@@ -453,8 +453,10 @@ def upload():
             temp_user.confirmed_at = datetime.utcnow()
             temp_user.roles.append(Role.query.filter_by(name='anonymous').one())
             db.session.commit()
-            flash('Your temporary username is {} and password is {}.'.format(
-                temp_uname, temp_pswd), 'info')
+            flash('Your temporary username is {} and password is {}. '.format(
+                temp_uname, temp_pswd) + 'This account will be deleted in '
+                '{} days.'.format(current_app.config['ANONYMOUS_MAX_AGE_DAYS']),
+                'info')
             login_user(temp_user, force=True, remember=True)
 
         # CREATE USERFILE OBJECT

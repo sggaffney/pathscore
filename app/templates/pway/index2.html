@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block head %}
+    {{ super() }}
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
+{% endblock %}
+
 {% block page_content %}
 <div class="page-header">
     <h1>Status</h1>
@@ -18,6 +23,7 @@
         <th>Ignore</th>
         <!--<th>Required</th>-->
         <th>Status</th>
+        <th>Expires</th>
         <th>Zip</th>
     </tr>
     {% for proj in projects %}
@@ -42,6 +48,11 @@
             <td>Running</td>
         {% else %}
             <td>Failed</td>
+        {% endif %}
+        {% if current_user.get_expiry_date() %}
+            <td>{{ momentjs(current_user.get_expiry_date()).fromNow() }}</td>
+        {% else %}
+            <td>Never</td>
         {% endif %}
         {% if proj.run_complete %}
             <td>

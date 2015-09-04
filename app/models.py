@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import random
 import string
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -96,6 +96,14 @@ class User(UserMixin, db.Model):
     def get_guest_username(int_id):
         return 'guest_' + hex(int(int_id))[2:]
 
+    def get_expiry_date(self):
+        """If user is anonymous, return deletion date, else return None."""
+        if 'anonymous' in [r.name for r in self.roles]:
+            max_age_days = current_app.config['ANONYMOUS_MAX_AGE_DAYS']
+            return self.member_since + timedelta(days=max_age_days)
+        else:
+            return None
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -160,5 +168,19 @@ class UserFile(db.Model):
         ignore_list = self.ignore_genes.split(',')
         ignore_str = ','.join(ignore_list[0:5])
         if len(ignore_list)>5:
-            ignore_str = ignore_str + '...'
+            ignore_str += '...'
         return ignore_str
+
+    def get_expiry_date(self):
+        """Return project expiry date.
+
+        This is user expiry date for anonymous users, standard expiry date for
+        general users, and None for vips.
+        ."""
+        user_expiry = self.uploader.get_expiry_date()
+        if user_expiry:
+            return user_expiry
+        if 'vip' in [r.name for r in self.roles]:
+            return None
+        timediff = timedelta(days=current_app.config['PROJ_MAX_AGE_DAYS'])
+        return self.upload_time + timediff
