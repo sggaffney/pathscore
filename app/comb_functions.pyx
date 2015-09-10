@@ -49,7 +49,7 @@ def get_pway_likelihood_cython(int G,
         else:
             # patient has too many hits to get zero pathway mutations
             p = 1  # observation (of mutation in pathway) certain
-        prob_array[patient_no] = np.log(p)
+        prob_array[patient_no] = -np.inf if p == 0 else np.log(p)
         # prob_list.append(log(p))
     # prob_array = array(prob_list)
     return prob_array.sum()

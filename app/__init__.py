@@ -76,7 +76,6 @@ def create_app(config_name):
         start_cleanup_thread()
         force_all_stopped_status()
 
-
     @user_registered.connect_via(app)
     def user_registered_sighandler(app, user, confirm_token):
         default_role = user_datastore.find_role("general")

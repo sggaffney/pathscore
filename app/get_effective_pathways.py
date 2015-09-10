@@ -4,11 +4,9 @@ import logging
 from flask import current_app
 import MySQLdb as mdb
 import numpy as np
-from numpy import *
 from scipy import stats
 from scipy.optimize import minimize_scalar, brentq
 import timeit
-import warnings
 from collections import OrderedDict
 import os
 import subprocess
@@ -36,7 +34,16 @@ path_len_dict_full = lookup_path_lengths()
 path_info_dict = fetch_path_info_global()
 exome_length = lookup_exome_length()
 
+
 class TableLoadException(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return repr(self.msg)
+
+
+class MatlabFailureException(Exception):
     def __init__(self, msg):
         self.msg = msg
 
@@ -68,10 +75,16 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
             db.session.commit()
             run(proj_dir, table_name, user_upload)
             user_upload.run_complete = True
-        except:
-            user_upload.run_complete = None
-            raise
+        except MatlabFailureException as e:
+            logging.error(e.msg)
         finally:
+            if not user_upload.run_complete:
+                user_upload.run_complete = None
+                logging.info("Project {} failed for user {}.".format(
+                    user_upload.file_id, user_upload.uploader.email))
+            else:
+                logging.info("Project {} completed for user {}.".format(
+                    user_upload.file_id, user_upload.uploader.email))
             if table:
                 drop_table(table_name)
             try:
@@ -79,8 +92,8 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
                 db.session.commit()
                 run_finished_notification(upload_id)
             except StaleDataError as e:
-                logging.debug("Early termination of stale project: {}".format(e.message))
-
+                logging.info("Early termination of stale project: {}".format(
+                    e.message))
 
 
 def run_analysis(proj_dir, data_path, upload_id):
@@ -463,6 +476,7 @@ class LCalculator():
         ll = get_pway_likelihood_cython(self.G, pway_size,
                                          self.n_patients, self.n_mutated_array,
                                          self.is_mutated_array)
+        ll = np.nan if ll == -np.inf else ll
         return -1 * ll
 
     def _get_ne_CI(self):
@@ -508,14 +522,14 @@ class LCalculator():
         if not self.pway.n_actual:
             ne = 0
             ult = np.float64(0)
-            warnings.warn(
+            logging.debug(
                 "Pathway {} contains zero genes. ".format(self.pway.path_id))
             return ne, ult
         # if all patients mutated, use ne=genome_size - max_mutations
         if False not in [patient.is_mutated for patient in self.pway.patients]:
             ne = self.G
             ult = np.float64(0)
-            warnings.warn("All patients have mutation in pathway {}. ".format(
+            logging.debug("All patients have mutation in pathway {}. ".format(
                 self.pway.path_id) + "Effective size is full genome.")
             return (ne, ult)
         # check last 2 vals to check for decline:
@@ -541,7 +555,7 @@ class LCalculator():
             if this_ll < last_ll or this_ll == 0:
                 ne = pway_size - 1
                 if this_ll == 0:
-                    warnings.warn("Premature stop for pway {}.".format(
+                    logging.debug("Premature stop for pway {}.".format(
                         self.pway.path_id))
                 break
             last_ll = this_ll
@@ -556,19 +570,19 @@ class LCalculator():
         if not self.pway.n_actual:
             ne = 0
             final_ll = np.float64(0)
-            warnings.warn("Pathway {} contains zero genes. ".format(
+            logging.debug("Pathway {} contains zero genes. ".format(
                 self.pway.path_id))
             return ne, final_ll
         # if all patients mutated, use ne=genome_size - max_mutations
         if False not in [patient.is_mutated for patient in self.pway.patients]:
             ne = self.G
             final_ll = np.float64(0)
-            warnings.warn("All patients have mutation in pathway {}. ".format(
+            logging.debug("All patients have mutation in pathway {}. ".format(
                 self.pway.path_id) + "Effective size is full genome.")
             return ne, final_ll
 
         result = minimize_scalar(self._get_pway_likelihood_neg, method='Brent',
-                                 bounds=[1, self.G])
+                                     bounds=[1, self.G])
         # res2 = minimize_scalar(self._get_pway_likelihood_neg, method='Bounded',
         #                        bounds=[1, 17000000])
         try_integers = [np.floor(result.x), np.ceil(result.x)]
@@ -1130,7 +1144,7 @@ def save_dissimilarity_files(pway_list_full, scores_path, names_path, min_len=50
     gene_set_list = [p.gene_set for p in pway_list if p.gene_set][:n_pways]
     scores = misc.get_distance_matrix(gene_set_list)
     # SAVE SCORES SQUARE MATRIX IN TEXT FILE. (savetxt from numpy)
-    savetxt(scores_path, scores, delimiter='\t')
+    np.savetxt(scores_path, scores, delimiter='\t')
     # SAVE NAMES IN TEXT FILE.
     names = [(p.path_id, p.nice_name) for p in pway_list if p.gene_set]
     names = names[:n_pways]  # trim down to length n_pways
@@ -1180,18 +1194,25 @@ def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
                       hyper_path):
     """Run matlab script that builds matrix and target svgs."""
     # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
-    cmd = 'matlab -nosplash -nodesktop -r \"pway_plots(' \
-          '{txtpath!r}, {scores!r}, {names!r}, {tree!r}, {gsize}, {hyper_path!r});\"'.\
+
+    # worker = matlab.engine.start_matlab()
+    plot_fn = "pway_plots({txtpath!r}, {scores!r}, {names!r}, {tree!r}, {gsize}, {hyper_path!r});".\
         format(txtpath=txt_path, scores=scores_path, names=names_path,
                tree=tree_path, gsize=int(genome_size), hyper_path=hyper_path)
+
+    cmd = ['matlab', '-nosplash', '-nodesktop', '-r',
+           plot_fn + ' exit;']
+
     with open(os.devnull, "r") as fnullin:
-        # with open(os.devnull, "w") as fnullout:
-        try:
-            output = subprocess.check_output(cmd, stdin=fnullin,
-                                             stderr=subprocess.STDOUT,
-                                             shell=True) # stdout=fnullout,
-        except subprocess.CalledProcessError as e:
-            logging.debug(("pway_plot error: ", e.output))
+        with open(os.devnull, "w") as fnullout:
+            proc = subprocess.Popen(cmd, stdin=fnullin,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+                                    # stdout=subprocess.PIPE,
+                                    # stderr=subprocess.PIPE)
+            (output, error) = proc.communicate()
+            if error:
+                raise MatlabFailureException('pway plot error: ' + error)
 
 
 def create_dendrogram_plots(scores_path, names_path, tree_path, genome_size, hyper_path):
