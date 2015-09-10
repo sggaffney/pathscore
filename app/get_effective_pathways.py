@@ -63,10 +63,12 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
         # table_name = 'mutations_{}'.format(user_upload.file_id)
         table = None
         unused_gene_path = naming_rules.get_unused_gene_path(user_upload)
+        rejected_gene_path = naming_rules.get_rejected_gene_path(user_upload)
         try:
             table_name = user_upload.get_table_name()
             table = MutationTable(table_name, data_path,
-                                  unused_path=unused_gene_path)
+                                  unused_path=unused_gene_path,
+                                  rejected_path=rejected_gene_path)
             if not table.loaded:
                 raise TableLoadException("Failed to load table {!r}."
                                          .format(table_name))
@@ -131,12 +133,21 @@ class Patient():
 
 class MutationTable():
     """Loads data from file into table, given table_name and file path."""
-    def __init__(self, table_name, data_path, unused_path=None):
+    def __init__(self, table_name, data_path, unused_path=None,
+                 rejected_path=None):
         self.table_name = table_name
         self.data_path = data_path
         self.loaded = False
-        initial_success = False
-        # CREATE AND POPULATE TABLE
+        self.n_remaining = 0
+        self.populate_table()
+        self.remove_genes_unrecognized(rejected_path)
+        self.remove_genes_outwith_pathways(unused_path)
+        if self.n_remaining:
+            self.loaded = True
+
+    def populate_table(self):
+        """Build mutation table before filtering. Rtn boolean for success."""
+        table_name, data_path = self.table_name, self.data_path
         create_str = u"""CREATE TABLE `{}` (
           `hugo_symbol` VARCHAR(255) DEFAULT NULL,
           `entrez_id` INT(11) DEFAULT NULL,
@@ -145,31 +156,59 @@ class MutationTable():
           KEY `temp_patient_entrez` (`patient_id`,`entrez_id`) USING HASH);"""\
             .format(table_name)
         load_str = u"""load data local infile '{}'
-        into table `{}` fields terminated by '\t'
-        lines terminated by '\n' ignore 1 lines;""".format(
-            data_path, table_name
-        )
+            into table `{}` fields terminated by '\t'
+            lines terminated by '\n' ignore 1 lines;""".format(
+            data_path, table_name)
+        cmd = u"select count(*) from `{}` m;".format(self.table_name)
         con = None
         try:
             con = mdb.connect(**app.dbvars)
             cur = con.cursor()
             cur.execute(create_str)
             cur.execute(load_str)
+            cur.execute(cmd)
+            result = cur.fetchone()
+            self.n_remaining = result[0]
             con.commit()
-            initial_success = True
         except mdb.Error as e:
             logging.debug("Error %d: %s" % (e.args[0], e.args[1]))
             raise
         finally:
             if con:
                 con.close()
-        n_remaining = self.remove_genes_outwith_pathways(unused_path)
-        if initial_success and n_remaining:
-            self.loaded = True
 
-    def remove_genes_unrecognized(self):
-        # TODO(sgg)
-        pass
+    def remove_genes_unrecognized(self, rejected_path=None):
+        n_mut_initial = self.n_remaining
+        if not n_mut_initial:
+            return
+        cmd1 = u"""SELECT m.* FROM `{}` m
+            LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.geneId
+            WHERE n.geneId IS NULL OR m.hugo_symbol <> n.symbol;""".format(
+            self.table_name)
+        cmd2 = u"""delete from m using `{}` m
+          LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.geneId
+            WHERE n.geneId IS NULL OR m.hugo_symbol <> n.symbol;"""\
+            .format(self.table_name)
+        con = None
+        try:
+            con = mdb.connect(**app.dbvars)
+            cur = con.cursor()
+            # EXPORT REJECTED GENES
+            cur.execute(cmd1)
+            n_rejected = cur.rowcount
+            if n_rejected > 0:
+                if rejected_path:
+                    self.save_mutations_subset(cur, rejected_path)
+                # DELETE EXTRA GENE LINES
+                cur.execute(cmd2)
+                con.commit()
+            self.n_remaining = n_mut_initial - n_rejected
+        except mdb.Error as e:
+            logging.debug("Error %d: %s" % (e.args[0], e.args[1]))
+            raise
+        finally:
+            if con:
+                con.close()
 
     def remove_genes_outwith_pathways(self, rejected_path=None):
         """
@@ -179,8 +218,7 @@ class MutationTable():
         return: remaining mutation count
         :rtype : int
         """
-
-        cmd0 = u"select count(*) from `{}` m;".format(self.table_name)
+        n_mut_initial = self.n_remaining
         cmd1 = u"""SELECT m.* FROM `{}` m
           LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
           ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;"""\
@@ -193,9 +231,6 @@ class MutationTable():
         try:
             con = mdb.connect(**app.dbvars)
             cur = con.cursor()
-            cur.execute(cmd0)
-            result = cur.fetchone()
-            n_mut_initial = result[0]
             # EXPORT EXTRA GENE LINES
             cur.execute(cmd1)
             n_rejected = cur.rowcount
@@ -203,7 +238,6 @@ class MutationTable():
                 if rejected_path:
                     self.save_mutations_subset(cur, rejected_path)
                 # DELETE EXTRA GENE LINES
-                cur = con.cursor()
                 cur.execute(cmd2)
                 con.commit()
             n_remaining = n_mut_initial - n_rejected
