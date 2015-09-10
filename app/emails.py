@@ -23,6 +23,9 @@ def run_finished_notification(upload_id):
 def run_finished_notification_async(app, upload_id):
     with app.app_context():
         upload = UserFile.query.get(upload_id)
+        # Prevent email attempt if user is anonymous
+        if 'anonymous' in [r.name for r in upload.uploader.roles]:
+            return
         msg = get_notification_email(
             email=upload.uploader.email,
             subject='[pathway search] Run complete',
