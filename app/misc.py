@@ -84,3 +84,25 @@ def strip_contributors(string_in):
         if string_in.startswith(contrib):
             return string_in[len(contrib):]
     return string_in
+
+
+def get_wait_time_string(wait_time):
+    days = wait_time.days
+    hours = wait_time.seconds/60/60
+    mins = wait_time.seconds/60 - hours*60
+    days_str = str(days) + 'day' if days else ''
+    hours_str = str(hours) + 'h' if hours else ''
+    mins_str = str(mins) + 'min' if mins else ''
+    if days > 1:
+        return str(days) + ' days'
+    elif days:
+        return ' '.join([days_str, hours_str]).strip()
+    # < 1 day
+    elif hours:
+        return ' '.join([hours_str, mins_str]).strip()
+    # < 1 hour
+    elif mins:
+        return mins_str
+    # < 1 min
+    else:
+        return str(wait_time.seconds) + 's'

@@ -423,9 +423,9 @@ def upload():
         if n_week >= n_week_max:
             first_time = min([p.upload_time for p in week_complete])
             wait_time = first_time + timedelta(days=7) - datetime.utcnow()
-            diff_str = '{:.1f}'.format(wait_time.seconds/(60*60.))
+            wait_str = misc.get_wait_time_string(wait_time)
             flash("Sorry, you've used your allotted runs for this week. "
-                  "You can try again in {} hours.".format(diff_str), "danger")
+                  "You can try again in {}.".format(wait_str), "danger")
             return index()
 
     form = UploadForm()
