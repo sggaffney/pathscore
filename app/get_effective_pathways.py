@@ -563,8 +563,8 @@ class LCalculator():
         if False not in [patient.is_mutated for patient in self.pway.patients]:
             ne = self.G
             ult = np.float64(0)
-            logging.debug("All patients have mutation in pathway {}. ".format(
-                self.pway.path_id) + "Effective size is full genome.")
+            # logging.debug("All patients have mutation in pathway {}. ".format(
+            #     self.pway.path_id) + "Effective size is full genome.")
             return (ne, ult)
         # check last 2 vals to check for decline:
         penult = self._get_pway_likelihood(
@@ -908,9 +908,7 @@ class BackgroundGenomeFetcher():
             genome_size = self._fetch_expressed_genome_size(expressed_table)
         else:
             raise Exception("Unknown genome version")
-        print(
-            "Using genome version '{}': {} genes".format(genome_str,
-                                                         genome_size))
+        # print("Using genome version '{}': {} genes".format(genome_str, genome_size))
         return genome_size
 
     @staticmethod
@@ -998,7 +996,7 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
         interest_genes = tuple(str(user_upload.required_genes).split(','))
     else:
         interest_genes = tuple()
-    print("Interest genes: {}".format(str(interest_genes)))
+    # print("Interest genes: {}".format(str(interest_genes)))
 
     # INCLUDE_GENES GIVES PATHWAY REQUIREMENT
     # EXCLUDE_GENES MEANS DON'T BASE PATHWAY-PATIENT PAIRS ON THIS GENE
