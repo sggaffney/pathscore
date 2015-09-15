@@ -483,6 +483,7 @@ def upload():
                 with open(file_path, 'w') as out:
                     for line in file:
                         out.write(line)
+            os.remove(temp_file.path)
 
         flash('File accepted and validated. Analysis in progress.',
               'success')
