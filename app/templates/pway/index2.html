@@ -34,7 +34,7 @@
             <tr>
             <td>{{ proj.get_local_filename() }}</td>
         {% endif %}
-            <td>{{ proj.n_patients }} </td>
+            <td>{{ proj.n_patients or '' }} </td>
             <td>{{ proj.upload_time }} </td>
             <!--<td>{{ proj.filename }} </td>-->
             <td>{{ proj.algorithm }} </td>
