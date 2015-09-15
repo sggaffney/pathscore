@@ -475,8 +475,14 @@ def upload():
         os.mkdir(proj_folder)
         file_path = os.path.join(proj_folder,
                                  user_upload.get_local_filename())
-        # MOVE TEMP FILE
-        os.rename(temp_file.path, file_path)
+        # MOVE/COPY TEMP FILE
+        if file_tester.line_endings == '\n':
+            os.rename(temp_file.path, file_path)
+        else:  # rewrite file with \n line endings
+            with open(temp_file.path, 'rU') as file:
+                with open(file_path, 'w') as out:
+                    for line in file:
+                        out.write(line)
 
         flash('File accepted and validated. Analysis in progress.',
               'success')

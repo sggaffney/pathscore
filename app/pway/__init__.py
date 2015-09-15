@@ -27,13 +27,14 @@ class TempFile:
         return temp_path
 
 
-class FileTester():
+class FileTester:
     want_headers = ['hugo_symbol', 'entrez_id', 'patient_id']
     int_columns = [1]
 
     def __init__(self, file_path):
         self.data_issues = []
-        self._check_headers_data(file_path)
+        self.line_endings = None
+        self._check_headers_data(file_path)  # get data_issues and line_endings
 
     def _check_headers_data(self, file_path):
         ind = -1
@@ -55,6 +56,7 @@ class FileTester():
             if not ind + 1:
                 self.data_issues.append("No data found.")
                 return
+            self.line_endings = file.newlines
             # could add minimum line count here
             # if ind < 9:
             #     self.data_issues.append("Need more data.")
