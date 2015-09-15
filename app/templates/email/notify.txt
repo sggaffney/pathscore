@@ -1,7 +1,7 @@
 {% if project.run_complete %}
-Your pathway search run has finshed successfully.
+Your Pathscore run has finshed successfully.
 {% else %}
-Your pathway search run has terminated with errors.
+Your Pathscore run has terminated with errors.
 {% endif %}
 
 Project name = {{ project.proj_suffix|safe }}.

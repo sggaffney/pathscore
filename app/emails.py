@@ -28,7 +28,7 @@ def run_finished_notification_async(app, upload_id):
             return
         msg = get_notification_email(
             email=upload.uploader.email,
-            subject='[pathway search] Run complete',
+            subject='[pathscore] Run complete',
             body_text=render_template('email/notify.txt', project=upload),
             body_html=render_template('email/notify.html', project=upload)
             )
