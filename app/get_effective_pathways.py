@@ -1,6 +1,5 @@
 """Runs pathway pipeline on CancerDB tables or TCGA tables."""
 
-import logging
 from flask import current_app
 import MySQLdb as mdb
 import numpy as np
@@ -78,14 +77,14 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
             run(proj_dir, table_name, user_upload)
             user_upload.run_complete = True
         except MatlabFailureException as e:
-            logging.error(e.msg)
+            current_app.logger.error(e.msg)
         finally:
             if not user_upload.run_complete:
                 user_upload.run_complete = None
-                logging.info("Project {} failed for user {}.".format(
+                current_app.logger.info("Project {} failed for user {}.".format(
                     user_upload.file_id, user_upload.uploader.email))
             else:
-                logging.info("Project {} completed for user {}.".format(
+                current_app.logger.info("Project {} completed for user {}.".format(
                     user_upload.file_id, user_upload.uploader.email))
             if table:
                 drop_table(table_name)
@@ -94,7 +93,7 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
                 db.session.commit()
                 run_finished_notification(upload_id)
             except StaleDataError as e:
-                logging.info("Early termination of stale project: {}".format(
+                current_app.logger.info("Early termination of stale project: {}".format(
                     e.message))
 
 
@@ -171,7 +170,7 @@ class MutationTable():
             self.n_remaining = result[0]
             con.commit()
         except mdb.Error as e:
-            logging.debug("Error %d: %s" % (e.args[0], e.args[1]))
+            current_app.logger.debug("Error %d: %s" % (e.args[0], e.args[1]))
             raise
         finally:
             if con:
@@ -204,7 +203,7 @@ class MutationTable():
                 con.commit()
             self.n_remaining = n_mut_initial - n_rejected
         except mdb.Error as e:
-            logging.debug("Error %d: %s" % (e.args[0], e.args[1]))
+            current_app.logger.debug("Error %d: %s" % (e.args[0], e.args[1]))
             raise
         finally:
             if con:
@@ -243,7 +242,7 @@ class MutationTable():
             n_remaining = n_mut_initial - n_rejected
             return n_remaining
         except mdb.Error as e:
-            logging.debug("Error %d: %s" % (e.args[0], e.args[1]))
+            current_app.logger.debug("Error %d: %s" % (e.args[0], e.args[1]))
             raise
         finally:
             if con:
@@ -556,14 +555,14 @@ class LCalculator():
         if not self.pway.n_actual:
             ne = 0
             ult = np.float64(0)
-            logging.debug(
+            current_app.logger.debug(
                 "Pathway {} contains zero genes. ".format(self.pway.path_id))
             return ne, ult
         # if all patients mutated, use ne=genome_size - max_mutations
         if False not in [patient.is_mutated for patient in self.pway.patients]:
             ne = self.G
             ult = np.float64(0)
-            # logging.debug("All patients have mutation in pathway {}. ".format(
+            # current_app.logger.debug("All patients have mutation in pathway {}. ".format(
             #     self.pway.path_id) + "Effective size is full genome.")
             return (ne, ult)
         # check last 2 vals to check for decline:
@@ -589,7 +588,7 @@ class LCalculator():
             if this_ll < last_ll or this_ll == 0:
                 ne = pway_size - 1
                 if this_ll == 0:
-                    logging.debug("Premature stop for pway {}.".format(
+                    current_app.logger.debug("Premature stop for pway {}.".format(
                         self.pway.path_id))
                 break
             last_ll = this_ll
@@ -604,14 +603,14 @@ class LCalculator():
         if not self.pway.n_actual:
             ne = 0
             final_ll = np.float64(0)
-            logging.debug("Pathway {} contains zero genes. ".format(
+            current_app.logger.debug("Pathway {} contains zero genes. ".format(
                 self.pway.path_id))
             return ne, final_ll
         # if all patients mutated, use ne=genome_size - max_mutations
         if False not in [patient.is_mutated for patient in self.pway.patients]:
             ne = self.G
             final_ll = np.float64(0)
-            logging.debug("All patients have mutation in pathway {}. ".format(
+            current_app.logger.debug("All patients have mutation in pathway {}. ".format(
                 self.pway.path_id) + "Effective size is full genome.")
             return ne, final_ll
 

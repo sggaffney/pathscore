@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from models import UserFile, User, Role
 from flask import current_app
 from . import db
-import logging
 import os
 import shutil
 from threading import Thread
@@ -11,7 +10,6 @@ import zipfile
 from emails import run_finished_notification
 from app.get_effective_pathways import MutationTable
 from app.naming_rules import get_user_folder, get_project_folder
-
 
 _cleanup_thread = None
 
@@ -32,7 +30,7 @@ def remove_oldies():
         db.session.delete(upload)
         db.session.commit()
     if oldies:
-        logging.debug("Deleted project(s): {}".format(old_ids))
+        current_app.logger.debug("Deleted project(s): {}".format(old_ids))
 
 def delete_old_anonymous_users():
     max_age_days = current_app.config['ANONYMOUS_MAX_AGE_DAYS']
@@ -49,7 +47,7 @@ def delete_old_anonymous_users():
         user_folder = get_user_folder(user.id)
         if os.path.exists(user_folder):
             shutil.rmtree(user_folder)
-        logging.debug("Deleting user {}.".format(user.email))
+        current_app.logger.debug("Deleting user {}.".format(user.email))
         db.session.delete(user)
     db.session.commit()
 
@@ -62,7 +60,7 @@ def delete_project_folder(upload):
 def start_cleanup_thread():
     global _cleanup_thread
     if _cleanup_thread is None:
-        logging.info("Starting cleanup thread...")
+        current_app.logger.info("Starting cleanup thread...")
         _cleanup_thread = Thread(target=tidy_projects_loop,
                                  args=[current_app._get_current_object()])
         _cleanup_thread.start()

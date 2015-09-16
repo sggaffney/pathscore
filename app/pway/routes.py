@@ -7,7 +7,6 @@ import signal
 from datetime import datetime, timedelta
 from collections import OrderedDict
 import numpy as np
-import logging
 from bokeh.plotting import figure, gridplot, ColumnDataSource
 from bokeh.resources import Resources
 from bokeh.embed import components
@@ -404,7 +403,7 @@ def upload():
 
     # CHECK IF RUNNING PROJECT COUNT IS WITHIN USER LIMITS
     if current_user.is_authenticated():
-        logging.info('Upload page access by ' + current_user.email)
+        current_app.logger.info('Upload page access by ' + current_user.email)
         incomplete = UserFile.query.filter_by(user_id=current_user.id)\
             .filter_by(run_complete=0).all()
         role_names = [r.name for r in current_user.roles]
@@ -462,7 +461,7 @@ def upload():
 
         # CREATE USERFILE OBJECT
         user_id = current_user.id
-        logging.debug("File uploaded by {}".format(current_user.email))
+        current_app.logger.debug("File uploaded by {}".format(current_user.email))
         user_upload = UserFile(filename=mut_filename, user_id=user_id)
         form.to_model(user_upload)
         user_upload.is_valid = True

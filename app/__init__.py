@@ -24,10 +24,9 @@ def create_app(config_name):
     # development, testing, production, default
     app.config.from_object(config[config_name])
 
-    logging_level = getattr(logging, app.config['LOGGING_LEVEL'],
-                            'DEBUG')
-    log_str = '[%(levelname)s] (%(threadName)-10s) %(message)s'
-    logging.basicConfig(level=logging_level, format=log_str)
+    logging_level = getattr(logging, app.config['LOGGING_LEVEL'], 'DEBUG')
+    # log_str = '[%(levelname)s] (%(threadName)-10s) %(message)s'
+    # logging.basicConfig(level=logging_level, format=log_str)
 
     if not app.debug:
         from logging.handlers import RotatingFileHandler
