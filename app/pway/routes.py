@@ -404,6 +404,7 @@ def upload():
 
     # CHECK IF RUNNING PROJECT COUNT IS WITHIN USER LIMITS
     if current_user.is_authenticated():
+        logging.info('Upload page access by ' + current_user.email)
         incomplete = UserFile.query.filter_by(user_id=current_user.id)\
             .filter_by(run_complete=0).all()
         role_names = [r.name for r in current_user.roles]

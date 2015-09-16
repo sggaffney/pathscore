@@ -34,6 +34,7 @@ class Config:
 
     DATA_ROOT = os.environ.get('DATA_ROOT')
     TEMP_FOLDER = os.environ.get('TEMP_FOLDER')
+    LOG_PATH = os.environ.get('LOG_PATH')
 
     SGG_DB_CNF = os.environ.get('MYSQLDB_CNF')
     SGG_DB_HOST = os.environ.get('MYSQLDB_HOST')

@@ -26,9 +26,20 @@ def create_app(config_name):
 
     logging_level = getattr(logging, app.config['LOGGING_LEVEL'],
                             'DEBUG')
-    logging.basicConfig(level=logging_level,
-                        format='[%(levelname)s] (%(threadName)-10s) %(message)s'
-                        )
+    log_str = '[%(levelname)s] (%(threadName)-10s) %(message)s'
+    logging.basicConfig(level=logging_level, format=log_str)
+
+    if not app.debug:
+        from logging.handlers import RotatingFileHandler
+        # rotating 1MB log, with up to 10 backups
+        file_handler = RotatingFileHandler(app.config['LOG_PATH'],
+                                           'a', 1 * 1024 * 1024, 10)
+        log_str = '%(asctime)s [%(levelname)s]: %(message)s [in %(pathname)s:%(lineno)d]'
+        file_handler.setFormatter(logging.Formatter(log_str))
+        app.logger.setLevel(logging.INFO)
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        app.logger.info('Starting app.')
 
     global dbvars
     dbvars = dict(host=app.config['SGG_DB_HOST'],
