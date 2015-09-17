@@ -23,6 +23,7 @@ from ..admin import zip_project, \
     delete_project_folder
 from .. import naming_rules
 from .. import misc
+from app.decorators import no_ssl
 
 
 @pway.route('/')
@@ -52,6 +53,7 @@ def reset():
 
 @pway.route('/scatter')
 @login_required
+@no_ssl
 def scatter():
     # if proj among arguments, show this tree first.
     show_proj = request.args.get('proj', None)
@@ -160,6 +162,7 @@ def scatter():
 
 @pway.route('/compare')
 @login_required
+@no_ssl
 def compare():
     # if proj among arguments, show this tree first.
     proj_a = request.args.get('proj_a', None)
