@@ -6,7 +6,7 @@ def no_ssl(fn):
     @wraps(fn)
     def decorated_view(*args, **kwargs):
         if request.is_secure:
-            return redirect(request.url.replace("http://", "https://"))
+            return redirect(request.url.replace("https://", "http://"))
         else:
             return fn(*args, **kwargs)
         return fn(*args, **kwargs)
