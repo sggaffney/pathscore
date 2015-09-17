@@ -54,8 +54,10 @@ def create_app(config_name):
             "%(message)s\n"))
         mail_handler.setLevel(logging.ERROR)
         app.logger.addHandler(mail_handler)
-        # LOG STARTUP
-        app.logger.info('Starting app.')
+    else:
+        logging.basicConfig(format=log_str, level=logging_level)
+    # LOG STARTUP
+    app.logger.info('Starting app.')
 
     global dbvars
     dbvars = dict(host=app.config['DB_HOST'],
