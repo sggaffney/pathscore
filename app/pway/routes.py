@@ -460,7 +460,7 @@ def upload():
         user_upload.run_complete = False
         db.session.add(user_upload)
         db.session.commit()
-        current_app.logger.debug("Project {} uploaded by {}".format(
+        current_app.logger.info("Project {} uploaded by {}".format(
             user_upload.file_id, current_user.email))
         user_folder = naming_rules.get_user_folder(user_id)
         proj_folder = naming_rules.get_project_folder(user_upload)
