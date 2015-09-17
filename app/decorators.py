@@ -10,13 +10,11 @@ def no_ssl(fn):
         else:
             return fn(*args, **kwargs)
         return fn(*args, **kwargs)
-
     return decorated_view
 
-
-
-def async(f):
+def async(fn):
+    @wraps(fn)
     def wrapper(*args, **kwargs):
-        thr = Thread(target=f, args=args, kwargs=kwargs)
+        thr = Thread(target=fn, args=args, kwargs=kwargs)
         thr.start()
     return wrapper
