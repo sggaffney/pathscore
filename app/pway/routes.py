@@ -148,13 +148,8 @@ def scatter():
             has_cnv = False
 
     else:  # no projects yet!
-        flash("No project results to show yet.", "info")
-        current_proj = None
-        script, div = None, None
-        js_name = None
-        js_inds = None
-        plot_inds = None
-        has_cnv = False
+        flash("No project results to show yet.", "warning")
+        return redirect(url_for('.index'))
 
     return render_template('pway/scatter.html', current_proj=current_proj,
                            projects=upload_list, js_name=js_name,
@@ -344,10 +339,8 @@ def tree():
                     continue
                 names_odict[vals[0]] = vals[1]
     else:  # no projects yet!
-        flash("No project results to show yet.", "info")
-        current_proj = None
-        names_odict = OrderedDict()
-        tree_path = None
+        flash("No project results to show yet.", "warning")
+        return redirect(url_for('.index'))
     return render_template('pway/tree.html', current_proj=current_proj,
                            projects=upload_list, user_id=current_user.id,
                            proj_names=proj_names, names_odict=names_odict,
@@ -390,7 +383,8 @@ def results():
     upload_list = UserFile.query.filter_by(user_id=current_user.id).filter_by(run_complete=True).all()
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
     if not(upload_list):
-        flash("No project results to show yet.", "info")
+        flash("No project results to show yet.", "warning")
+        return redirect(url_for('.index'))
     return render_template('pway/show_pathways_template.html',
                            projects=upload_list, user_id=current_user.id,
                            show_proj=show_proj, proj_names=proj_names,
