@@ -28,8 +28,6 @@ from .. import misc
 @pway.route('/')
 @login_required
 def index():
-    current_app.logger.info('Loaded home page, info.')
-    current_app.logger.warn('Loaded home page, warn.')
     upload_list = UserFile.query.filter_by(user_id=current_user.id).all()
     return render_template('pway/index2.html', projects=upload_list)
 
@@ -351,8 +349,6 @@ def tree():
 @pway.route('/faq')
 @login_required
 def faq():
-    current_app.logger.info('Loaded faq page, info.')
-    current_app.logger.warn('Loaded faq page, warn.')
     return render_template('pway/faq.html')
 
 
