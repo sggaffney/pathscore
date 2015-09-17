@@ -387,7 +387,8 @@ def get_pway_lenstats_dict(mutation_table, ignore_genes):
 def fetch_path_info_global():
     """Get url, brief description and contributor as tuple."""
     url_row = None
-    cmd = """SELECT path_id, info_url, `description_brief`, contributor FROM refs.pathways;"""
+    cmd = "SELECT path_id, info_url, `description_brief`, contributor " \
+          "FROM refs.pathways;"
     info_dict = dict()
     try:
         con = mdb.connect(**app.dbvars)
