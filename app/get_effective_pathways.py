@@ -708,7 +708,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
         all_pathways.sort(key=lambda pw: pw.D, reverse=True)
         # NEXT sort pathways by effect_size_lowCI : actual_size
         all_pathways.sort(key=lambda p:
-                          self._get_size_ratio(p.ne_low, p.n_actual), reverse=True)
+                          self._get_size_ratio(p.n_effective, p.n_actual), reverse=True)
 
         # # for pway in allPathways[0:max_lookup_rows+1]:
         # for pway in allPathways:
