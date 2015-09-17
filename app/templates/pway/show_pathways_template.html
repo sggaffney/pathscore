@@ -267,7 +267,7 @@
 				'<div class="panel-heading">' +
 				'<h2 class="panel-title"><a href="'+ root_url + use_pways_page[pi]['url'] +'" target="_blank">'
 				+ use_pways_page[pi]['name'] + '</a>' + ' (p=' + use_pways_page[pi]['pval']
-				+ ', q=' + Number(use_pways_page[pi]['pval']/ {{ n_pways }}).toPrecision(3) + ') </h2>' +
+				+ ', q=' + Number(use_pways_page[pi]['pval'] * {{ n_pathways }}).toPrecision(3) + ') </h2>' +
 				use_pways_page[pi]['brief'] + ' (' + use_pways_page[pi]['contrib'] + ')</div>' +
 				'<div class="panel-body" style="padding:0"><code class="p-lengths">Gene lengths: ' +
 				'<span class="keyword-text">min</span>=' + use_pways_page[pi]['lengths'][0] + 'kbp (' + use_pways_page[pi]['lengths'][1] + '); ' +
