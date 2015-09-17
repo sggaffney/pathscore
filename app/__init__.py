@@ -25,25 +25,42 @@ def create_app(config_name):
     app.config.from_object(config[config_name])
 
     logging_level = getattr(logging, app.config['LOGGING_LEVEL'], 'DEBUG')
-    # log_str = '[%(levelname)s] (%(threadName)-10s) %(message)s'
-    # logging.basicConfig(level=logging_level, format=log_str)
-
+    log_str = ('%(asctime)s [%(levelname)s]: %(message)s '
+               '[(%(threadName)-10s) in %(pathname)s:%(lineno)d]')
     if not app.debug:
+        # FILE LOG [info]. rotating 1MB log, with up to 10 backups
         from logging.handlers import RotatingFileHandler
-        # rotating 1MB log, with up to 10 backups
         file_handler = RotatingFileHandler(app.config['LOG_PATH'],
                                            'a', 1 * 1024 * 1024, 10)
-        log_str = '%(asctime)s [%(levelname)s]: %(message)s [in %(pathname)s:%(lineno)d]'
         file_handler.setFormatter(logging.Formatter(log_str))
-        app.logger.setLevel(logging.INFO)
-        file_handler.setLevel(logging.INFO)
+        file_handler.setLevel(logging_level)
         app.logger.addHandler(file_handler)
+        # EMAIL LOG [error].
+        from logging.handlers import SMTPHandler
+        mail_handler = SMTPHandler(app.config['MAIL_SERVER'],
+                                   app.config['MAIL_SENDER'],
+                                   app.config['MAIL_ERROR_RECIPIENT'],
+                                   '[pathscore] Error report')
+
+        mail_handler.setFormatter(logging.Formatter(
+            "Msg type:  %(levelname)s\n"
+            "Location:  %(pathname)s:%(lineno)d\n"
+            "Module:    %(module)s\n"
+            "Function:  %(funcName)s\n"
+            "Time:      %(asctime)s\n"
+            "\n"
+            "Message:\n"
+            "\n"
+            "%(message)s\n"))
+        mail_handler.setLevel(logging.ERROR)
+        app.logger.addHandler(mail_handler)
+        # LOG STARTUP
         app.logger.info('Starting app.')
 
     global dbvars
-    dbvars = dict(host=app.config['SGG_DB_HOST'],
-                  db=app.config['SGG_DB_NAME'],
-                  read_default_file=app.config['SGG_DB_CNF'])
+    dbvars = dict(host=app.config['DB_HOST'],
+                  db=app.config['DB_NAME'],
+                  read_default_file=app.config['DB_CNF'])
 
     bootstrap.init_app(app)
     db.init_app(app)
@@ -61,21 +78,17 @@ def create_app(config_name):
     # Setup Flask-Security
 
     user_datastore = SQLAlchemyUserDatastore(db, User, Role)
-    security = Security(app, user_datastore)
-                        # login_form='auth.login')
-                        # , confirm_register_form=None,
-                        # register_form=None, forgot_password_form=None,
-                        # reset_password_form=None,
-                        # change_password_form=None, send_confirmation_form=None,
-                        # passwordless_login_form=None)
-
-    # security.init_app(app)
+    Security(app, user_datastore)
+             # login_form='auth.login', confirm_register_form=None,
+             # register_form=None, forgot_password_form=None,
+             # reset_password_form=None, change_password_form=None,
+             # send_confirmation_form=None, passwordless_login_form=None)
 
     # # Create a user to test with
     # @app.before_first_request
     # def create_user():
     #     db.create_all()
-    #     user_datastore.create_user(email='sggaffney@gmail.com',
+    #     user_datastore.create_user(email='fake@yale.edu',
     #                                password='password')
     #     db.session.commit()
 
@@ -90,14 +103,7 @@ def create_app(config_name):
     def user_registered_sighandler(app, user, confirm_token):
         default_role = user_datastore.find_role("general")
         user_datastore.add_role_to_user(user, default_role)
+        app.logger.info('Registered user {}'.format(user.email))
         db.session.commit()
 
     return app
-
-
-
-
-
-
-
-

@@ -403,7 +403,6 @@ def upload():
 
     # CHECK IF RUNNING PROJECT COUNT IS WITHIN USER LIMITS
     if current_user.is_authenticated():
-        current_app.logger.info('Upload page access by ' + current_user.email)
         incomplete = UserFile.query.filter_by(user_id=current_user.id)\
             .filter_by(run_complete=0).all()
         role_names = [r.name for r in current_user.roles]
@@ -461,13 +460,14 @@ def upload():
 
         # CREATE USERFILE OBJECT
         user_id = current_user.id
-        current_app.logger.debug("File uploaded by {}".format(current_user.email))
         user_upload = UserFile(filename=mut_filename, user_id=user_id)
         form.to_model(user_upload)
         user_upload.is_valid = True
         user_upload.run_complete = False
         db.session.add(user_upload)
         db.session.commit()
+        current_app.logger.debug("Project {} uploaded by {}".format(
+            user_upload.file_id, current_user.email))
         user_folder = naming_rules.get_user_folder(user_id)
         proj_folder = naming_rules.get_project_folder(user_upload)
         if not os.path.exists(user_folder):
@@ -505,47 +505,3 @@ def upload():
               "usage limits and no email alerts. Consider registering instead.",
               "danger")
     return render_template('pway/upload.html', form=form)
-
-
-"""
-
-orig defaults:
- - output files saved to cwd
- - txt files: pway_pvalues_<PROJ_NAME>_<SUFFIX>(_pretty).txt
- - directories:
-    - pathways_svg
-    - matrix_txt
-        - matrix_svg
-
-UPLOADS FOLDER
-==============
-
-F 1_testfile.txt
-F 2_melanoma_mk2014.txt
-...
-D output_1/
-D output_2/
-...
-
-
-PROJECT RUN FOLDER
-==================
-
- - create folder for project if text file is valid and user allowance not full
-
-D pathways_svg/
-D matrix_svg/
-D matrix_txt/
-F FILE_ID.txt
-F FILE_ID_detail.txt
-F FILE_ID.js
-
- - txt file name/path (default pathways_pvalues_PROJSTR) determined by
-  GenericPathwayFileProcessor
-
-root_svg_target = "pathways_svg/"
-root_svg_matrix = "matrix_txt/matrix_svg/"
-EXPECTED BY HTML: root_svg_matrix2 = "matrix_svg/"
-proj_svg = 'proj_' + project_str + '/'
-
-"""

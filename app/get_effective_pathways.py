@@ -56,10 +56,6 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
     # global dbvars
     with app.app_context():
         user_upload = UserFile.query.get(upload_id)
-        # dbvars = dict(host=current_app.config['SGG_DB_HOST'],
-        #               db=current_app.config['SGG_DB_NAME'],
-        #               read_default_file=current_app.config['SGG_DB_CNF'])
-        # table_name = 'mutations_{}'.format(user_upload.file_id)
         table = None
         unused_gene_path = naming_rules.get_unused_gene_path(user_upload)
         rejected_gene_path = naming_rules.get_rejected_gene_path(user_upload)
@@ -76,8 +72,12 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
             db.session.commit()
             run(proj_dir, table_name, user_upload)
             user_upload.run_complete = True
-        except MatlabFailureException as e:
-            current_app.logger.error(e.msg)
+        except (MatlabFailureException, TableLoadException) as e:
+            user_email = user_upload.uploader.email
+            if not user_upload.run_complete:
+                current_app.logger.error("Failure in proj {0} ({1}): {2} - {3}"
+                                         .format(upload_id, user_email,
+                                                 e.args[0], e.args[1]))
         finally:
             if not user_upload.run_complete:
                 user_upload.run_complete = None
@@ -101,8 +101,8 @@ def run_analysis(proj_dir, data_path, upload_id):
     # user_upload.run_accepted = True
     # db.session.add(user_upload)
     # db.session.commit()
-    app = current_app._get_current_object()
-    run_analysis_async(app, proj_dir, data_path, upload_id)
+    app_obj = current_app._get_current_object()
+    run_analysis_async(app_obj, proj_dir, data_path, upload_id)
 
 
 def drop_table(table_name):
@@ -113,7 +113,7 @@ def drop_table(table_name):
         cur.execute(cmd)
         con.commit()
     except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
+        current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
     finally:
         if con:
             con.close()
@@ -170,7 +170,7 @@ class MutationTable():
             self.n_remaining = result[0]
             con.commit()
         except mdb.Error as e:
-            current_app.logger.debug("Error %d: %s" % (e.args[0], e.args[1]))
+            current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
             raise
         finally:
             if con:
@@ -203,7 +203,7 @@ class MutationTable():
                 con.commit()
             self.n_remaining = n_mut_initial - n_rejected
         except mdb.Error as e:
-            current_app.logger.debug("Error %d: %s" % (e.args[0], e.args[1]))
+            current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
             raise
         finally:
             if con:
@@ -242,7 +242,7 @@ class MutationTable():
             n_remaining = n_mut_initial - n_rejected
             return n_remaining
         except mdb.Error as e:
-            current_app.logger.debug("Error %d: %s" % (e.args[0], e.args[1]))
+            current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
             raise
         finally:
             if con:
@@ -545,7 +545,6 @@ class LCalculator():
                                          self.is_mutated_array)
         return ll - self.ne_ll + 1.92
 
-
     def _get_ne_old(self):
         last_ll = None
         # improved = False
@@ -592,7 +591,7 @@ class LCalculator():
                         self.pway.path_id))
                 break
             last_ll = this_ll
-        return (ne, last_ll)
+        return ne, last_ll
 
     def _get_ne(self):
         """Find maximum likelihood pathway size and corresponding
@@ -924,7 +923,8 @@ class BackgroundGenomeFetcher():
                 raise Exception("Expressed genome size db-lookup failed.")
             rows = cur.fetchall()
         except mdb.Error as e:
-            print "Error %d: %s" % (e.args[0], e.args[1])
+            current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
+            raise
         finally:
             if con:
                 con.close()
@@ -1239,19 +1239,6 @@ def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
             proc = subprocess.Popen(cmd, stdin=fnullin,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
-                                    # stdout=subprocess.PIPE,
-                                    # stderr=subprocess.PIPE)
             (output, error) = proc.communicate()
             if error:
                 raise MatlabFailureException('pway plot error: ' + error)
-
-
-def create_dendrogram_plots(scores_path, names_path, tree_path, genome_size, hyper_path):
-    """Run matlab script that builds matrix and target svgs."""
-    cmd = 'matlab -nosplash -nodesktop -r \"plot_pway_dendrogram(' \
-          '{scores!r}, {names!r}, {tree!r});\"'.\
-        format(scores=scores_path, names=names_path, tree=tree_path)
-    with open(os.devnull, "r") as fnullin:
-        with open(os.devnull, "w") as fnullout:
-            subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
-                                  stderr=fnullout, shell=True)

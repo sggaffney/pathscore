@@ -31,13 +31,15 @@ class Config:
     SECURITY_CONFIRMABLE = os.environ.get('SECURITY_CONFIRMABLE') == 'True'
     SECURITY_REGISTERABLE = os.environ.get('SECURITY_REGISTERABLE') == 'True'
     SECURITY_CHANGEABLE = os.environ.get('SECURITY_CHANGEABLE') == 'True'
+    SECURITY_EMAIL_SUBJECT_REGISTER = '[pathscore] Please confirm your account.'
+    SECURITY_EMAIL_SUBJECT_CONFIRM = '[pathscore] Please confirm your account.'
 
     DATA_ROOT = os.environ.get('DATA_ROOT')
     TEMP_FOLDER = os.environ.get('TEMP_FOLDER')
     LOG_PATH = os.environ.get('LOG_PATH')
 
-    SGG_DB_CNF = os.environ.get('MYSQLDB_CNF')
-    SGG_DB_HOST = os.environ.get('MYSQLDB_HOST')
+    DB_CNF = os.environ.get('MYSQLDB_CNF')
+    DB_HOST = os.environ.get('MYSQLDB_HOST')
 
     SERVER_NAME = os.environ.get('SERVER_NAME')
 
@@ -53,7 +55,7 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
     MAIL_FLUSH_INTERVAL = 60  # one minute
-    SGG_DB_NAME = os.environ.get('MYSQLDB_DB_DEV')
+    DB_NAME = os.environ.get('MYSQLDB_DB_DEV')
     SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO') == 'True'
 
 class TestingConfig(Config):
@@ -61,13 +63,13 @@ class TestingConfig(Config):
     SECRET_KEY = 'secret'
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
-    SGG_DB_NAME = os.environ.get('MYSQLDB_DB_TEST')
+    DB_NAME = os.environ.get('MYSQLDB_DB_TEST')
 
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'data.sqlite')
-    SGG_DB_NAME = os.environ.get('MYSQLDB_DB')
+    DB_NAME = os.environ.get('MYSQLDB_DB')
 
 
 config = {
