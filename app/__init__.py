@@ -24,7 +24,8 @@ def create_app(config_name):
     # development, testing, production, default
     app.config.from_object(config[config_name])
 
-    logging_level = getattr(logging, app.config['LOGGING_LEVEL'], 'DEBUG')
+    logging_level = getattr(logging, app.config['LOGGING_LEVEL'], logging.DEBUG)
+    print "logging_level = {}".format(logging_level)
     log_str = ('%(asctime)s [%(levelname)s]: %(message)s '
                '[(%(threadName)-10s) in %(pathname)s:%(lineno)d]')
     if not app.debug:
@@ -35,13 +36,14 @@ def create_app(config_name):
         file_handler.setFormatter(logging.Formatter(log_str))
         file_handler.setLevel(logging_level)
         app.logger.addHandler(file_handler)
+        print "logging to file: {}".format(app.config['LOG_PATH'])
         # EMAIL LOG [error].
         from logging.handlers import SMTPHandler
         mail_handler = SMTPHandler(app.config['MAIL_SERVER'],
                                    app.config['MAIL_SENDER'],
                                    app.config['MAIL_ERROR_RECIPIENT'],
                                    '[pathscore] Error report')
-
+        print "error logging to email."
         mail_handler.setFormatter(logging.Formatter(
             "Msg type:  %(levelname)s\n"
             "Location:  %(pathname)s:%(lineno)d\n"
@@ -57,7 +59,9 @@ def create_app(config_name):
     else:
         logging.basicConfig(format=log_str, level=logging_level)
     # LOG STARTUP
-    app.logger.info('Starting app.')
+    app.logger.info('Starting app, info.')
+    # app.logger.critical('Starting app, critical error.')
+    # app.logger.error('Starting app, fake error.')
 
     global dbvars
     dbvars = dict(host=app.config['DB_HOST'],
