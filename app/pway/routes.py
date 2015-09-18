@@ -105,30 +105,31 @@ def scatter():
                                      'pname': pnames})
         tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
                 "box_select,hover"  # poly_select,lasso_select, previewsave
-        plot_config = dict(plot_height=400, plot_width=400, logo=None, tools=tools)
+        plot_config = dict(plot_height=400, plot_width=600, logo=None,
+                           tools=tools, title_text_font_size='14pt',
+                           toolbar_location='right')
 
         plot1 = figure(title='Effect size vs p-value',
                        x_axis_label="log2 fold change",
                        y_axis_label="-log10 p-value",
                        **plot_config)
-        plot1.scatter('effect', 'pvals', source=xyvalues, size=10, color="red", alpha=0.1,
-                     marker="circle", line_color="firebrick", line_alpha=0.5)
+        plot1.xaxis.axis_label_text_font_size = "12pt"
+        plot1.yaxis.axis_label_text_font_size = "12pt"
+        plot1.scatter('effect', 'pvals', source=xyvalues, size=10, color="red",
+                      alpha=0.1, marker="circle", line_color="firebrick",
+                      line_alpha=0.5)
 
-        plot2 = figure(title='Effect size vs deviance',
-                       x_axis_label="log2 fold change",
-                       y_axis_label="D",
-                       **plot_config)
-        plot2.scatter('effect', 'D', source=xyvalues, size=10, color="red", alpha=0.1,
-                      marker="circle", line_color="firebrick", line_alpha=0.5)
-
-        for plot in [plot1, plot2]:
-            hover = plot.select(dict(type=HoverTool))
-            hover.tooltips = OrderedDict([
-            #     ("index", "$index"),
-                ("name", "@pname")
-            ])
-        plot = gridplot([[plot1, plot2]])
-        script, div = components(plot, resources)
+        # plot2 = figure(title='Effect size vs deviance',
+        #                x_axis_label="log2 fold change",
+        #                y_axis_label="D",
+        #                **plot_config)
+        # plot2.scatter('effect', 'D', source=xyvalues, size=10, color="red", alpha=0.1,
+        #               marker="circle", line_color="firebrick", line_alpha=0.5)
+        # for plot in [plot1, plot2]:
+        hover = plot1.select(dict(type=HoverTool))
+        hover.tooltips = OrderedDict([("name", "@pname")])
+        # plot = gridplot([[plot1, plot2]])
+        script, div = components(plot1, resources)
         js_name = naming_rules.get_js_name(current_proj)
         # IDS
         all_ids = [p.path_id for p in all_pathways]
