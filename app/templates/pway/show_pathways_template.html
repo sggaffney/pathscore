@@ -75,7 +75,6 @@
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1/jquery-ui.min.js"></script>
 <script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
-<!-- <script src="pathways_pvalues_1.js"></script> --> <!-- SETS global pwayList -->
 <script>
 	
 	//on window load
@@ -126,7 +125,7 @@
 		updateProjId();
 
 		$("#nextPways").click(function(){
-			increment_page(1)
+			increment_page(1);
 		});
 //		$("#prevPways").click(function(){
 //			increment_page(-1)
@@ -135,7 +134,7 @@
         var initial_include = '{{ include_genes }}';
         if(initial_include != 'None'){
                 $('#genes').val(initial_include);
-                $fetcherButton.click()
+                $fetcherButton.click();
         }
 
 
@@ -262,12 +261,18 @@
 
             var ngenes = use_pways_page[pi].geneSet.length;
 			var max_height = 25*ngenes + 80;
+			var pval = use_pways_page[pi]['pval'];
+			var pq_str = null;
+			var n_pathways = {{ n_pathways }};
+			if(pval == '0.000e+00')
+				pq_str = 'p<1e-16, q<' + Number(1e-16 * n_pathways).toPrecision(3);
+			else
+				pq_str = 'p=' + Number(pval).toPrecision(3) + ', q=' + Number(pval * n_pathways).toPrecision(3);
 			$imageContainer.append(
 				'<div class="panel panel-primary">' +
 				'<div class="panel-heading">' +
 				'<h2 class="panel-title"><a href="'+ root_url + use_pways_page[pi]['url'] +'" target="_blank">'
-				+ use_pways_page[pi]['name'] + '</a>' + ' (p=' + use_pways_page[pi]['pval']
-				+ ', q=' + Number(use_pways_page[pi]['pval'] * {{ n_pathways }}).toPrecision(3) + ') </h2>' +
+				+ use_pways_page[pi]['name'] + '</a> (' + pq_str + ') </h2>' +
 				use_pways_page[pi]['brief'] + ' (' + use_pways_page[pi]['contrib'] + ')</div>' +
 				'<div class="panel-body" style="padding:0"><code class="p-lengths">Gene lengths: ' +
 				'<span class="keyword-text">min</span>=' + use_pways_page[pi]['lengths'][0] + 'kbp (' + use_pways_page[pi]['lengths'][1] + '); ' +

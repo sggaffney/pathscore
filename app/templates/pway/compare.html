@@ -215,16 +215,17 @@
 
 				var max_height = 25 * n_genes + 80;
 				var pval = use_pways[pi]['pval'];
-				var pval_str = null;
+				var n_pathways = {{ n_pathways }};
+				pq_str = null;
 				if(pval == '0.000e+00')
-					pval_str = 'p<1e-16';
+					pq_str = 'p<1e-16, q<' + Number(1e-16 * n_pathways).toPrecision(3);
 				else
-					pval_str = 'p=' + pval;
+					pq_str = 'p=' + Number(pval).toPrecision(3) + ', q=' + Number(pval * n_pathways).toPrecision(3);
 				$imageContainer.append(
 					'<div class="panel panel-primary">' +
 					'<div class="panel-heading">' + proj_names[proj_ind] +
 					'<h2 class="panel-title"><a href="' + root_url + use_pways[pi]['url'] + '" target="_blank">'
-					+ use_pways[pi]['name'] + '</a>' + ' (' + pval_str + ') </h2>' +
+					+ use_pways[pi]['name'] + '</a>' + ' (' + pq_str + ') </h2>' +
 					use_pways[pi]['brief'] + ' (' + use_pways[pi]['contrib'] + ')</div>' +
 					'<div class="panel-body" style="padding:0"><code class="p-lengths">Gene lengths: ' +
 					'<span class="keyword-text">min</span>=' + use_pways[pi]['lengths'][0] + 'kbp (' + use_pways[pi]['lengths'][1] + '); ' +
