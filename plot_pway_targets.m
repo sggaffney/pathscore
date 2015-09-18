@@ -124,16 +124,20 @@ for page = 0:n_pways-1
 
         [X, Y] = getPathwayCoverageSegmentCoords(pway.n_mutated, ...
             pway.id, r_effective);
-        fill(X,Y,'r','LineStyle','none','LineWidth',1,'EdgeColor','r'); 
+        fill(X,Y,'r','LineStyle','none','LineWidth',0.5,'EdgeColor','r');
+        % EFFECT SIZE BORDER
+        rectangle('Curvature',[1 1], 'Position',[circ2.xlim(1) circ2.ylim(1) ...
+            circ2.xlim(2)-circ2.xlim(1) circ2.ylim(2)-circ2.ylim(1)], ...
+            'LineWidth', 1);
 
         if(pway.path_size < pway.path_effective)
             rectangle('Curvature',[1 1], 'Position',[circ1.xlim(1) circ1.ylim(1) ...
                 circ1.xlim(2)-circ1.xlim(1) circ1.ylim(2)-circ1.ylim(1)], ...
-                'FaceColor','k','LineStyle','-','LineWidth',4);
+                'FaceColor','k','LineStyle','none'); % 'LineWidth',1
         else
              rectangle('Curvature',[1 1], 'Position',[circ1.xlim(1) circ1.ylim(1) ...
                  circ1.xlim(2)-circ1.xlim(1) circ1.ylim(2)-circ1.ylim(1)], ...
-                'FaceColor','none','LineStyle','--','LineWidth',4);
+                'FaceColor','none','LineStyle','--','LineWidth',1);
         end
 
         % TITLE TEXTBOX
@@ -277,7 +281,7 @@ for j = 1:n_mutated
     else
         count_color = 'k';
     end
-    fill(X,Y,tab_col,'LineStyle','-','LineWidth',4,'EdgeColor',tab_edge_color); 
+    fill(X,Y,tab_col,'LineStyle','-','LineWidth',2,'EdgeColor',tab_edge_color);
     text(textpos.X, textpos.Y, gene_name,'HorizontalAlignment',textpos.h,...
         'VerticalAlignment',textpos.v, 'Rotation',textpos.rot, ...
         'Interpreter','none')
@@ -525,6 +529,9 @@ ind = 0; % line index
 while(ind < n_pathways)
     ind = ind+1;
     tempId = p_ids(ind);
+    if(p_values(ind)>=0.05)
+        continue;
+    end
     tempName = pathway_names{ind};
     skip = false;
     % if name contains word from ignoreList, i.e. a cancer set
@@ -536,7 +543,6 @@ while(ind < n_pathways)
     if(skip)
         continue;
     end
-    
     
     path_size = p_sizes(ind,1);
     path_effective = p_sizes(ind,2);
