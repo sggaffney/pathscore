@@ -33,12 +33,9 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(64),
                       nullable=True, unique=True, index=True)
-    is_admin = db.Column(db.Boolean)
     password = db.Column(db.String(255))
-    name = db.Column(db.String(64))
     member_since = db.Column(db.DateTime(), default=datetime.utcnow)
     confirmed_at = db.Column(db.DateTime())
-    active = db.Column(db.Boolean())
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
 
