@@ -4,6 +4,51 @@ import MySQLdb as mdb
 from collections import defaultdict
 
 
+def lookup_background_size(ignore_genes=None, use_length=None):
+    """Get background genome size sizes. Optional ignore_genes iterable.
+
+    Uses entrez_length table built from genes in msigdb (pathway_genes).
+    length_bp is cds length. or rna length for noncoding rna.
+
+    Args:
+        ignore_genes (iterable): contains gene symbols to ignore.
+        use_length (bool): use 'length' algorithm rather than count.
+
+    Return:
+        int: length. Number of bases for length, else number of genes.
+    """
+    if use_length is None:
+        raise Exception("Must specify use_length boolean.")
+
+    if ignore_genes:
+        genes_str = repr(tuple(ignore_genes)).replace(",)", ")")
+        genes_str = "WHERE hugo_symbol NOT IN {}".format(genes_str)
+    else:
+        genes_str = ""
+    field_str = "sum(length_bp)" if use_length else "count(*)"
+    cmd = """SELECT {field_str} FROM refs.entrez_length {genes_str};""".format(
+        field_str=field_str, genes_str=genes_str)
+    background_size = None
+    con = None
+    try:
+        con = mdb.connect(**app.dbvars)
+        cur = con.cursor()
+        cur.execute(cmd)
+        # assert isinstance(cur.rowcount, int)
+        row_count = cur.rowcount
+        if row_count != 1:
+            print "Background size lookup failed."
+            return
+        row = cur.fetchone()
+        background_size = int(row[0])
+    except mdb.Error as e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+    finally:
+        if con:
+            con.close()
+    return background_size
+
+
 def lookup_path_sizes(ignore_genes=None):
     """Get pathway sizes. Optional ignore_genes iterable."""
     if ignore_genes:
@@ -16,6 +61,7 @@ def lookup_path_sizes(ignore_genes=None):
     INNER JOIN refs.ncbi_entrez n ON pgl.entrez_id = n.geneId
     {genes_string} GROUP BY path_id;""".format(genes_string=genes_string)
     size_dict = dict()
+    con = None
     try:
         con = mdb.connect(**app.dbvars)
         cur = con.cursor()
@@ -66,35 +112,6 @@ def lookup_path_lengths(ignore_genes=None):
         if con:
             con.close()
     return len_dict
-
-
-def lookup_exome_length(ignore_genes=None):
-    """Get bp length for each pathway, with optional exclude genes."""
-    if ignore_genes:
-        genes_string = repr(tuple(ignore_genes)).replace(",)", ")")
-        genes_string = "WHERE hugo_symbol NOT IN {}".format(genes_string)
-    else:
-        genes_string = ""
-    cmd = """SELECT sum(l.`length_bp`) AS bp FROM refs.entrez_length l
-        {genes_string};""".format(genes_string=genes_string)
-    exome_size = None
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if row_count != 1:
-            print "Exome length lookup failed."
-            return exome_size
-        row = cur.fetchone()
-        exome_size = row[0]
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
-    return exome_size
 
 
 def lookup_patient_counts(table_name, ignore_genes):

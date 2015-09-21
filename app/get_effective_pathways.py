@@ -19,7 +19,7 @@ from .decorators import async
 from .emails import run_finished_notification
 from .models import UserFile
 import app
-from .db_lookups import lookup_path_sizes, lookup_exome_length, \
+from .db_lookups import lookup_path_sizes, lookup_background_size, \
     lookup_patient_counts, lookup_patient_lengths, build_path_patient_dict, \
     lookup_path_lengths, fetch_path_ids_interest_genes, get_pathway_name_dict, \
     get_gene_combs_hit, get_gene_counts, get_pway_lenstats_dict, \
@@ -31,8 +31,9 @@ import naming_rules
 path_size_dict_full = lookup_path_sizes()
 path_len_dict_full = lookup_path_lengths()
 path_info_dict = fetch_path_info_global()
-exome_length = lookup_exome_length()
 
+background_len_full = lookup_background_size(use_length=True)
+background_count_full = lookup_background_size(use_length=False)
 
 class TableLoadException(Exception):
     def __init__(self, msg):
@@ -883,54 +884,6 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         return outstr
 
 
-class BackgroundGenomeFetcher():
-    def __init__(self, genome_str, expressed_table=None):
-        """Specifying an expressed table will result in a genome size equal to 
-        the number of expressed genes, unless a genome_str is specified. The 
-        default genome_str for runs without expression data is no_pseudo."""
-        if not genome_str and not expressed_table:
-            genome_str = 'no_pseudo'
-        self.genome_size = self._fetch_genome_size(genome_str, expressed_table)
-
-    def _fetch_genome_size(self, genome_str, expressed_table):
-        # genome_size
-        if genome_str == 'protein-coding':
-            genome_size = 20462
-        elif genome_str == 'no_pseudo':
-            genome_size = 28795
-        elif genome_str == 'all':
-            genome_size = 45466
-        elif genome_str == 'inc_misc_chr':
-            genome_size = 46286
-        elif expressed_table:
-            genome_size = self._fetch_expressed_genome_size(expressed_table)
-        else:
-            raise Exception("Unknown genome version")
-        # print("Using genome version '{}': {} genes".format(genome_str, genome_size))
-        return genome_size
-
-    @staticmethod
-    def _fetch_expressed_genome_size(expressed_table):
-        """Count genes via SQL query: assumes row count equals gene count."""
-        cmd1 = """SELECT count(*) FROM {table_name};""".format(
-            table_name=expressed_table)
-        try:
-            con = mdb.connect(**app.dbvars)
-            cur = con.cursor()
-            cur.execute(cmd1)
-            rowCount = cur.rowcount
-            if not rowCount or rowCount > 1:
-                raise Exception("Expressed genome size db-lookup failed.")
-            rows = cur.fetchall()
-        except mdb.Error as e:
-            current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
-            raise
-        finally:
-            if con:
-                con.close()
-        return int(rows[0][0])
-
-
 def get_patient_list(path_id, patient_size_dict, path_patient_dict):
     """Get list of patient objects for given pathway using dictionary
     path_patient_dict."""
@@ -953,12 +906,29 @@ def run(dir_path, table_name, user_upload):
     alg='gene_count' --OR-- 'gene_length'
     user_upload is upload object (file_id, user_id, filename, ...etc)
     """
-    alg = user_upload.algorithm
+    alg = user_upload.algorithm  # 'gene_count' or 'gene_length'
+    use_length = True if alg == 'gene_length' else False
+
+    ignore = user_upload.ignore_genes
+    ignore_list = str(ignore).split(',') if ignore else []
+
+    genome_size = lookup_background_size(ignore_genes=ignore_list,
+                                         use_length=use_length)
+    # GET BACKGROUND SIZE (varies with ignore_list)
     if alg == 'gene_count':
-        genome_size = BackgroundGenomeFetcher(user_upload.genome_size,
-                                              None).genome_size
+        if ignore_list:
+            genome_size = lookup_background_size(ignore_genes=ignore_list,
+                                                 use_length=False)
+        else:
+            genome_size = background_count_full
     elif alg == 'gene_length':
-        genome_size = exome_length
+        if ignore_list:
+            genome_size = lookup_background_size(ignore_genes=ignore_list,
+                                                 use_length=True)
+        else:
+            genome_size = background_len_full
+    else:
+        raise Exception("Invalid algorithm selection ({})".format(alg))
     detail_path, matrix_folder = generate_initial_text_output(
         dir_path, table_name, user_upload, genome_size, alg=alg)
     # matrix_folder is typically 'matrix_txt'
@@ -971,10 +941,8 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
     file_id = user_upload.file_id
     table_list = [table_name]  # code can iterate through list of tables
     # max_mutations = user_upload.n_cutoff or 500  # default max is 500
-    if user_upload.ignore_genes:
-        ignore_genes = str(user_upload.ignore_genes).split(',')
-    else:
-        ignore_genes = []
+    ignore = user_upload.ignore_genes
+    ignore_genes = str(ignore).split(',') if ignore else []
 
     proj_suffix = user_upload.get_local_filename()
     # # get patient list. maybe empty list.
@@ -1032,7 +1000,6 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
         else:
             path_size_dict = path_len_dict_full
 
-    # otherwise use global.
     if alg == 'gene_count':
         patient_size_dict = lookup_patient_counts(table_name, ignore_genes)
     elif alg == 'gene_length':

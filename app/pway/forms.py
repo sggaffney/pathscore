@@ -19,13 +19,13 @@ class UploadForm(Form):
         ('gene_count', 'Gene count'),
         ('gene_length', 'Gene length')],
         default='gene_count')
-    genome_size = RadioField('Genome size (only applies to gene count algorithm)', validators=[
-        DataRequired(), Length(1, 128)], choices=[
-        ('protein-coding', 'Protein-coding (20462)'),
-        ('no_pseudo', 'All minus pseudogenes (28795)'),
-        ('all', 'All (45466)'),
-        ('inc_misc_chr', "All plus 'misc' chr genes (46286)")],
-        default='protein-coding')  # TODO: check validation enforces choices
+    # genome_size = RadioField('Genome size (only applies to gene count algorithm)', validators=[
+    #     DataRequired(), Length(1, 128)], choices=[
+    #     ('protein-coding', 'Protein-coding (20462)'),
+    #     ('no_pseudo', 'All minus pseudogenes (28795)'),
+    #     ('all', 'All (45466)'),
+    #     ('inc_misc_chr', "All plus 'misc' chr genes (46286)")],
+    #     default='protein-coding')
     n_cutoff = IntegerField('Gene limit per patient', validators=[optional()],
                             default=500)
     required_genes = TextAreaField('Required genes (optional)', validators=
@@ -44,7 +44,7 @@ class UploadForm(Form):
 
     def to_model(self, upload):
         upload.mut_file = self.mut_file.data
-        upload.genome_size = self.genome_size.data
+        # upload.genome_size = self.genome_size.data
         upload.n_cutoff = self.n_cutoff.data
         upload.algorithm = self.algorithm.data
         if self.required_genes.data:
