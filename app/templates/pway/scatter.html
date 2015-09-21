@@ -169,7 +169,7 @@
 	function updateIfSelectionChange(){
 		// compare selected_prv to current selection
 		var selected_now = getSelectedIndices();
-		$selectCount.text(selected_now.length + " enriched pathways found.");
+		$selectCount.text(selected_now.length + " pathways selected.");
         console.log('Selected prev: ' + selected_prv);
 		console.log('Selected now: ' + selected_now);
 		if(selected_changed(selected_prv, selected_now)){
