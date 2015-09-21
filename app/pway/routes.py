@@ -82,13 +82,7 @@ def scatter():
             if pval >= 0.05:
                 continue
             data_pvals.append(pval)
-            if p.n_actual < p.n_effective:
-                data_effect.append(float(p.ne_low) / p.n_actual)
-            else:  # undermutated
-                if p.ne_high < p.n_actual:  # high-effect less than n_actual
-                    data_effect.append(float(p.ne_high) / p.n_actual)
-                else:
-                    data_effect.append(float(p.n_effective) / p.n_actual)
+            data_effect.append(float(p.n_effective) / p.n_actual)
             data_pways.append(p)
             data_D.append(p.D)
         x = np.log2(np.array(data_effect))  # effect size
@@ -119,20 +113,12 @@ def scatter():
                       alpha=0.1, marker="circle", line_color="firebrick",
                       line_alpha=0.5)
 
-        # plot2 = figure(title='Effect size vs deviance',
-        #                x_axis_label="log2 fold change",
-        #                y_axis_label="D",
-        #                **plot_config)
-        # plot2.scatter('effect', 'D', source=xyvalues, size=10, color="red", alpha=0.1,
-        #               marker="circle", line_color="firebrick", line_alpha=0.5)
-        # for plot in [plot1, plot2]:
         hover = plot1.select(dict(type=HoverTool))
         hover.tooltips = OrderedDict([("name", "@pname")])
-        # plot = gridplot([[plot1, plot2]])
         script, div = components(plot1, resources)
         js_name = naming_rules.get_js_name(current_proj)
         # IDS
-        all_ids = [p.path_id for p in all_pathways]
+        all_ids = [p.path_id for p in all_pathways if float(p.p_value) < 0.05]
         js_ids = [p.path_id for p in all_pathways if p.gene_set]
         # INDICES IN JS_OBJECT OF PLOT POINTS. plot->js
         js_inds = []
@@ -236,13 +222,13 @@ def compare():
         # inds_del1 = [i for i in xrange(len(all_paths1)) if i not in inds1]
         # inds_del2 = [i for i in xrange(len(all_paths2)) if i not in inds2]
         if show_logged:
-            effects1 = [np.log10(float(i.ne_low) / i.n_actual) for i in use_paths1]
-            effects2 = [np.log10(float(i.ne_low) / i.n_actual) for i in use_paths2]
+            effects1 = [np.log10(float(i.n_effective) / i.n_actual) for i in use_paths1]
+            effects2 = [np.log10(float(i.n_effective) / i.n_actual) for i in use_paths2]
             xlabel = "Log10 effect size ({})".format(current_proj_a.proj_suffix)
             ylabel = "Log10 effect size ({})".format(current_proj_b.proj_suffix)
         else:
-            effects1 = [float(i.ne_low) / i.n_actual for i in use_paths1]
-            effects2 = [float(i.ne_low) / i.n_actual for i in use_paths2]
+            effects1 = [float(i.n_effective) / i.n_actual for i in use_paths1]
+            effects2 = [float(i.n_effective) / i.n_actual for i in use_paths2]
             xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
             ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
         pnames = [misc.strip_contributors(i.nice_name) for i in use_paths1]
