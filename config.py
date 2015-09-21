@@ -33,6 +33,10 @@ class Config:
     SECURITY_CHANGEABLE = os.environ.get('SECURITY_CHANGEABLE') == 'True'
     SECURITY_EMAIL_SUBJECT_REGISTER = '[pathscore] Please confirm your account.'
     SECURITY_EMAIL_SUBJECT_CONFIRM = '[pathscore] Please confirm your account.'
+    SECURITY_MSG_INVALID_PASSWORD = ("Bad username or password", "error")
+    SECURITY_MSG_PASSWORD_NOT_PROVIDED = ("Bad username or password", "error")
+    SECURITY_MSG_USER_DOES_NOT_EXIST = ("Bad username or password", "error")
+    SECURITY_MSG_LOGIN = ('Please log in or select Register or Upload above.', 'info')
 
     DATA_ROOT = os.environ.get('DATA_ROOT')
     TEMP_FOLDER = os.environ.get('TEMP_FOLDER')
