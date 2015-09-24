@@ -1,5 +1,5 @@
 from flask import render_template, flash, redirect, url_for, abort,\
-    request, current_app, send_file, send_from_directory
+    request, current_app, send_file, send_from_directory, g
 from flask_login import login_required, current_user, login_user
 from werkzeug.utils import secure_filename
 import os
@@ -7,20 +7,22 @@ import signal
 from datetime import datetime, timedelta
 from collections import OrderedDict
 import numpy as np
-from bokeh.plotting import figure, gridplot, ColumnDataSource
+from bokeh.plotting import figure, ColumnDataSource, hplot
 from bokeh.resources import Resources
 from bokeh.embed import components
 from bokeh.models.tools import HoverTool
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.models.markers import Circle
+from bokeh.models.widgets import TextInput
+from bokeh.models import Callback
+from bokeh.io import vform
 
 from . import pway, FileTester, TempFile
 from .forms import UploadForm
 from ..models import UserFile, User, Role
 from .. import db
 from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
-from ..admin import zip_project, \
-    delete_project_folder
+from ..admin import zip_project
 from .. import naming_rules
 from .. import misc
 from app.decorators import no_ssl
@@ -199,13 +201,14 @@ def compare():
         use_pids2 = set.intersection(set(sig_pids2), set(all_pids1))
         good_paths = set.union(set(use_pids1), set(use_pids2))  # sig pids contained in both projects
 
+        # get use_paths 1&2: pathway objects in proj1 order
         use_paths1 = [i for i in all_paths1 if i.path_id in good_paths]  # sig paths (either proj) in proj1
         use_path_ids = [i.path_id for i in use_paths1]  # sig path ids (either proj) ordered by proj1 index
-
         use_paths2 = list()
         for pid in use_path_ids:
             use_paths2.extend([i for i in all_paths2 if i.path_id == pid])  # paths from proj2
 
+        # save indices of chosen pathways -- these are the indices in js file
         inds1 = list()
         inds2 = list()  # [0, 1, 4, 11, -1, 7, 10, 5, 6, 319, ...]
         for i in use_path_ids:
@@ -218,9 +221,6 @@ def compare():
             except ValueError:
                 inds2.append(-1)
 
-        # key data for export
-        # inds_del1 = [i for i in xrange(len(all_paths1)) if i not in inds1]
-        # inds_del2 = [i for i in xrange(len(all_paths2)) if i not in inds2]
         if show_logged:
             effects1 = [np.log10(float(i.n_effective) / i.n_actual) for i in use_paths1]
             effects2 = [np.log10(float(i.n_effective) / i.n_actual) for i in use_paths2]
@@ -231,19 +231,22 @@ def compare():
             effects2 = [float(i.n_effective) / i.n_actual for i in use_paths2]
             xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
             ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
+        q1 = [float(i.p_value)*g.n_pathways for i in use_paths1]
+        q2 = [float(i.p_value)*g.n_pathways for i in use_paths2]
         pnames = [misc.strip_contributors(i.nice_name) for i in use_paths1]
-        source = ColumnDataSource(data={'x': effects1, 'y': effects2,
+        source = ColumnDataSource(data={'effects1': effects1,
+                                        'effects2': effects2,
+                                        'q1': q1, 'q2': q2,
                                         'pname': pnames})
+        # SET UP FIGURE
         minx = min(effects1)
         minx *= 1 - minx/abs(minx)*0.2
         miny = min(effects2)
         miny *= 1 - miny/abs(miny)*0.2
         maxx = max(effects1)*1.2
         maxy = max(effects2)*1.2
-
         tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
                 "box_select,hover"  # poly_select,lasso_select, previewsave
-
         if show_logged:
             plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
                           logo=None, toolbar_location="right",
@@ -256,13 +259,15 @@ def compare():
                           x_axis_label=xlabel, y_axis_label=ylabel,
                           x_range=[minx, maxx], y_range=[miny, maxy],
                           x_axis_type="log", y_axis_type="log")
-
-        plot.line([1,1], [miny, maxy], line_width=2, color="blue", alpha=1, line_dash=[6, 6])
+        plot.xaxis.axis_label_text_font_size = "12pt"
+        plot.yaxis.axis_label_text_font_size = "12pt"
+        plot.line([1, 1], [miny, maxy], line_width=2, color="blue", alpha=1, line_dash=[6, 6])
         plot.line([minx, maxx], [1, 1], line_width=2, color="blue", alpha=1, line_dash=[6, 6])
 
         # radius=radii, fill_color=colors, fill_alpha=0.6, line_color=None
-        plot.scatter("x", "y", source=source, size=10, color="red", alpha=0.1,
-                  marker="circle", line_color="firebrick", line_alpha=0.5)
+        plot.scatter("effects1", "effects2", source=source, size=10,
+                     color="red", alpha=0.1, marker="circle",
+                     line_color="firebrick", line_alpha=0.5)
         hover = plot.select(dict(type=HoverTool))
         hover.tooltips = OrderedDict([
             ("name", "@pname")
@@ -271,7 +276,55 @@ def compare():
                      if type(i) == GlyphRenderer and type(i._glyph) == Circle]
         hover[0].renderers.extend(renderers)
 
-        script, div = components(plot, resources)
+        # ADD TEXT INPUT OR SLIDER
+        callback = Callback(args=dict(source=source), code="""
+            // get old selection indices, if any
+            var model = getDataModel();
+            prv_selected = model.attributes.selected['1d'].indices;
+            prv_select_full = []
+            for(var i=0; i<prv_selected.length; i++){
+                prv_select_full.push(scatter_array[prv_selected[i]])
+            }
+            new_selected = []
+
+            var data = source.get('data');
+            var q_val = q_widget.get('value');
+
+            var n_total = fullset['effects1'].length;
+            var e1_use = data['effects1'];
+            var e2_use = data['effects2'];
+            var n_use = data['pname'];
+            e1_use.length = 0;
+            e2_use.length = 0;
+            n_use.length = 0;
+            scatter_array = []
+            var j = -1;  // new glyph indices
+            for (i = 0; i < n_total; i++) {
+                this_q1 = fullset['q1'][i];
+                this_q2 = fullset['q2'][i];
+                if(this_q1 <= q_val || this_q2 <= q_val){
+                    j++;
+                    e1_use.push(fullset['effects1'][i]);
+                    e2_use.push(fullset['effects2'][i]);
+                    n_use.push(fullset['pname'][i]);
+                    scatter_array.push(i)
+                    if($.inArray(i, prv_select_full) > -1){
+                        new_selected.push(j);
+                    }
+                }
+            }
+            source.trigger('change');
+            model.attributes.selected['1d'].indices = new_selected;
+            model.trigger('change');
+            updateIfSelectionChange_afterWait();
+            """)
+        text_input = TextInput(value=str(np.ceil(0.05*g.n_pathways)),
+                               title="q-value cutoff:",
+                               callback=callback)
+        callback.args["q_widget"] = text_input
+        callback.args["fullset"] = source.clone().data
+        layout = hplot(plot, vform(text_input))
+        script, div = components(layout, resources)
 
         proj_dir_a = naming_rules.get_project_folder(current_proj_a)
         proj_dir_b = naming_rules.get_project_folder(current_proj_b)

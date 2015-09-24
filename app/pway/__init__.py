@@ -1,7 +1,7 @@
 import os
 import hashlib
 from datetime import datetime
-from flask import Blueprint, current_app
+from flask import Blueprint, current_app, g
 from app.get_effective_pathways import path_info_dict
 
 pway = Blueprint('pway', __name__)
@@ -87,6 +87,10 @@ class FileTester:
 @pway.context_processor
 def inject_n_pathways():
     return dict(n_pathways=len(path_info_dict))
+
+@pway.before_request
+def get_n_pathways():
+    g.n_pathways = len(path_info_dict)
 
 from . import routes
 

@@ -103,11 +103,17 @@
         var initial_include = '{{ include_genes }}';
         $("#geneForm").submit(function(e){return false;});
 
+		$('.bk-widget-form').css({'width':'200px', 'padding':'0px', 'overflow': 'visible'});
+
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
 		var inds_use_a = {{inds_use[0]}};
 		var inds_use_b = {{inds_use[1]}};
 
 		selected_prv = [];
+		scatter_array = []; // current indices into original glyphs
+		for(var i=0; i<inds_use_a.length; i++){
+			scatter_array.push(i);
+		}
 
 		$.getScript( "static/data/{{ user_id }}/{{current_projs[0].file_id}}/{{js_name_a}}", function( data, textStatus, jqxhr ) {
 			console.log( "Loaded project A." );
@@ -165,9 +171,14 @@
     }
 
     function getSelectedIndices(){
-        var model = getDataModel();
-        var indices = model.attributes.selected['1d'].indices.slice();
-        indices.sort(function(a,b){return a - b;});
+        // GET JS INDICES CORRESPONDING TO SELECTION
+		var model = getDataModel();
+        var indices_current = model.attributes.selected['1d'].indices.slice();
+        var indices = [];
+		for(var i=0; i<indices_current.length; i++){
+			indices.push(scatter_array[indices_current[i]]);
+		}
+		indices.sort(function(a,b){return a - b;});
         return indices
     }
 
@@ -281,9 +292,9 @@ function selected_changed(array1, array2) {
         var showPlotIds = [];
 
 
-        for(var i=0; i<pwayList_a.length; i++){
-            var p_a = pwayList_a[i];
-            var p_b = pwayList_b[i];
+        for(var i=0; i<scatter_array.length; i++){
+            var p_a = pwayList_a[scatter_array[i]];
+            var p_b = pwayList_b[scatter_array[i]];
             var geneFound = null;
             var found = [];
             if(typeof(p_a) != 'undefined'){
@@ -303,24 +314,6 @@ function selected_changed(array1, array2) {
                 showPlotIds.push(i);
             }
         }
-
-
-
-
-
-//        $.each(pwayList, function(jsIndex, pway){
-//            var geneFound = null;
-//            var found = [];
-//            $.each(geneList, function(geneIndex, geneName){
-//                found.push($.inArray(geneName, pway.geneSet) > -1);
-//            });
-//            if(showIfIncluded && $.inArray(false, found)<0){
-//                showPlotIds.push(plot_inds[jsIndex]);
-//            }
-//            else if (!showIfIncluded && $.inArray(true, found)<0){
-//                showPlotIds.push(plot_inds[jsIndex]);
-//            }
-//        });
 
         var model = getDataModel();
         model.attributes.selected['1d'].indices = showPlotIds;
