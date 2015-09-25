@@ -249,16 +249,19 @@ def compare():
                 "box_select,hover"  # poly_select,lasso_select, previewsave
         if show_logged:
             plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
-                          logo=None, toolbar_location="right",
+                          logo=None, toolbar_location="above",
                           x_axis_label=xlabel,
                           y_axis_label=ylabel,
                           x_range=[0, maxx], y_range=[0, maxy])
         else:
             plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
-                          logo=None, toolbar_location="right",
+                          logo=None, toolbar_location="above",
                           x_axis_label=xlabel, y_axis_label=ylabel,
                           x_range=[minx, maxx], y_range=[miny, maxy],
                           x_axis_type="log", y_axis_type="log")
+        plot.min_border_top = 15
+        plot.min_border_right = 15
+
         plot.xaxis.axis_label_text_font_size = "12pt"
         plot.yaxis.axis_label_text_font_size = "12pt"
         plot.line([1, 1], [miny, maxy], line_width=2, color="blue", alpha=1, line_dash=[6, 6])

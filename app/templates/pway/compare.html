@@ -56,13 +56,14 @@
 </div>
 <!--<button id="selectButton" class="btn btn-default">Selection info</button>-->
 
-<form class="form-inline" style="margin-top: 15px;" id="geneForm">
+<form class="form col-sm-6 col-md-4 col-lg-5" id="geneForm">
   <div class="form-group">
-    <!--<label for="userGenes">Email address</label>-->
-    <input type="text" class="form-control" id="userGenes" placeholder="Gene list e.g. TP53,BRAF">
-    <button class="btn btn-default" id="includeButton" type="button">Include</button>
-    <button class="btn btn-default" id="excludeButton" type="button">Exclude</button>
-    <label for="userGenes" class="control-label" id="selectCount"></label>
+	  <label for="userGenes" class="control-label col-sm-12 no-gutter" id="userGenesLabel">Gene list:</label>
+	  <input type="text" class="form-control" id="userGenes" placeholder="Gene list e.g. TP53,BRAF">
+	  <div>
+		  <button class="btn btn-default" id="includeButton" type="button">Include</button>
+		  <button class="btn btn-default" id="excludeButton" type="button">Exclude</button>
+	  </div>
   </div>
 </form>
 
@@ -103,7 +104,15 @@
         var initial_include = '{{ include_genes }}';
         $("#geneForm").submit(function(e){return false;});
 
-		$('.bk-widget-form').css({'width':'200px', 'padding':'0px', 'overflow': 'visible'});
+		$plot = $('.bk-plot');
+		$qform = $('.bk-widget-form');
+		$gform = $('#geneForm');
+		$plotdiv = $('.plotdiv');
+		$plotdiv.append($gform);
+		$plot.addClass('col-md-8 col-lg-7');
+		$qform.addClass('col-sm-6 col-md-4 col-lg-5');
+		$bokehContainer.addClass('clearfix');
+		$('.bk-widget-form').css('padding', '0px 15px 0px 15px');
 
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
 		var inds_use_a = {{inds_use[0]}};

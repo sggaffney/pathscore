@@ -167,3 +167,8 @@ body {
   background-color: white;
   text-decoration: underline;
 }
+
+.no-gutter {
+    padding-left: 0px;
+    padding-right: 0px;
+}
