@@ -1,0 +1,18 @@
+<p>
+    The 'gene length' and 'gene count' algorithms are both based on the
+    hypergeometric distribution, but variant data are considered to be samples of
+    individual bases in the former, and individual genes in the latter.
+</p>
+<p>
+    The 'gene length' algorithm assumes that all bases have an equal chance of mutation.
+    This accounts for the increasing probability of a mutation as gene length increases,
+    making it suitable for projects containing snvs and other small variants.
+    In this algorithm, a pathway's size is the total number of bases in the cds regions
+    of its genes.
+</p>
+<p>
+    The 'gene count' algorithm assumes that all genes have an equal chance of mutation,
+    making it suitable for copy number variant data, for example, where the effect of gene
+    length will be small. In this algorithm, a pathway's size is the number of genes
+    in the pathway.
+</p>

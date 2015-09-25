@@ -6,14 +6,70 @@
     <h1>FAQ</h1>
 </div>
 
+<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingOne">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+           href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+          How do I interpret the target plots?
+        </a>
+      </h4>
+    </div>
+    <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+      <div class="panel-body">
+        {% include "faq_items/_faq_target.html" %}
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingTwo">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+           href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+          How do you calculate q-values?
+        </a>
+      </h4>
+    </div>
+    <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
+      <div class="panel-body">
+        <p>We use the Bonferroni adjustment, multiplying the p-value by the number
+          of pathways in out database, currently {{ n_pathways }}.</p>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingThree">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+           href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+          How do the gene lists in the upload form differ from those in the results pages?
+        </a>
+      </h4>
+    </div>
+    <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
+      <div class="panel-body">
+        {% include "faq_items/_faq_genes.html" %}
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingFour">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+           href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+          What is the difference between the 'gene count' and 'gene length' algorithms?
+        </a>
+      </h4>
+    </div>
+    <div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
+      <div class="panel-body">
+        {% include "faq_items/_faq_algorithms.html" %}
+      </div>
+    </div>
+  </div>
+</div>
 
-    <p class="lead">How do I interpret the target plots?</p>
-
-    <p>The figure below shows an example from the PID TCR pathway for a melanoma dataset.</p>
 
 
-    <img src="static/data/tcr_pathway_demo.svgz" alt="tcr_pathway_demo.svgz" width="800px"></img>'
-    
-
-{# wtf.quick_form(form, enctype="multipart/form-data") #}
 {% endblock %}

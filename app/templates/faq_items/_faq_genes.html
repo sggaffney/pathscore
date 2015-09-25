@@ -1,0 +1,15 @@
+<p>Any genes you specify in the 'ignore' field of the upload page will be excluded from
+    calculations of pathway mutation burden. If you ignore <em>TP53</em>, for example, pathway
+    size will be calculated after excluding <em>TP53</em>, and patient mutation
+    counts will exclude mutations in <em>TP53</em>. If an ignored gene is mutated
+    in an enriched pathway, the mutations in this gene will still be shown in target
+    and matrix plots, but they will have had no influence on the pathway effect size.
+    Specifying genes to 'exclude' in the results pages, on the other hand, hides any
+    pathways that contain the genes.
+</p>
+<p>
+    The 'required' genes field in the upload form restricts the analysis to pathways
+    that contain these genes. This restriction should drastically speed up the analysis.
+    The 'include' field in the results pages provides a similar filtering of the results
+    to just those pathways that contain the specified genes.
+</p>
