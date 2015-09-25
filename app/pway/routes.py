@@ -245,7 +245,7 @@ def compare():
         miny *= 1 - miny/abs(miny)*0.2
         maxx = max(effects1)*1.2
         maxy = max(effects2)*1.2
-        tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
+        tools = "crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
                 "box_select,hover"  # poly_select,lasso_select, previewsave
         if show_logged:
             plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
@@ -321,7 +321,7 @@ def compare():
             model.trigger('change');
             updateIfSelectionChange_afterWait();
             """)
-        text_input = TextInput(value=str(np.ceil(0.05*g.n_pathways)),
+        text_input = TextInput(value='',
                                title="q-value cutoff:",
                                callback=callback)
         callback.args["q_widget"] = text_input

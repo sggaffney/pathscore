@@ -59,7 +59,7 @@
 <form class="form col-sm-6 col-md-4 col-lg-5" id="geneForm">
   <div class="form-group">
 	  <label for="userGenes" class="control-label col-sm-12 no-gutter" id="userGenesLabel">Gene list:</label>
-	  <input type="text" class="form-control" id="userGenes" placeholder="Gene list e.g. TP53,BRAF">
+	  <input type="text" class="form-control" id="userGenes" placeholder="e.g. TP53,BRAF">
 	  <div>
 		  <button class="btn btn-default" id="includeButton" type="button">Include</button>
 		  <button class="btn btn-default" id="excludeButton" type="button">Exclude</button>
@@ -109,10 +109,11 @@
 		$gform = $('#geneForm');
 		$plotdiv = $('.plotdiv');
 		$plotdiv.append($gform);
-		$plot.addClass('col-md-8 col-lg-7');
+		$qform.css('padding', '0px 15px 0px 15px');
 		$qform.addClass('col-sm-6 col-md-4 col-lg-5');
+		$plot.addClass('col-md-8 col-lg-7');
 		$bokehContainer.addClass('clearfix');
-		$('.bk-widget-form').css('padding', '0px 15px 0px 15px');
+		$('.bk-widget-form input').attr('placeholder', 'e.g. 0.1');
 
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
 		var inds_use_a = {{inds_use[0]}};
