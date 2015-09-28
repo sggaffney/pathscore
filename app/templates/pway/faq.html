@@ -27,6 +27,22 @@
   </div>
 
   <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_ids">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+           href="#collapse_ids" aria-expanded="false" aria-controls="collapse_ids">
+          How do I obtain valid gene identifiers for my upload file?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_ids" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_ids">
+      <div class="panel-body">
+        {% include "faq_items/_faq_ids.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="heading_genes">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
@@ -84,7 +100,7 @@
   <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="heading_alg">
       <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion2"
            href="#collapse_alg" aria-expanded="false" aria-controls="collapse_alg">
           What is the difference between the 'gene count' and 'gene length' algorithms?
         </a>
@@ -100,7 +116,7 @@
   <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="heading_q">
       <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion2"
            href="#collapse_q" aria-expanded="false" aria-controls="collapse_q">
           How do you calculate q-values?
         </a>
@@ -117,7 +133,7 @@
   <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="heading_tree">
       <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion2"
            href="#collapse_tree" aria-expanded="false" aria-controls="collapse_tree">
           How is the tree view constructed?
         </a>
@@ -133,7 +149,7 @@
   <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="heading_code">
       <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion2"
            href="#collapse_code" aria-expanded="false" aria-controls="collapse_code">
           Is your code open source?
         </a>
