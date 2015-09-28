@@ -1135,11 +1135,11 @@ def load_pathway_list_from_file(results_path):
 def save_dissimilarity_files(pway_list_full, scores_path, names_path, min_len=50):
     """Reads gene_sets from all pathways, calculating a matrix of dissimilarity
     scores. Saves scores and path_id+names in text files at specified paths."""
-    pway_list = [p for p in pway_list_full if p.ne_low > p.n_actual]
+    pway_list = [p for p in pway_list_full if p.gene_set]
     effect_sizes = [float(p.n_effective)/p.n_actual for p in pway_list]
     effect_sizes = misc.get_at_least_n(effect_sizes, min_len)  # top ~50 effects
     n_pways = len(effect_sizes)
-    gene_set_list = [p.gene_set for p in pway_list if p.gene_set][:n_pways]
+    gene_set_list = [p.gene_set for p in pway_list][:n_pways]
     scores = misc.get_distance_matrix(gene_set_list)
     # SAVE SCORES SQUARE MATRIX IN TEXT FILE. (savetxt from numpy)
     np.savetxt(scores_path, scores, delimiter='\t')
