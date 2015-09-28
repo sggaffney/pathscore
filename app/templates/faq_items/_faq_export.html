@@ -1,0 +1,40 @@
+<p>
+    Project results can be downloaded as a zip archive from the status table, by
+    clicking the download icon on the right. The archive contains the following
+    files:
+</p>
+<ul>
+    <li>
+        The original uploaded data, as a plain text file with no extension.
+    </li>
+    <li>
+        A tab-separated text file, with extension '.xls'. This is the main results
+        file, which can be opened in Excel. Each row contains the following pathway
+        attributes:
+        <ul>
+            <li>Full name</li>
+            <li>MSigDB pathway ID. These are used to name accompanying svg files</li>
+            <li>MSigDB info url</li>
+            <li>p-value</li>
+            <li>Effective pathway size (n_effective)</li>
+            <li>Actual pathway size (n_actual)</li>
+            <li>Gene mutation frequencies (%)</li>
+            <li>Shortest altered gene length (kbp)</li>
+            <li>Shortest altered gene name</li>
+            <li>Longest altered gene length (kbp)</li>
+            <li>Longest altered gene name</li>
+            <li>Average length of altered genes (kbp)</li>
+            <li>Variance in lengths of altered genes</li>
+        </ul>
+    </li>
+    <li>
+        A javascript file containing the basic pathway attributes used by results
+        pages. This is simply a reformatting of the results text file.
+    </li>
+    <li>
+        Tree data, in 2 files. A compressed svg file (.svgz) contains the dendrogram
+        plot. This can be opened in a web browser, such as Chrome. An accompanying
+        text file (extension '.txt.reorder') contains the
+        pathway names to label the branches, from top to bottom.
+    </li>
+</ul>
