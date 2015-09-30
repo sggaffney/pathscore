@@ -16,12 +16,8 @@
         <th>Project Name</th>
         <th>Patients</th>
         <th>Date</th>
-        <!--<th>Filename</th>-->
         <th>Algorithm</th>
-        <!--<th>Genome size</th>-->
-        <!--<th>n_cutoff</th>-->
         <th>Ignore</th>
-        <!--<th>Required</th>-->
         <th>Loaded</th>
         <th>Unused</th>
         <th>Rejected</th>
@@ -39,10 +35,7 @@
         {% endif %}
             <td>{{ proj.n_patients or '' }} </td>
             <td>{{ proj.upload_time.strftime('%Y-%m-%d') }} </td>
-            <!--<td>{{ proj.filename }} </td>-->
             <td>{{ proj.algorithm }} </td>
-            <!--<td>{{ proj.genome_size }} </td>-->
-            <!--<td>{{ proj.n_cutoff }} </td>-->
             <td>{{ proj.ignore_short }} </td>
 
             <td>{{ proj.n_loaded if proj.n_loaded is not none else '' }}</td>

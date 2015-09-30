@@ -32,6 +32,7 @@ def remove_oldies():
     if oldies:
         current_app.logger.debug("Deleted project(s): {}".format(old_ids))
 
+
 def delete_old_anonymous_users():
     max_age_days = current_app.config['ANONYMOUS_MAX_AGE_DAYS']
     cutoff = datetime.utcnow() - timedelta(days=max_age_days)
@@ -108,12 +109,16 @@ def zip_project(upload_obj):
     zipf = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
     proj_path = get_project_folder(upload_obj)
     for root, dirs, files in os.walk(proj_path):
-        for file in files:
+        for this_file in files:
             # ignore raw .txt files in root of project directory
-            if root is proj_path and file.endswith('.txt'):
+            if root is proj_path and \
+                    (this_file.endswith('score_names.txt') or
+                     this_file.endswith('scores.txt') or
+                     this_file.endswith('.js') or
+                     this_file.startswith('pathways')):
                 continue
-            zipf.write(os.path.join(root, file),
-                       os.path.relpath(os.path.join(root, file),
+            zipf.write(os.path.join(root, this_file),
+                       os.path.relpath(os.path.join(root, this_file),
                                        os.path.join(proj_path, '..')))
     zipf.close()
     return zip_path
