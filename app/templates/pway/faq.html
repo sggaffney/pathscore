@@ -75,6 +75,22 @@
   </div>
 
   <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_comparison">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
+           href="#collapse_comparison" aria-expanded="false" aria-controls="collapse_comparison">
+          Which pathways are shown on the Comparison page?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_comparison" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_comparison">
+      <div class="panel-body">
+        {% include "faq_items/_faq_comparison.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="heading_export">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
