@@ -22,6 +22,8 @@
         <!--<th>n_cutoff</th>-->
         <th>Ignore</th>
         <!--<th>Required</th>-->
+        <th>Unused</th>
+        <th>Rejected</th>
         <th>Status</th>
         <th>Expires</th>
         <th>Zip</th>
@@ -35,12 +37,29 @@
             <td>{{ proj.get_local_filename() }}</td>
         {% endif %}
             <td>{{ proj.n_patients or '' }} </td>
-            <td>{{ proj.upload_time }} </td>
+            <td>{{ proj.upload_time.strftime('%Y-%m-%d') }} </td>
             <!--<td>{{ proj.filename }} </td>-->
             <td>{{ proj.algorithm }} </td>
             <!--<td>{{ proj.genome_size }} </td>-->
             <!--<td>{{ proj.n_cutoff }} </td>-->
             <td>{{ proj.ignore_short }} </td>
+
+        {% if proj.n_ignored %}
+            <td><a href="{{ url_for('pway.get_filtered', projId=proj.file_id, type='ignored') }}">{{ proj.n_ignored }}</a></td>
+        {% elif proj.run_complete == False %}
+            <td></td>
+        {% else %}
+            <td> 0 </td>
+        {% endif %}
+
+        {% if proj.n_rejected %}
+            <td><a href="{{ url_for('pway.get_filtered', projId=proj.file_id, type='rejected') }}">{{ proj.n_rejected }}</a></td>
+        {% elif proj.run_complete == False %}
+            <td></td>
+        {% else %}
+            <td> 0 </td>
+        {% endif %}
+
             <!--<td>{{ proj.required_genes }} </td>-->
         {% if proj.run_complete %}
             <td>Complete</td>
@@ -65,7 +84,7 @@
             </form>
             </td>
         {% else %}
-            <td>n/a</td>
+            <td></td>
         {% endif %}
         </tr>
     {% endfor %}

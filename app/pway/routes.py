@@ -413,12 +413,33 @@ def archive():
                      as_attachment=True, attachment_filename=filename)
 
 @pway.route('/demofile')
-@login_required
 def demo_file():
     # return render_template('pway/show_pathways_template.html')
     return send_from_directory(current_app.config['DATA_ROOT'],
                                'skcm_ns_500.txt', as_attachment=True)
 
+
+@pway.route('/filtered')
+def get_filtered():
+
+    proj_id = request.args.get('projId', None)
+    filter_type = request.args.get('type', None)  # ignored or rejected
+    if not proj_id.isdigit() or filter_type not in ('ignored', 'rejected'):
+        abort(404)
+    proj_id = int(proj_id)
+    upload_obj = UserFile.query.filter_by(user_id=current_user.id).\
+        filter_by(file_id=proj_id).all()[0]
+    if not upload_obj:
+        abort(404)
+    if filter_type == 'ignored':
+        file_path = naming_rules.get_unused_gene_path(upload_obj)
+    else:
+        file_path = naming_rules.get_rejected_gene_path(upload_obj)
+
+    try:
+        return send_file(file_path, as_attachment=True)
+    except IOError:
+        abort(404)
 
 @pway.route('/results')
 @login_required
