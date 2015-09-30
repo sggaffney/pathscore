@@ -1,0 +1,21 @@
+<dl class="dl-horizontal">
+    <dt>Loaded</dt>
+    <dd>
+        The total number of variants used in the analysis, after filtering.
+        These correspond to rows in the upload file that have valid hugo-entrez
+        pairs for genes that are present in MSigDB.
+    </dd>
+
+    <dt>Unused</dt>
+    <dd>
+        'Unused' variants are those with valid hugo-entrez pairs, but the
+        corresponding genes are <em>not</em> present in MSigDB.
+    </dd>
+
+    <dt>Rejected</dt>
+    <dd>
+        'Rejected' variants are those with <em>invalid</em> hugo-entrez pairs.
+        Refer to the entry on <a href="#collapse_ids" data-toggle="collapse" >obtaining valid identifiers</a>
+        to fix these entries.
+    </dd>
+</dl>
