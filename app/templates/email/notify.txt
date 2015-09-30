@@ -10,8 +10,15 @@ Submitted at {{ project.upload_time }}".
 
 {% if project.run_complete %}
 Please visit {{ url_for('pway.results', proj=project.get_local_filename(), _external=True) }} to view results.
+{% elif project.n_loaded == 0 %}
+Your dataset was empty after filtering.
+- {{ project.n_ignored }} rows were ignored as the genes are not featured in MSigDB.
+- {{ project.n_rejected }} rows were rejected for containing unrecognized hugo-entrez pairs.
+
+Please refer to the status page for details:
+{{ url_for('pway.index', _external=True) }}
 {% else %}
-You might wish to try again with modified inputs.
+We'll look into the issue shortly. You might wish to try again with modified inputs.
 {% endif %}
 
 Sincerely,

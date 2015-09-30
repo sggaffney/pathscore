@@ -16,7 +16,7 @@ from comb_functions import get_pway_likelihood_cython
 
 from . import db
 from .decorators import async
-from .emails import run_finished_notification
+import emails
 from .models import UserFile
 import app
 from .db_lookups import lookup_path_sizes, lookup_background_size, \
@@ -35,12 +35,9 @@ path_info_dict = fetch_path_info_global()
 background_len_full = lookup_background_size(use_length=True)
 background_count_full = lookup_background_size(use_length=False)
 
-class TableLoadException(Exception):
-    def __init__(self, msg):
-        self.msg = msg
 
-    def __str__(self):
-        return repr(self.msg)
+class TableLoadException(Exception):
+    pass
 
 
 class MatlabFailureException(Exception):
@@ -65,6 +62,11 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
             table = MutationTable(table_name, data_path,
                                   unused_path=unused_gene_path,
                                   rejected_path=rejected_gene_path)
+            user_upload.n_rejected = table.n_rejected
+            user_upload.n_ignored = table.n_ignored
+            user_upload.n_loaded = table.n_loaded
+            db.session.add(user_upload)
+            db.session.commit()
             if not table.loaded:
                 raise TableLoadException("Failed to load table {!r}."
                                          .format(table_name))
@@ -73,12 +75,19 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
             db.session.commit()
             run(proj_dir, table_name, user_upload)
             user_upload.run_complete = True
-        except (MatlabFailureException, TableLoadException) as e:
+        except MatlabFailureException as e:
             user_email = user_upload.uploader.email
-            if not user_upload.run_complete:
-                current_app.logger.error("Failure in proj {0} ({1}): {2} - {3}"
-                                         .format(upload_id, user_email,
-                                                 e.args[0], e.args[1]))
+            current_app.logger.error("Matlab failure in proj {} ({}): {}"
+                                     .format(upload_id, user_email, e.args))
+        except TableLoadException as e:
+            user_email = user_upload.uploader.email
+            current_app.logger.error("Table load failure in proj {} ({}): {}"
+                                     .format(upload_id, user_email, e.args[0]))
+        except mdb.Error:
+            pass  # already logged by db commands
+        except Exception as e:  # catch all remaining errors
+            current_app.logger.error("Failure in proj {} for user {}.".format(
+                    user_upload.file_id, user_upload.uploader.email))
         finally:
             if not user_upload.run_complete:
                 user_upload.run_complete = None
@@ -92,7 +101,7 @@ def run_analysis_async(app, proj_dir, data_path, upload_id):
             try:
                 db.session.add(user_upload)
                 db.session.commit()
-                run_finished_notification(upload_id)
+                emails.run_finished_notification(upload_id)
             except StaleDataError as e:
                 current_app.logger.info("Early termination of stale project: {}".format(
                     e.message))
@@ -131,22 +140,25 @@ class Patient():
         self.is_mutated = is_mutated
 
 
-class MutationTable():
+class MutationTable:
     """Loads data from file into table, given table_name and file path."""
     def __init__(self, table_name, data_path, unused_path=None,
                  rejected_path=None):
         self.table_name = table_name
         self.data_path = data_path
         self.loaded = False
-        self.n_remaining = 0
+        self.n_initial = None
+        self.n_rejected = None
+        self.n_ignored = None
         self.populate_table()
         self.remove_genes_unrecognized(rejected_path)
         self.remove_genes_outwith_pathways(unused_path)
-        if self.n_remaining:
+        self.n_loaded = self.n_initial - self.n_rejected - self.n_ignored
+        if self.n_loaded:
             self.loaded = True
 
     def populate_table(self):
-        """Build mutation table before filtering. Rtn boolean for success."""
+        """Build mutation table before filtering. Return boolean for success."""
         table_name, data_path = self.table_name, self.data_path
         create_str = u"""CREATE TABLE `{}` (
           `hugo_symbol` VARCHAR(255) DEFAULT NULL,
@@ -168,7 +180,7 @@ class MutationTable():
             cur.execute(load_str)
             cur.execute(cmd)
             result = cur.fetchone()
-            self.n_remaining = result[0]
+            self.n_initial = result[0]
             con.commit()
         except mdb.Error as e:
             current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
@@ -178,8 +190,7 @@ class MutationTable():
                 con.close()
 
     def remove_genes_unrecognized(self, rejected_path=None):
-        n_mut_initial = self.n_remaining
-        if not n_mut_initial:
+        if not self.n_initial:
             return
         cmd1 = u"""SELECT m.* FROM `{}` m
             LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.geneId
@@ -195,14 +206,13 @@ class MutationTable():
             cur = con.cursor()
             # EXPORT REJECTED GENES
             cur.execute(cmd1)
-            n_rejected = cur.rowcount
-            if n_rejected > 0:
+            self.n_rejected = cur.rowcount
+            if self.n_rejected > 0:
                 if rejected_path:
                     self.save_mutations_subset(cur, rejected_path)
                 # DELETE EXTRA GENE LINES
                 cur.execute(cmd2)
                 con.commit()
-            self.n_remaining = n_mut_initial - n_rejected
         except mdb.Error as e:
             current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
             raise
@@ -218,7 +228,6 @@ class MutationTable():
         return: remaining mutation count
         :rtype : int
         """
-        n_mut_initial = self.n_remaining
         cmd1 = u"""SELECT m.* FROM `{}` m
           LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
           ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;"""\
@@ -233,15 +242,13 @@ class MutationTable():
             cur = con.cursor()
             # EXPORT EXTRA GENE LINES
             cur.execute(cmd1)
-            n_rejected = cur.rowcount
-            if n_rejected > 0:
+            self.n_ignored = cur.rowcount
+            if self.n_ignored > 0:
                 if rejected_path:
                     self.save_mutations_subset(cur, rejected_path)
                 # DELETE EXTRA GENE LINES
                 cur.execute(cmd2)
                 con.commit()
-            n_remaining = n_mut_initial - n_rejected
-            return n_remaining
         except mdb.Error as e:
             current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
             raise
@@ -257,7 +264,7 @@ class MutationTable():
                 out.write('\t'.join([str(i) for i in row]) + '\n')
 
 
-class GeneMatrix():
+class GeneMatrix:
     """Holds patient-gene matrix info for a single pathway.
     Write matrix to file with call to export_matrix."""
 

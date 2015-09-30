@@ -56,15 +56,18 @@ def get_hypermutated_path(upload_obj):
     dir_path = get_project_folder(upload_obj)
     return os.path.join(dir_path, hyper_file)
 
+
 def get_unused_gene_path(upload_obj):
     unused_file = '{}_unused.txt'.format(upload_obj.get_local_filename())
     dir_path = get_project_folder(upload_obj)
     return os.path.join(dir_path, unused_file)
 
+
 def get_rejected_gene_path(upload_obj):
     rejected_file = '{}_rejected.txt'.format(upload_obj.get_local_filename())
     dir_path = get_project_folder(upload_obj)
     return os.path.join(dir_path, rejected_file)
+
 
 def get_apache_path(full_path):
     return full_path.replace('/www/pway', '/static/data')

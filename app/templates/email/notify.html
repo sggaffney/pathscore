@@ -11,9 +11,19 @@ Submitted at {{ project.upload_time }}.</p>
 
 {% if project.run_complete %}
 <p>Please visit the <a href="{{ url_for('pway.results', proj=project.get_local_filename(), _external=True) }}">results page</a> to view result graphics.</p>
+{% elif project.n_loaded == 0 %}
+    <p>Your dataset was empty after filtering.</p>
+    <ul>
+        <li>{{ project.n_ignored }} rows were ignored as the genes are not
+            featured in MSigDB.</li>
+        <li>{{ project.n_rejected }} rows were rejected for containing unrecognized
+            hugo-entrez pairs.</li>
+    </ul>
+    <p>Please refer to the <a href="{{ url_for('pway.index', _external=True) }}">
+        status page</a> for details.</p>
 {% else %}
-<p>You might wish to try again with modified inputs.</p>
+<p>We'll look into the issue shortly. You might wish to try again with modified inputs.</p>
 {% endif %}
 
 <p>Sincerely,</p>
-<p>Pathway Search admin</p>
+<p>PathScore admin</p>

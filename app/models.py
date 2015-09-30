@@ -140,6 +140,9 @@ class UserFile(db.Model):
     proj_suffix = db.Column(db.String(255))
     uploader = db.relationship('User', backref='uploads')
     n_patients = db.Column(db.Integer)
+    n_rejected = db.Column(db.Integer)
+    n_ignored = db.Column(db.Integer)
+    n_loaded = db.Column(db.Integer)
 
     def get_local_filename(self):
         keepcharacters = (' ', '.', '_')
