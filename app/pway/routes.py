@@ -322,7 +322,7 @@ def compare():
             updateIfSelectionChange_afterWait();
             """)
         text_input = TextInput(value='',
-                               title="q-value cutoff:",
+                               title="Q cutoff:",
                                callback=callback)
         callback.args["q_widget"] = text_input
         callback.args["fullset"] = source.clone().data

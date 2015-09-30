@@ -10,9 +10,9 @@ function create_plot_div(pway_obj, n_pathways, user_id, projId, matrix_dir, n_ge
 	var pval = pway_obj['pval'];
 	var pq_str = null;
 	if(pval == '0.000e+00')
-		pq_str = 'p<1e-16, q<' + Number(1e-16 * n_pathways).toPrecision(1);
+		pq_str = '<em>P</em><1e-16, <em>Q</em><' + Number(1e-16 * n_pathways).toPrecision(1);
 	else {
-        pq_str = 'p=' + get_nice_precision(pval) + ', q=' + get_nice_precision(pval * n_pathways);
+        pq_str = '<em>P</em>=' + get_nice_precision(pval) + ', <em>Q</em>=' + get_nice_precision(pval * n_pathways);
     }
 	div_str ='<div class="panel panel-primary">' +
 		'<div class="panel-heading">' + opt_header +
