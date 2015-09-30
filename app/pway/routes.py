@@ -364,7 +364,7 @@ def tree():
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
     if upload_list:
         # Use specified project from args or highest file_id as CURRENT PROJECT
-        current_proj = upload_list[0]  # override if valid proj specified
+        current_proj = upload_list[-1]  # override if valid proj specified
         if show_proj:
             current_temp = [u for u in upload_list if u.file_id == int(show_proj)]
             # if not among user's finished projects, use highest file_id
@@ -441,16 +441,20 @@ def get_filtered():
     except IOError:
         abort(404)
 
+
 @pway.route('/results')
 @login_required
 def results():
     show_proj = request.args.get('proj', None)
     include = request.args.get('include', None)
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).filter_by(run_complete=True).all()
-    proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
-    if not(upload_list):
+    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
+        filter_by(run_complete=True).all()
+    if not upload_list:
         flash("No project results to show yet.", "warning")
         return redirect(url_for('.index'))
+    if show_proj is None and len(upload_list):
+        show_proj = upload_list[-1].get_local_filename()
+    proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
     return render_template('pway/show_pathways_template.html',
                            projects=upload_list, user_id=current_user.id,
                            show_proj=show_proj, proj_names=proj_names,
