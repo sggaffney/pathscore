@@ -22,6 +22,7 @@
         <!--<th>n_cutoff</th>-->
         <th>Ignore</th>
         <!--<th>Required</th>-->
+        <th>Loaded</th>
         <th>Unused</th>
         <th>Rejected</th>
         <th>Status</th>
@@ -44,20 +45,18 @@
             <!--<td>{{ proj.n_cutoff }} </td>-->
             <td>{{ proj.ignore_short }} </td>
 
-        {% if proj.n_ignored %}
+            <td>{{ proj.n_loaded if proj.n_loaded is not none else '' }}</td>
+
+        {% if proj.n_ignored is not none %}
             <td><a href="{{ url_for('pway.get_filtered', projId=proj.file_id, type='ignored') }}">{{ proj.n_ignored }}</a></td>
-        {% elif proj.run_complete == False %}
-            <td></td>
         {% else %}
-            <td> 0 </td>
+            <td></td>
         {% endif %}
 
-        {% if proj.n_rejected %}
+        {% if proj.n_rejected is not none %}
             <td><a href="{{ url_for('pway.get_filtered', projId=proj.file_id, type='rejected') }}">{{ proj.n_rejected }}</a></td>
-        {% elif proj.run_complete == False %}
-            <td></td>
         {% else %}
-            <td> 0 </td>
+            <td></td>
         {% endif %}
 
             <!--<td>{{ proj.required_genes }} </td>-->
