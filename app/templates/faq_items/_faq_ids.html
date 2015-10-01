@@ -1,12 +1,19 @@
 <p>
-    All variants must be listed with both Hugo Symbol and Entrez ID for each
-    gene. Entrez ID refers to the 'Gene ID' from the
+    All variants must be listed with both Hugo Symbol (aka HGNC symbol) and
+    Entrez ID for each gene. Entrez ID refers to the 'Gene ID' from the
     <a target="_blank" href="http://www.ncbi.nlm.nih.gov/gene">NCBI Gene</a> database.
 </p>
 <p>
     For a table containing identifiers for all human genes, refer to
     their flat file
     <a target="_blank" href="ftp://ftp.ncbi.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz">
-        Homo_sapiens.gene_info.gz</a>. This file contains Entrez Id and Hugo
-    Symbol in the 'GeneId' and 'Symbol' columns, respectively.
+        Homo_sapiens.gene_info.gz</a>. This file contains Hugo Symbol and
+    Entrez ID in the 'Symbol' and 'GeneId' columns, respectively. Synonyms and
+    external database identifiers are also listed.
+</p>
+<p>
+    If your variants are listed with Ensembl transcripts, the
+    <a target="_blank" href="http://www.ensembl.org/biomart/">Ensembl Biomart</a>
+    can be used to obtain a map from Ensembl transcript ID to Hugo Symbol and
+    Entrez ID.
 </p>
