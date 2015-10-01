@@ -40,16 +40,16 @@
 
             <td>{{ proj.n_loaded if proj.n_loaded is not none else '' }}</td>
 
-        {% if proj.n_ignored is not none %}
+        {% if proj.n_ignored %}
             <td><a href="{{ url_for('pway.get_filtered', projId=proj.file_id, type='ignored') }}">{{ proj.n_ignored }}</a></td>
-        {% else %}
-            <td></td>
+        {% else  %}
+            <td>{{ '' if proj.n_ignored is none else 0 }}</td>
         {% endif %}
 
-        {% if proj.n_rejected is not none %}
+        {% if proj.n_rejected %}
             <td><a href="{{ url_for('pway.get_filtered', projId=proj.file_id, type='rejected') }}">{{ proj.n_rejected }}</a></td>
         {% else %}
-            <td></td>
+            <td>{{ '' if proj.n_ignored is none else 0 }}</td>
         {% endif %}
 
             <!--<td>{{ proj.required_genes }} </td>-->
