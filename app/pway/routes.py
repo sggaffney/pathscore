@@ -393,7 +393,6 @@ def tree():
 
 
 @pway.route('/faq')
-@login_required
 def faq():
     return render_template('pway/faq.html')
 
