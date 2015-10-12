@@ -138,7 +138,7 @@
                 use_js_inds.push(js_inds[indices[i]]);
             }
 		}
-        use_js_inds.sort(); // want pathways ordered by decreasing deviance
+        use_js_inds.sort(function(a,b){return a - b;}); //order by effect size
         $.each(use_js_inds, function(i, js_index){use_pways.push(pwayList[js_index]);});
         if(!use_pways.length){
 			$imageContainer.text("No enriched pathways selected");
