@@ -54,7 +54,9 @@ function get_driver_str(pway_obj){
 function get_nice_precision(value, precision){
     precision = precision || 2;
     var presVal = Number(value).toPrecision(precision);
-    if(value >= 0.001)
+    if(value >= 1)
+        return 1;
+    else if(value >= 0.001)
         return presVal;
     else
         return Number(presVal).toExponential();
