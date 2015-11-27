@@ -7,8 +7,10 @@ from collections import defaultdict
 def lookup_background_size(ignore_genes=None, use_length=None):
     """Get background genome size sizes. Optional ignore_genes iterable.
 
-    Uses entrez_length table built from genes in msigdb (pathway_genes).
-    length_bp is cds length. or rna length for noncoding rna.
+    - Uses entrez_length table built from genes in msigdb (pathway_genes).
+    - length_bp is cds length. or rna length for noncoding rna.
+    - effective_bp is length_bp scaled by noncoding mutation rate (mutations/Mb)
+        from mutsigcv paper, table s4 and s5. floor=1.5, ceiling=15.
 
     Args:
         ignore_genes (iterable): contains gene symbols to ignore.
@@ -25,7 +27,7 @@ def lookup_background_size(ignore_genes=None, use_length=None):
         genes_str = "WHERE hugo_symbol NOT IN {}".format(genes_str)
     else:
         genes_str = ""
-    field_str = "sum(length_bp)" if use_length else "count(*)"
+    field_str = "sum(effective_bp)" if use_length else "count(*)"
     cmd = """SELECT {field_str} FROM refs.entrez_length {genes_str};""".format(
         field_str=field_str, genes_str=genes_str)
     background_size = None
@@ -89,7 +91,7 @@ def lookup_path_lengths(ignore_genes=None):
         genes_string = "WHERE hugo_symbol NOT IN {}".format(genes_string)
     else:
         genes_string = ""
-    cmd = """SELECT path_id, sum(length_bp) AS bp FROM refs.entrez_length l
+    cmd = """SELECT path_id, sum(effective_bp) AS bp FROM refs.entrez_length l
         INNER JOIN refs.pathway_gene_link pgl ON l.entrez_id = pgl.entrez_id
         {genes_string}
         GROUP BY pgl.path_id;""".format(genes_string=genes_string)
