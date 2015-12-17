@@ -6,7 +6,6 @@ from .errors import unauthorized
 auth = HTTPBasicAuth()
 
 
-
 @auth.verify_password
 def verify_password(email_or_token, password):
     if current_app.config['USE_TOKEN_AUTH']:
