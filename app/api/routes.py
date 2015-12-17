@@ -6,7 +6,7 @@ from flask import request
 from . import api
 from app import db
 from ..decorators import limit_user_uploads  # ssl_required
-from decorators import json, etag  # collection, etag
+from decorators import json, etag, collection
 from ..errors import ValidationError
 from ..maf import MutationFile
 from ..models import UserFile, create_anonymous_user, initialize_project
@@ -29,6 +29,7 @@ def test():
 @etag
 @auth.login_required
 @json
+@collection(UserFile, name='projects')
 def get_user_projects():
     return UserFile.query.filter_by(user_id=g.user.id)
 
