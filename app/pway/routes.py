@@ -17,15 +17,17 @@ from bokeh.models.widgets import TextInput
 from bokeh.models import Callback
 from bokeh.io import vform
 
-from . import pway, FileTester, TempFile
+from . import pway  #, FileTester, TempFile
+from ..maf import MutationFile
+from ..errors import ValidationError
 from .forms import UploadForm
-from ..models import UserFile, User, Role
+from ..models import UserFile, create_anonymous_user, initialize_project
 from .. import db
 from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
 from ..admin import zip_project
 from .. import naming_rules
 from .. import misc
-from app.decorators import no_ssl
+from ..decorators import no_ssl, limit_user_uploads
 
 
 @pway.route('/')
@@ -397,15 +399,12 @@ def faq():
     return render_template('pway/faq.html')
 
 
-@pway.route('/archive')
+@pway.route('/archive/<int:proj>')
 @login_required
-def archive():
-    proj_id = int(request.args.get('proj', 0))
-    upload_obj = None
-    if proj_id:
-        upload_obj = UserFile.query.get(proj_id)
-    if not upload_obj or current_user.id != upload_obj.user_id:
-        abort(404)
+def archive(proj):
+    upload_obj = UserFile.query.\
+        filter_by(user_id=current_user.id, file_id=proj).\
+        first_or_404()
     zip_path = zip_project(upload_obj)
     filename = os.path.basename(zip_path)
     return send_file(zip_path, mimetype='application/zip',
@@ -461,107 +460,50 @@ def results():
 
 
 @pway.route('/upload', methods=('GET', 'POST'))
+@limit_user_uploads
 def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
 
-    # CHECK IF RUNNING PROJECT COUNT IS WITHIN USER LIMITS
-    if current_user.is_authenticated():
-        incomplete = UserFile.query.filter_by(user_id=current_user.id)\
-            .filter_by(run_complete=0).all()
-        role_names = [r.name for r in current_user.roles]
-        if 'vip' not in role_names and incomplete:
-            flash("Sorry, you must wait until your currently running projects "
-                  "have finished.", "danger")
-            return index()
-
-        # ENFORCE WEEKLY LIMIT AND DISPLAY INFO MESSAGE
-        week_ago = datetime.utcnow() - timedelta(days=7)
-        week_complete = UserFile.query.filter_by(user_id=current_user.id)\
-            .filter_by(run_complete=True).filter(UserFile.upload_time > week_ago)\
-            .all()
-        n_week = len(week_complete)
-        n_week_max = int(max([r.uploads_pw for r in current_user.roles]))
-        # if len(week_complete>9):
-        if n_week >= n_week_max:
-            first_time = min([p.upload_time for p in week_complete])
-            wait_time = first_time + timedelta(days=7) - datetime.utcnow()
-            wait_str = misc.get_wait_time_string(wait_time)
-            flash("Sorry, you've used your allotted runs for this week. "
-                  "You can try again in {}.".format(wait_str), "danger")
-            return index()
-
     form = UploadForm()
     if form.validate_on_submit():
-        # upload = Upload(uploader=current_user)
-        mut_filename = secure_filename(form.mut_file.data.filename)
-        temp_file = TempFile(form.mut_file.data)
-        file_tester = FileTester(temp_file.path)
-
-        # ABORT IF FILE HAS ISSUES
-        if file_tester.data_issues:
-            for issue in file_tester.data_issues:
-                flash(issue, 'danger')
+        try:
+            mut_file = MutationFile(form.mut_file.data)
+        except ValidationError as e:
+            flash(str(e), 'danger')
             return render_template('pway/upload.html', form=form)
 
-        # CREATE NEW USER IF UNAUTHENTICATED
+        # CREATE NEW USER IF UNAUTHENTICATED (HERE, FILE IS VALID)
         if not current_user.is_authenticated():
             # create guest user
-            temp_pswd = User.generate_random_password()
-            temp_user = User(password_raw=temp_pswd)
-            db.session.add(temp_user)
-            db.session.commit()
-            temp_uname = User.get_guest_username(temp_user.id)
-            temp_user.email = temp_uname
-            temp_user.confirmed_at = datetime.utcnow()
-            temp_user.roles.append(Role.query.filter_by(name='anonymous').one())
-            db.session.commit()
+            temp_user, temp_pswd = create_anonymous_user()
             flash('Your temporary username is {} and password is {}. '.format(
-                temp_uname, temp_pswd) + 'This account will be deleted in '
+                temp_user.email, temp_pswd) + 'This account will be deleted in '
                 '{} days.'.format(current_app.config['ANONYMOUS_MAX_AGE_DAYS']),
                 'info')
             login_user(temp_user, force=True, remember=True)
 
-        # CREATE USERFILE OBJECT
-        user_id = current_user.id
-        user_upload = UserFile(filename=mut_filename, user_id=user_id)
+        # CREATE USERFILE FROM FORM
+        mut_filename = secure_filename(form.mut_file.data.filename)
+        user_upload = UserFile(filename=mut_filename, user_id=current_user.id)
         form.to_model(user_upload)
-        user_upload.is_valid = True
-        user_upload.run_complete = False
-        db.session.add(user_upload)
-        db.session.commit()
-        current_app.logger.info("Project {} uploaded by {}".format(
-            user_upload.file_id, current_user.email))
-        user_folder = naming_rules.get_user_folder(user_id)
-        proj_folder = naming_rules.get_project_folder(user_upload)
-        if not os.path.exists(user_folder):
-            os.mkdir(user_folder)
-        os.mkdir(proj_folder)
-        file_path = os.path.join(proj_folder,
-                                 user_upload.get_local_filename())
-        # MOVE/COPY TEMP FILE
-        if file_tester.line_endings == '\n':
-            os.rename(temp_file.path, file_path)
-        else:  # rewrite file with \n line endings
-            with open(temp_file.path, 'rU') as file:
-                with open(file_path, 'w') as out:
-                    for line in file:
-                        out.write(line)
-            os.remove(temp_file.path)
+        # CREATE PROJECT FOLDER, TWEAK USERFILE, MOVE MUTATIONS
+        out = initialize_project(user_upload=user_upload, mut_file=mut_file)
+        user_upload, proj_folder, file_path = out
 
         flash('File accepted and validated. Analysis in progress.',
               'success')
-        # want analysis to run asynchronously!
+        # run analysis asynchronously
         # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
         run_analysis(proj_folder, file_path, user_upload.file_id)
         return redirect(url_for('.index'))
 
     # MESSAGES FOR INITIAL UPLOAD PAGE ACCESS OR FAILED UPLOAD
     if current_user.is_authenticated():
-        message = "You've run {} projects in the last week. ".format(n_week)
-        message += "Your weekly limit is {}.".format(n_week_max)
-        if incomplete:
+        message = "You've run {} projects in the last week. ".format(g.n_week)
+        message += "Your weekly limit is {}.".format(g.n_week_max)
+        if g.incomplete:
             message += "\nYou have {} jobs still running."\
-                .format(len(incomplete))
+                .format(len(g.incomplete))
         flash(message, "info")
     else:
         flash("You can upload here as a new guest user, but with severe "

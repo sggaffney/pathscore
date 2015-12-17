@@ -26,9 +26,10 @@
         <th>Zip</th>
     </tr>
     {% for proj in projects %}
+        {% set url_dict = proj.get_related_urls() %}
         {% if proj.run_complete %}
             <tr class="success">
-            <td><a href="{{ url_for('pway.results', proj=proj.get_local_filename()) }}">{{ proj.get_local_filename() }}</a></td>
+            <td><a href="{{ url_dict['results_url'] }}">{{ proj.get_local_filename() }}</a></td>
         {% else %}
             <tr>
             <td>{{ proj.get_local_filename() }}</td>
@@ -41,13 +42,13 @@
             <td>{{ proj.n_loaded if proj.n_loaded is not none else '' }}</td>
 
         {% if proj.n_ignored %}
-            <td><a href="{{ url_for('pway.get_filtered', projId=proj.file_id, type='ignored') }}">{{ proj.n_ignored }}</a></td>
+            <td><a href="{{ url_dict['filtered_ignored'] }}">{{ proj.n_ignored }}</a></td>
         {% else  %}
             <td>{{ '' if proj.n_ignored is none else 0 }}</td>
         {% endif %}
 
         {% if proj.n_rejected %}
-            <td><a href="{{ url_for('pway.get_filtered', projId=proj.file_id, type='rejected') }}">{{ proj.n_rejected }}</a></td>
+            <td><a href="{{ url_dict['filtered_rejected'] }}">{{ proj.n_rejected }}</a></td>
         {% else %}
             <td>{{ '' if proj.n_ignored is none else 0 }}</td>
         {% endif %}
@@ -68,7 +69,7 @@
         {% if proj.run_complete %}
             <td>
                 <!--<a href="{{ url_for('pway.archive', proj=proj.file_id) }}">-->
-            <form method="get" action="{{ url_for('pway.archive', proj=proj.file_id) }}">
+            <form method="get" action="{{ url_dict['archive_url'] }}">
                 <input type="hidden" name="proj" value="{{ proj.file_id }}">
                 <button class="btn btn-default" aria-label="Download Archive">
                     <span class="glyphicon glyphicon-download" aria-hidden="true"></span>

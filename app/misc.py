@@ -2,9 +2,22 @@ import unicodedata as ud
 from subprocess import check_call
 from glob import glob
 import os
+import re
 from itertools import combinations_with_replacement
 import numpy as np
 import subprocess
+
+
+class GeneListTester(object):
+    """Holds regex string for testing gene lists."""
+    hugo_re_str = "([A-Z0-9-]{1,}[,]{0,})+$"
+
+    @staticmethod
+    def is_valid(genes_str):
+        if re.match(GeneListTester.hugo_re_str, genes_str):
+            return True
+        else:
+            return False
 
 
 def simplify_string(odd_string):

@@ -1,16 +1,18 @@
+import os
 from datetime import datetime, timedelta
 import random
 import string
-from werkzeug.security import generate_password_hash, check_password_hash
+from collections import OrderedDict
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-from flask import request, current_app
-from flask_login import UserMixin
+from flask import current_app, url_for
+from flask_login import UserMixin, current_user
 from flask_security import RoleMixin
 from . import db, login_manager
-import unicodedata as ud
 from unidecode import unidecode
-from flask_wtf.file import FileField, FileAllowed, FileRequired
-from flask.ext.security.utils import encrypt_password
+from flask.ext.security.utils import encrypt_password, verify_password
+import naming_rules
+from errors import ValidationError
+from misc import GeneListTester
 
 # Define models
 roles_users = db.Table('roles_users',
@@ -48,24 +50,9 @@ class User(UserMixin, db.Model):
         """Used by manager adduser to has password."""
         self.password = encrypt_password(password)
 
-    # def verify_password(self, password):
-    #     return check_password_hash(self.password_hash, password)
-
-    def get_api_token(self, expiration=300):
-        s = Serializer(current_app.config['SECRET_KEY'], expiration)
-        return s.dumps({'user': self.id}).decode('utf-8')
-
-    @staticmethod
-    def validate_api_token(token):
-        s = Serializer(current_app.config['SECRET_KEY'])
-        try:
-            data = s.loads(token)
-        except:
-            return None
-        id = data.get('user')
-        if id:
-            return User.query.get(id)
-        return None
+    def verify_password(self, password):
+        return verify_password(password, self.password)
+        # return check_password_hash(self.password_hash, password)
 
     def get_auth_token(self, expiration=300):
         s = Serializer(current_app.config['SECRET_KEY'], expiration)
@@ -132,7 +119,7 @@ class UserFile(db.Model):
     upload_time = db.Column(db.DateTime(), default=datetime.utcnow)
     is_valid = db.Column(db.Boolean)
     run_complete = db.Column(db.Boolean)
-    algorithm = db.Column(db.String(255), default='gene_size')
+    algorithm = db.Column(db.String(255), default='gene_length')
     genome_size = db.Column(db.String(255), default=False)
     n_cutoff = db.Column(db.Integer)
     required_genes = db.Column(db.Text())
@@ -167,7 +154,7 @@ class UserFile(db.Model):
     def ignore_short(self):
         ignore_list = self.ignore_genes.split(',')
         ignore_str = ','.join(ignore_list[0:5])
-        if len(ignore_list)>5:
+        if len(ignore_list) > 5:
             ignore_str += '...'
         return ignore_str
 
@@ -184,3 +171,131 @@ class UserFile(db.Model):
             return None
         timediff = timedelta(days=current_app.config['PROJ_MAX_AGE_DAYS'])
         return self.upload_time + timediff
+
+    def get_url(self):
+        return url_for('api.get_project', file_id=self.file_id, _external=True)
+
+    def get_related_urls(self):
+        url_dict = OrderedDict()
+        if self.run_complete:
+            url_dict['status'] = 'Project complete.'
+            url_dict['archive_url'] = url_for('pway.archive', proj=self.file_id,
+                                              _external=True)
+            url_dict['results_url'] = url_for('pway.results', proj=self.file_id,
+                                              _external=True)
+            url_dict['scatter_url'] = url_for('pway.scatter', proj=self.file_id,
+                                              _external=True)
+            url_dict['tree_url'] = url_for('pway.tree', proj=self.file_id,
+                                           _external=True)
+        elif self.run_complete == 0:
+            url_dict['status'] = 'Not yet complete.'
+        elif self.run_complete is None:
+            url_dict['status'] = 'Failed.'
+        url_dict['filtered_ignored'] = url_for('pway.get_filtered',
+                                               proj=self.file_id,
+                                               type='ignored', _external=True)
+        url_dict['filtered_rejected'] = url_for('pway.get_filtered',
+                                                proj=self.file_id,
+                                                type='rejected', _external=True)
+        return url_dict
+
+    def export_data(self):
+        info_dict = OrderedDict([
+            ('self_url', self.get_url()),
+            ('name', self.get_local_filename()),
+            ('upload_time', self.upload_time),
+            ('algorithm', self.algorithm),
+            ('required_genes', self.required_genes),
+            ('ignore_genes', self.ignore_genes),
+            ('n_patients', self.n_patients),
+            ('n_rejected', self.n_rejected),
+            ('n_ignored', self.n_ignored),
+            ('n_loaded', self.n_loaded)
+        ])
+        url_dict = self.get_related_urls()
+        for key, val in url_dict.iteritems():
+            info_dict[key] = val
+        return info_dict
+
+    def import_data(self, data):
+        """Create UserFile from http form data - used by API.
+
+        Args:
+            data (dict): form data from http request.
+        """
+        algorithm = data.get('algorithm', None)
+        required_genes = data.get('required_genes', None)
+        ignore_genes = data.get('ignore_genes', None)
+        proj_suffix = data.get('proj_suffix', None)
+
+        if algorithm:
+            if algorithm not in ['gene_count', 'gene_length']:
+                raise ValidationError("Algorithm should be one of: "
+                                      "gene_count, gene_length.")
+            else:
+                self.algorithm = algorithm
+        if required_genes:
+            if not GeneListTester.is_valid(required_genes):
+                raise ValidationError("Required genes must comma-separated, "
+                                      "no spaces.")
+            elif len(required_genes) > 600:
+                raise ValidationError("600 char limit for required_genes.")
+            else:
+                self.required_genes = required_genes
+        if ignore_genes:
+            if not GeneListTester.is_valid(ignore_genes):
+                raise ValidationError("Ignored genes must comma-separated, "
+                                      "no spaces.")
+            elif len(ignore_genes) > 600:
+                raise ValidationError("600 char limit for ignore_genes.")
+            else:
+                self.ignore_genes = ignore_genes
+        if proj_suffix:
+            if len(proj_suffix) > 40:
+                raise ValidationError("40 char limit for proj_suffix.")
+            self.proj_suffix = proj_suffix
+
+
+def create_anonymous_user():
+    """Create a new anonymous user with random password."""
+    temp_pswd = User.generate_random_password()
+    temp_user = User(password_raw=temp_pswd)
+    db.session.add(temp_user)
+    db.session.commit()
+    temp_uname = User.get_guest_username(temp_user.id)
+    temp_user.email = temp_uname
+    temp_user.confirmed_at = datetime.utcnow()
+    temp_user.roles.append(Role.query.filter_by(name='anonymous').one())
+    db.session.commit()
+    return temp_user, temp_pswd
+
+
+def initialize_project(user_upload=None, mut_file=None):
+    """Tweak upload object. Initialize folder and move mutation file.
+
+    Args:
+        user_upload (UserFile): upload Model instance
+        mut_file (MutationFile): mutation file info and methods
+    """
+
+    # CREATE USERFILE FROM FORM AND ADD TO DB
+    user_upload.is_valid = True
+    user_upload.run_complete = False
+    db.session.add(user_upload)
+    db.session.commit()
+
+    current_app.logger.info("Project {} uploaded by {}".format(
+        user_upload.file_id, current_user.email))
+
+    # MAKE PROJECT FOLDER
+    user_folder = naming_rules.get_user_folder(user_upload.user_id)
+    proj_folder = naming_rules.get_project_folder(user_upload)
+    if not os.path.exists(user_folder):
+        os.mkdir(user_folder)
+    os.mkdir(proj_folder)
+
+    # MOVE TEMP FILE
+    file_path = os.path.join(proj_folder, user_upload.get_local_filename())
+    mut_file.move_file(file_path)  # move to project folder
+
+    return user_upload, proj_folder, file_path

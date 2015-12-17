@@ -19,6 +19,7 @@ from .models import User, Role
 
 dbvars = dict()  # set in create_app. used in mysqldb queries.
 
+
 def create_app(config_name):
     app = Flask(__name__)
     # development, testing, production, default
@@ -73,6 +74,13 @@ def create_app(config_name):
 
     from .auth import auth as auth_blueprint
     app.register_blueprint(auth_blueprint)
+
+    from .api import api as api_blueprint
+    app.register_blueprint(api_blueprint, url_prefix='/api')
+
+    if app.config['USE_TOKEN_AUTH']:
+        from api.token import token as token_blueprint
+        app.register_blueprint(token_blueprint, url_prefix='/auth')
 
     from .momentjs import momentjs
     app.jinja_env.globals['momentjs'] = momentjs
