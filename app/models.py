@@ -93,6 +93,7 @@ class User(UserMixin, db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+
 @login_manager.token_loader
 def load_token(token):
     s = Serializer(current_app.config['SECRET_KEY'])

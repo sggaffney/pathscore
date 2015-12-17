@@ -1,5 +1,6 @@
 from flask import jsonify, url_for, current_app
 
+
 def not_modified():
     response = jsonify({'status': 304, 'error': 'not modified'})
     response.status_code = 304

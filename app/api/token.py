@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, g
+from flask import Blueprint, g
 from flask_httpauth import HTTPBasicAuth
 from ..models import User
 from .errors import unauthorized

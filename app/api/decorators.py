@@ -51,8 +51,8 @@ def rate_limit(limit, period):
                 # set the rate limit headers in g, so that they are picked up
                 # by the after_request handler and attached to the response
                 g.headers = {
-                    'X-RateLimit-Remaining': str(limiter.remaining
-                        if limiter.remaining >= 0 else 0),
+                    'X-RateLimit-Remaining':
+                        str(limiter.remaining if limiter.remaining >= 0 else 0),
                     'X-RateLimit-Limit': str(limit),
                     'X-RateLimit-Reset': str(limiter.reset)
                 }

@@ -4,7 +4,6 @@ from flask_login import login_required, current_user, login_user
 from werkzeug.utils import secure_filename
 import os
 import signal
-from datetime import datetime, timedelta
 from collections import OrderedDict
 import numpy as np
 from bokeh.plotting import figure, ColumnDataSource, hplot
@@ -17,12 +16,11 @@ from bokeh.models.widgets import TextInput
 from bokeh.models import Callback
 from bokeh.io import vform
 
-from . import pway  #, FileTester, TempFile
+from . import pway  # FileTester, TempFile
 from ..maf import MutationFile
 from ..errors import ValidationError
 from .forms import UploadForm
 from ..models import UserFile, create_anonymous_user, initialize_project
-from .. import db
 from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
 from ..admin import zip_project
 from .. import naming_rules
@@ -72,7 +70,8 @@ def scatter():
         # Use specified project from args or highest file_id as CURRENT PROJECT
         current_proj = upload_list[-1]  # override if valid proj specified
         if show_proj:
-            current_temp = [u for u in upload_list if u.file_id == int(show_proj)]
+            current_temp = [u for u in upload_list
+                            if u.file_id == int(show_proj)]
             # if not among user's finished projects, use highest file_id
             if len(current_temp) == 1:
                 current_proj = current_temp[0]
@@ -80,7 +79,7 @@ def scatter():
                 current_proj = upload_list[-1]
         detail_path = naming_rules.get_detailed_path(current_proj)
         all_pathways = load_pathway_list_from_file(detail_path)
-        data_pways, data_pvals, data_effect, data_D = [], [], [], []
+        data_pways, data_pvals, data_effect, data_d = [], [], [], []
         for p in all_pathways:
             pval = float(p.p_value)
             if pval >= 0.05:
@@ -88,10 +87,10 @@ def scatter():
             data_pvals.append(pval)
             data_effect.append(float(p.n_effective) / p.n_actual)
             data_pways.append(p)
-            data_D.append(p.D)
+            data_d.append(p.D)
         x = np.log2(np.array(data_effect))  # effect size
         y = -np.log10(np.array(data_pvals))  # p-value
-        D = np.array(data_D)  # alternatively: np.log2...
+        d_vals = np.array(data_d)  # alternatively: np.log2...
         # adjust zero pvalues. e-15.9 seems to be minimum.
         max_y = max([np.ceil(max([i for i in x if i != np.inf])),
                      np.float64(17)])
@@ -99,7 +98,7 @@ def scatter():
         pnames = [misc.strip_contributors(p.nice_name) for p in data_pways]
         xyvalues = ColumnDataSource({'effect': x,
                                      'pvals': y,
-                                     'D': D,
+                                     'D': d_vals,
                                      'pname': pnames})
         tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
                 "box_select,hover"  # poly_select,lasso_select, previewsave
@@ -145,10 +144,10 @@ def scatter():
 
     return render_template('pway/scatter.html', current_proj=current_proj,
                            projects=upload_list, js_name=js_name,
-                           js_inds=js_inds, plot_inds=plot_inds, has_cnv=has_cnv,
-                           user_id=current_user.id, bokeh_script=script,
-                           bokeh_div=div, include_genes=include,
-                           resources=resources)
+                           js_inds=js_inds, plot_inds=plot_inds,
+                           has_cnv=has_cnv, user_id=current_user.id,
+                           bokeh_script=script, bokeh_div=div,
+                           include_genes=include, resources=resources)
 
 
 @pway.route('/compare')
@@ -250,14 +249,14 @@ def compare():
         tools = "crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
                 "box_select,hover"  # poly_select,lasso_select, previewsave
         if show_logged:
-            plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
-                          logo=None, toolbar_location="above",
+            plot = figure(tools=tools, plot_height=400, plot_width=600,
+                          title=None, logo=None, toolbar_location="above",
                           x_axis_label=xlabel,
                           y_axis_label=ylabel,
                           x_range=[0, maxx], y_range=[0, maxy])
         else:
-            plot = figure(tools=tools, plot_height=400, plot_width=600, title=None,
-                          logo=None, toolbar_location="above",
+            plot = figure(tools=tools, plot_height=400, plot_width=600,
+                          title=None, logo=None, toolbar_location="above",
                           x_axis_label=xlabel, y_axis_label=ylabel,
                           x_range=[minx, maxx], y_range=[miny, maxy],
                           x_axis_type="log", y_axis_type="log")
@@ -340,7 +339,8 @@ def compare():
             has_cnv = False
 
     else:  # not enough projects yet!
-        flash("Two completed projects are required for a comparison.", "warning")
+        flash("Two completed projects are required for a comparison.",
+              "warning")
         return redirect(url_for('.index'))
 
     return render_template('pway/compare.html',
@@ -409,6 +409,7 @@ def archive(proj):
     filename = os.path.basename(zip_path)
     return send_file(zip_path, mimetype='application/zip',
                      as_attachment=True, attachment_filename=filename)
+
 
 @pway.route('/demofile')
 def demo_file():
