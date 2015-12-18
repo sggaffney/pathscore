@@ -1,7 +1,6 @@
-# import os
-from flask import current_app, g  # redirect, url_for, abort,\
-#     request, current_app, send_file, send_from_directory
-from flask_login import current_user, login_user  # login_required
+import os
+from flask import current_app, g, send_file  # redirect, url_for, abort,
+from flask_login import current_user, login_user
 from flask import request
 from . import api
 from app import db
@@ -11,7 +10,8 @@ from ..errors import ValidationError
 from ..maf import MutationFile
 from ..models import UserFile, create_anonymous_user, initialize_project
 from ..admin import delete_project_folder
-# from ..get_effective_pathways import run_analysis
+from ..get_effective_pathways import run_analysis
+from ..admin import zip_project
 from auth import auth
 
 
@@ -23,6 +23,18 @@ def test():
     a = request.get_json()
     a.update({'hola': 'amigo'})
     return a, 201, {'Location': 'some_link.html'}
+
+
+@api.route('/archives/<int:proj>', methods=['GET'])
+@auth.login_required
+def archive(proj):
+    upload_obj = UserFile.query.\
+        filter_by(user_id=g.user.id, file_id=proj).\
+        first_or_404()
+    zip_path = zip_project(upload_obj)
+    filename = os.path.basename(zip_path)
+    return send_file(zip_path, mimetype='application/zip',
+                     as_attachment=True, attachment_filename=filename)
 
 
 @api.route('/projects/', methods=['GET'])
@@ -94,6 +106,6 @@ def upload():
         else success_msg
 
     # RUN ANALYSIS:
-    # run_analysis(proj_folder, file_path, user_upload.file_id)
+    run_analysis(proj_folder, file_path, user_upload.file_id)
 
     return rv, 201, {'Location': user_upload.get_url()}

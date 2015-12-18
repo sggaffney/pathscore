@@ -69,7 +69,7 @@
         {% if proj.run_complete %}
             <td>
                 <!--<a href="{{ url_for('pway.archive', proj=proj.file_id) }}">-->
-            <form method="get" action="{{ url_dict['archive_url'] }}">
+            <form method="get" action="{{ url_for('pway.archive', proj=proj.file_id) }}">
                 <input type="hidden" name="proj" value="{{ proj.file_id }}">
                 <button class="btn btn-default" aria-label="Download Archive">
                     <span class="glyphicon glyphicon-download" aria-hidden="true"></span>

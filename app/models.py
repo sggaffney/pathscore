@@ -180,8 +180,6 @@ class UserFile(db.Model):
         url_dict = OrderedDict()
         if self.run_complete:
             url_dict['status'] = 'Project complete.'
-            url_dict['archive_url'] = url_for('pway.archive', proj=self.file_id,
-                                              _external=True)
             url_dict['results_url'] = url_for('pway.results', proj=self.file_id,
                                               _external=True)
             url_dict['scatter_url'] = url_for('pway.scatter', proj=self.file_id,
@@ -192,6 +190,8 @@ class UserFile(db.Model):
             url_dict['status'] = 'Not yet complete.'
         elif self.run_complete is None:
             url_dict['status'] = 'Failed.'
+        url_dict['archive_url'] = url_for('api.archive', proj=self.file_id,
+                                          _external=True)
         url_dict['filtered_ignored'] = url_for('pway.get_filtered',
                                                proj=self.file_id,
                                                type='ignored', _external=True)

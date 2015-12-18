@@ -1,18 +1,11 @@
 from flask import Blueprint, g, url_for
-from errors import bad_request, not_found
+from errors import bad_request, not_found, not_allowed
 from ..errors import ValidationError
 from auth import auth
 from decorators import json, rate_limit
 
 
 api = Blueprint('api', __name__)
-
-
-def get_catalog():
-    return {'students_url': url_for('api.get_students', _external=True),
-            'classes_url': url_for('api.get_classes', _external=True),
-            'registrations_url': url_for('api.get_registrations',
-                                         _external=True)}
 
 
 @api.errorhandler(ValidationError)
@@ -23,6 +16,17 @@ def validation_error(e):
 @api.errorhandler(400)
 def bad_request_error(e):
     return bad_request('invalid request')
+
+
+@api.errorhandler(404)
+@auth.login_required
+def not_found_error(e):
+    return not_found('item not found')
+
+
+@api.errorhandler(405)
+def method_not_allowed_error(e):
+    return not_allowed()
 
 
 @api.before_request
