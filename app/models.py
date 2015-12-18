@@ -5,8 +5,8 @@ import string
 from collections import OrderedDict
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app, url_for
-from flask_login import UserMixin, current_user
-from flask_security import RoleMixin
+from flask_login import current_user
+from flask_security import RoleMixin, UserMixin
 from . import db, login_manager
 from unidecode import unidecode
 from flask.ext.security.utils import encrypt_password, verify_password
@@ -37,6 +37,7 @@ class User(UserMixin, db.Model):
                       nullable=True, unique=True, index=True)
     password = db.Column(db.String(255))
     member_since = db.Column(db.DateTime(), default=datetime.utcnow)
+    active = db.Column(db.Boolean())
     confirmed_at = db.Column(db.DateTime())
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
