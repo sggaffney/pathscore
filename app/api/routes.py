@@ -12,7 +12,7 @@ from ..models import UserFile, create_anonymous_user, initialize_project
 from ..admin import delete_project_folder
 from ..get_effective_pathways import run_analysis
 from ..admin import zip_project
-from auth import auth
+from auth import auth, auth_optional
 
 
 @api.route('/', methods=['POST'])
@@ -71,6 +71,7 @@ def delete_project(file_id):
 @api.route('/projects/', methods=['POST'])
 @limit_user_uploads
 # @ssl_required
+@auth_optional.login_required
 @json
 def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""

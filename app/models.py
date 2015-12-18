@@ -255,6 +255,7 @@ class UserFile(db.Model):
             if len(proj_suffix) > 40:
                 raise ValidationError("40 char limit for proj_suffix.")
             self.proj_suffix = proj_suffix
+        return self
 
 
 def create_anonymous_user():
