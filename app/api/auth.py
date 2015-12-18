@@ -33,7 +33,7 @@ def verify_password(email_or_token, password):
 
 
 @auth_optional.verify_password
-def verify_optional_password(email_or_token='', password=''):
+def verify_optional_password(email_or_token, password):
     if email_or_token == '':
         return True
 
