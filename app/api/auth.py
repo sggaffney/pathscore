@@ -33,8 +33,8 @@ def verify_password(email_or_token, password):
 
 
 @auth_optional.verify_password
-def verify_optional_password(email_or_token=None, password=None):
-    if email_or_token is None:
+def verify_optional_password(email_or_token='', password=''):
+    if email_or_token == '':
         return True
 
     if current_app.config['USE_TOKEN_AUTH']:
