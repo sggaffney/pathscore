@@ -227,7 +227,8 @@ class UserFile(db.Model):
         # CHECK FOR BAD PARAMETERS
         allowed_keys = {'algorithm', 'required_genes', 'ignore_genes',
                         'proj_suffix'}
-        unrecognized = allowed_keys.difference(set(data.keys()))
+        provided_keys = set(data.keys())
+        unrecognized = provided_keys.difference(allowed_keys)
         if unrecognized:
             raise ValidationError("Unrecognized parameters: {}".\
                                   format(list(unrecognized)))
