@@ -224,6 +224,14 @@ class UserFile(db.Model):
         Args:
             data (dict): form data from http request.
         """
+        # CHECK FOR BAD PARAMETERS
+        allowed_keys = {'algorithm', 'required_genes', 'ignore_genes',
+                        'proj_suffix'}
+        unrecognized = allowed_keys.difference(set(data.keys()))
+        if unrecognized:
+            raise ValidationError("Unrecognized parameters: {}".\
+                                  format(list(unrecognized)))
+
         algorithm = data.get('algorithm', None)
         required_genes = data.get('required_genes', None)
         ignore_genes = data.get('ignore_genes', None)
