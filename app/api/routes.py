@@ -89,8 +89,8 @@ def upload():
     if not current_user.is_authenticated():
         # create guest user
         temp_user, temp_pswd = create_anonymous_user()
-        rv['username'] = temp_user.email
-        rv['password'] = temp_pswd
+        rv['user_name'] = temp_user.email
+        rv['user_password'] = temp_pswd
         rv['message'] = 'This temporary account will be deleted in {} days.'.\
             format(current_app.config['ANONYMOUS_MAX_AGE_DAYS'])
         login_user(temp_user, force=True, remember=True)
@@ -103,7 +103,7 @@ def upload():
 
     success_msg = 'File accepted and validated. Analysis in progress.'
     rv['status'] = 'Success.'
-    rv['msg'] = ' '.join([success_msg, rv['msg']]) if 'msg' in rv \
+    rv['message'] = ' '.join([success_msg, rv['message']]) if 'message' in rv \
         else success_msg
 
     # RUN ANALYSIS:
