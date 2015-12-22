@@ -1,0 +1,61 @@
+<p>
+    The resource URL for an individual project takes the form
+    https://pathscore.publichealth.yale.edu/<strong>api/projects/[project_id]</strong>.
+</p>
+
+<p>
+    As shown in the example below, the response includes several types of project
+    metadata:
+</p>
+<ul>
+    <li>User-specified upload parameters,
+        <ul>
+            <li>algorithm, name, ignore_genes, required_genes</li>
+        </ul>
+    </li>
+    <li>line counts for loaded, unused and rejected mutations,
+        <ul>
+            <li>n_loaded, n_rejected, n_unused</li>
+        </ul>
+    </li>
+    <li>URLs for unused and rejected mutations,
+        <ul>
+            <li>filtered_unused, filtered_rejected</li>
+        </ul>
+    </li>
+    <li>web interface results URLs,
+        <ul>
+            <li>flat_url, tree_url, scatter_url, compare_url</li>
+        </ul>
+    </li>
+    <li>archive URL for downloading the project as a zip file
+        <ul>
+            <li>archive_url</li>
+        </ul>
+    </li>
+</ul>
+
+
+<p>
+<code>$ http --auth=$TK: GET https://pathscore.publichealth.yale.edu/api/projects/50</code>
+</p>
+
+<pre><code>{
+    "algorithm": "gene_count",
+    "archive_url": "https://pathscore.publichealth.yale.edu/api/archives/50",
+    "filtered_rejected": "https://pathscore.publichealth.yale.edu/filtered?type=rejected&proj=50",
+    "filtered_unused": "https://pathscore.publichealth.yale.edu/filtered?type=ignored&proj=50",
+    "ignore_genes": "TP53,KRAS",
+    "n_loaded": 8320,
+    "n_patients": 253,
+    "n_rejected": 0,
+    "n_unused": 15,
+    "name": "50_LUAD_via_api",
+    "required_genes": "CBL",
+    "flat_url": "https://pathscore.publichealth.yale.edu/results?proj=50",
+    "scatter_url": "https://pathscore.publichealth.yale.edu/scatter?proj=50",
+    "self_url": "https://pathscore.publichealth.yale.edu/api/projects/50",
+    "status": "Project complete.",
+    "tree_url": "https://pathscore.publichealth.yale.edu/tree?proj=50",
+    "upload_time": "Wed, 04 Mar 2015 19:49:41 GMT"
+}</code></pre>

@@ -1,0 +1,46 @@
+<p>
+    Uploading a project as an anonymous user does not require authentication,
+    but other functionality, such as browsing projects, requires an authentication
+    token. You can request a token at the <strong>auth/request-token</strong> endpoint
+    using the POST method.
+    This initial request requires 'basic authentication' with your username and
+    password. Anonymous users receive a username and password automatically after
+    uploading a project. Make sure to send your request over SSL to protect your
+    details.
+</p>
+
+<p>
+    Authentication tokens expire after 1 hour. Later requests will require
+    a new token.
+</p>
+
+<h4>Command line example, using <a href="https://github.com/jkbrzt/httpie" target="_blank">httpie</a></h4>
+
+<code>$ http --auth=<em>demo@example.edu:password</em> <strong>POST</strong> https://pathscore.publichealth.yale.edu/auth/request-token</code>
+<p>
+<ul>
+    <li>To avoid exposing your password, exclude it from the above command to
+        get a password prompt.</li>
+    <li>Note the use of the POST method. Other request types will fail.</li>
+</ul>
+</p>
+
+
+<h5>Example response JSON</h5>
+<p><pre>
+{
+    "token": "eyJhbGciOiJIUzI1NiIsImV4cCI6MT"
+}
+</pre></p>
+<p>
+    Use this token in the authorization header of additional API requests as
+    username, with blank password. For example:
+</p>
+    <code>$ TK=eyJhbGciOiJIUzI1NiIsImV4cCI6MT</code><br />
+    <code>$ http --auth=<strong>$TK:</strong> GET https://pathscore.publichealth.yale.edu/<em>endpoint</em></code>
+<ul>
+    <li>Note the addition of a colon after the token. This tells httpie to use
+    an empty string as password.</li>
+</ul>
+
+

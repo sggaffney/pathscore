@@ -1,0 +1,44 @@
+<p>
+    A REST API lets you browse, create, modify and delete resources in a web app
+    using simple GET, POST, PUT, DELETE http requests, respectively. The API
+    returns an http response with helpful information in
+    <a href="https://en.wikipedia.org/wiki/Json" target="_blank">JSON</a> form.
+</p>
+
+<p>
+    PathScore's REST API provides a way of creating, browsing and deleting projects
+    without having to use the browser interface. It is straightforward to construct
+    http requests in a script or from the command line, which means that PathScore
+    can be called programmatically and plugged into analysis pipelines.
+</p>
+
+<p>
+    Resource URLs are referred to as 'endpoints'. The primary endpoint for Pathscore
+    is https://pathscore.publichealth.yale.edu/<strong>api/projects/</strong>.
+    The trailing backslash indicates a 'collection' of projects. A GET request
+    to this endpoint means "tell me what projects I have". A POST request means
+    "create a project with the attached form data". Individual projects are
+    located at <code>api/projects/[project_id]</code>.
+    You can 'GET' detailed project information, including results and archive urls,
+    or 'DELETE' the project.
+</p>
+
+<p>
+    The examples in this FAQ use the command line tool
+    <a href="https://github.com/jkbrzt/httpie" target="_blank">httpie</a> to
+    construct http requests. Each programming language will have its own methods.
+    Python, for example, offers the <a href="http://docs.python-requests.org/en/latest/"
+                                       target="_blank">requests</a> module:
+</p>
+<pre><code>import requests
+requests.get('http://pathscore.publichealth.yale.edu/api/projects/', auth=(token, ''))
+</code></pre>
+
+<p>
+Note the use of an authorization header in the example above. PathScore requires
+    a temporary authentication token for any API request, in order to match users to their
+    projects.
+</p>
+
+
+

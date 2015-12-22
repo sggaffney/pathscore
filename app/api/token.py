@@ -28,4 +28,4 @@ def request_token():
     # Note that a colon is appended to the token. When the token is sent in
     # the Authorization header this will put the token in the username field
     # and an empty string in the password field.
-    return {'token': g.user.get_auth_token(expiration=3600) + ':'}
+    return {'token': g.user.get_auth_token(expiration=3600)}

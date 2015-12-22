@@ -6,7 +6,7 @@
     <h1>FAQ</h1>
 </div>
 
-<h2><small>The interface</small></h2>
+<h2><small>The web interface</small></h2>
 
 <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
 
@@ -122,9 +122,128 @@
     </div>
   </div>
 
+</div>
 
+
+<h2><small>The REST API</small></h2>
+
+<div class="panel-group" id="accordion_api" role="tablist" aria-multiselectable="true">
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_api_about">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_api"
+           href="#collapse_api_about" aria-expanded="false" aria-controls="collapse_api_about">
+          What is the REST API?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_api_about" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_about">
+      <div class="panel-body">
+        {% include "faq_items/_faq_api_about.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_api_token">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_api"
+           href="#collapse_api_token" aria-expanded="false" aria-controls="collapse_api_token">
+          How do I authenticate my API requests?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_api_token" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_token">
+      <div class="panel-body">
+        {% include "faq_items/_faq_api_token.html" %}
+      </div>
+    </div>
+  </div>
+
+    <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_api_list">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_api"
+           href="#collapse_api_list" aria-expanded="false" aria-controls="collapse_api_list">
+          How can I browse a list of my projects?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_api_list" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_list">
+      <div class="panel-body">
+        {% include "faq_items/_faq_api_list.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_api_upload">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_api"
+           href="#collapse_api_upload" aria-expanded="false" aria-controls="collapse_api_upload">
+          How can I create a new project?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_api_upload" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_upload">
+      <div class="panel-body">
+        {% include "faq_items/_faq_api_upload.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_api_get_single">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_api"
+           href="#collapse_api_get_single" aria-expanded="false" aria-controls="collapse_api_get_single">
+          How can I get detailed information for a project?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_api_get_single" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_get_single">
+      <div class="panel-body">
+        {% include "faq_items/_faq_api_get_single.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_api_zip">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_api"
+           href="#collapse_api_zip" aria-expanded="false" aria-controls="collapse_api_zip">
+          How can I delete a project?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_api_zip" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_zip">
+      <div class="panel-body">
+        {% include "faq_items/_faq_api_zip.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_api_zip">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_api"
+           href="#collapse_api_zip" aria-expanded="false" aria-controls="collapse_api_zip">
+          How can I download a project zip archive using the API?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_api_zip" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_zip">
+      <div class="panel-body">
+        {% include "faq_items/_faq_api_zip.html" %}
+      </div>
+    </div>
+  </div>
 
 </div>
+
+
 
 <h2><small>Technical</small></h2>
 

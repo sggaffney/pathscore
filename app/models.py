@@ -181,8 +181,8 @@ class UserFile(db.Model):
         url_dict = OrderedDict()
         if self.run_complete:
             url_dict['status'] = 'Project complete.'
-            url_dict['results_url'] = url_for('pway.results', proj=self.file_id,
-                                              _external=True)
+            url_dict['flat_url'] = url_for('pway.results', proj=self.file_id,
+                                           _external=True)
             url_dict['scatter_url'] = url_for('pway.scatter', proj=self.file_id,
                                               _external=True)
             url_dict['tree_url'] = url_for('pway.tree', proj=self.file_id,
@@ -193,9 +193,9 @@ class UserFile(db.Model):
             url_dict['status'] = 'Failed.'
         url_dict['archive_url'] = url_for('api.archive', proj=self.file_id,
                                           _external=True)
-        url_dict['filtered_ignored'] = url_for('pway.get_filtered',
-                                               proj=self.file_id,
-                                               type='ignored', _external=True)
+        url_dict['filtered_unused'] = url_for('pway.get_filtered',
+                                              proj=self.file_id,
+                                              type='ignored', _external=True)
         url_dict['filtered_rejected'] = url_for('pway.get_filtered',
                                                 proj=self.file_id,
                                                 type='rejected', _external=True)
@@ -211,7 +211,7 @@ class UserFile(db.Model):
             ('ignore_genes', self.ignore_genes),
             ('n_patients', self.n_patients),
             ('n_rejected', self.n_rejected),
-            ('n_ignored', self.n_ignored),
+            ('n_unused', self.n_ignored),
             ('n_loaded', self.n_loaded)
         ])
         url_dict = self.get_related_urls()

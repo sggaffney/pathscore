@@ -1,0 +1,21 @@
+<p>
+    A zip archive can be obtained for a project using the archive endpoint:
+    <strong>api/archives/[project_id]</strong>, as listed in the project
+    metadata.
+</p>
+
+<p>
+    The '--download' flag in <a href="https://github.com/jkbrzt/httpie" target="_blank">httpie</a> allows downloading of the attached zip file:
+</p>
+
+<p>
+<code>$ http --download --auth=$TK: GET https://pathscore.publichealth.yale.edu/api/archives/50</code>
+</p>
+
+<pre style="white-space: pre-wrap"><code>HTTP/1.1 200 OK
+Content-Disposition: attachment; filename=50_SKCM_all_ignoreFishy.zip
+Content-Length: 16632178
+Content-Type: application/zip
+
+Downloading 15.86 MB to "50_LUAD_via_api.zip"
+ |  42.80 %    6.79 MB  326.43 kB/s  0:00:28 ETA</code></pre>

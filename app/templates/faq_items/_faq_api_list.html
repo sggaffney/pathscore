@@ -1,0 +1,95 @@
+<p>
+    You can browse your projects with a GET request to the
+    <strong>/api/projects/</strong> endpoint.
+</p>
+<p>
+    The default behavior is to return project URLs for up to ten projects, and
+    URLs for additional paginated results pages. Exapanded project information
+    and results filtering is made possible through query strings, as described
+    below.
+</p>
+
+
+<h5>Basic use</h5>
+
+<p>
+<code>$ http --auth=$TK: GET https://pathscore.publichealth.yale.edu/api/projects/</code>
+</p>
+
+<p>Response:</p>
+
+<pre><code>{
+    "meta": {
+        "first_url": "https://pathscore.publichealth.yale.edu/api/projects/?per_page=10&page=1",
+        "last_url": "https://pathscore.publichealth.yale.edu/api/projects/?per_page=10&page=3",
+        "next_url": "https://pathscore.publichealth.yale.edu/api/projects/?per_page=10&page=2",
+        "page": 1,
+        "pages": 3,
+        "per_page": 10,
+        "prev_url": null,
+        "total": 25
+    },
+    "projects": [
+        "https://pathscore.publichealth.yale.edu/api/projects/50",
+        "https://pathscore.publichealth.yale.edu/api/projects/51",
+        "https://pathscore.publichealth.yale.edu/api/projects/52",
+        "https://pathscore.publichealth.yale.edu/api/projects/54",
+        "https://pathscore.publichealth.yale.edu/api/projects/57",
+        "https://pathscore.publichealth.yale.edu/api/projects/69",
+        "https://pathscore.publichealth.yale.edu/api/projects/70",
+        "https://pathscore.publichealth.yale.edu/api/projects/71",
+        "https://pathscore.publichealth.yale.edu/api/projects/72",
+        "https://pathscore.publichealth.yale.edu/api/projects/73"
+    ]
+}</code></pre>
+
+<h5>Filtering</h5>
+
+<p>Projects can be filtered using the optional 'filter' query string parameter,
+which takes the form <code>filter=[field_name],[operator],[value]</code>.</p>
+
+<p>Filterable fields, based on upload form, include:
+<ul>
+    <li><code>algorithm</code></li>
+    <li><code>upload_time</code></li>
+    <li><code>proj_suffix</code> (the project name)</li>
+    <li><code>n_patients</code></li>
+</ul>
+</p>
+
+<p>Operators include: <code>eq</code>, <code>ne</code>, <code>lt</code>,
+    <code>le</code>, <code>gt</code>, <code>ge</code>, <code>like</code> and
+    <code>in</code>. Separate <code>in</code> values using commas. Multiple
+    filters can be concatenated using a semicolon.
+</p>
+
+Examples:
+
+<ul>
+    <li><code>proj_suffix,like,%tcga%</code> &mdash; projects with TCGA in the name.</li>
+    <li><code>upload_time,lt,2015-12-25</code> &mdash; projects uploaded before Dec 25, 2015.</li>
+    <li><code>n_patients,gt,200;n_patients,lt,300</code> &mdash; projects with between
+        200 and 300 patients.</li>
+</ul>
+
+<h5>Expanded info</h5>
+
+<p>Add <code>expand=True</code> to the query string to show full project details.</p>
+
+<h5>Sorting</h5>
+
+<p>The same fields used for filtering can also be used for sorting the results.
+    Sorting syntax takes the form <code>sort=[field name],[asc|desc]</code> in the
+    query string, e.g. <code>?sort=n_patients,desc</code> lists projects in order
+    of patient count, from largest to smallest.
+</p>
+
+<h5>Putting it all together</h5>
+
+<p>The following request shows the most recent projects with over 200 patients
+that used the 'gene length' algorithm:</p>
+<code style="white-space: pre-wrap">http --auth=$TK: GET https://pathscore.publichealth.yale.edu/api/projects/?sort=upload_time,desc&filter=n_patients,gt,200;algorithm,eq,gene_length</code>
+
+
+
+
