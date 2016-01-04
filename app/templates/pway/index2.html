@@ -29,7 +29,7 @@
         {% set url_dict = proj.get_related_urls() %}
         {% if proj.run_complete %}
             <tr class="success">
-            <td><a href="{{ url_dict['results_url'] }}">{{ proj.get_local_filename() }}</a></td>
+            <td><a href="{{ url_dict['flat_url'] }}">{{ proj.get_local_filename() }}</a></td>
         {% else %}
             <tr>
             <td>{{ proj.get_local_filename() }}</td>
