@@ -14,8 +14,7 @@ pyximport.install(setup_args={'include_dirs': np.get_include()})
 from sqlalchemy.orm.exc import StaleDataError
 from comb_functions import get_pway_likelihood_cython
 
-from . import db
-from .decorators import async
+from . import db, celery
 import emails
 from .models import UserFile
 import app
@@ -48,75 +47,76 @@ class MatlabFailureException(Exception):
         return repr(self.msg)
 
 
-@async
-def run_analysis_async(app, proj_dir, data_path, upload_id):
+# @async
+@celery.task
+def run_analysis_async(proj_dir, data_path, upload_id):
     """Asynchronous run of pathway analysis."""
     user_upload = UserFile.query.get(upload_id)
     user_upload.is_queued = 0
     db.session.add(user_upload)
     db.session.commit()
     # global dbvars
-    with app.app_context():
-        user_upload = UserFile.query.get(upload_id)
-        table = None
-        unused_gene_path = naming_rules.get_unused_gene_path(user_upload)
-        rejected_gene_path = naming_rules.get_rejected_gene_path(user_upload)
+    # with app.app_context():
+    table = None
+    unused_gene_path = naming_rules.get_unused_gene_path(user_upload)
+    rejected_gene_path = naming_rules.get_rejected_gene_path(user_upload)
+    try:
+        # self.update_state(state='PROGRESS', meta={'status': 'Loading data'})
+        table_name = user_upload.get_table_name()
+        table = MutationTable(table_name, data_path,
+                              unused_path=unused_gene_path,
+                              rejected_path=rejected_gene_path)
+        user_upload.n_rejected = table.n_rejected
+        user_upload.n_ignored = table.n_ignored
+        user_upload.n_loaded = table.n_loaded
+        db.session.add(user_upload)
+        db.session.commit()
+        if not table.loaded:
+            raise TableLoadException("Failed to load table {!r}."
+                                     .format(table_name))
+        user_upload.n_patients = count_patients(table_name)
+        db.session.add(user_upload)
+        db.session.commit()
+        run(proj_dir, table_name, user_upload)
+        user_upload.run_complete = True
+    except MatlabFailureException as e:
+        user_email = user_upload.uploader.email
+        current_app.logger.error("Matlab failure in proj {} ({}): {}"
+                                 .format(upload_id, user_email, e.args))
+    except TableLoadException as e:
+        user_email = user_upload.uploader.email
+        current_app.logger.error("Table load failure in proj {} ({}): {}"
+                                 .format(upload_id, user_email, e.args[0]))
+    except mdb.Error:
+        pass  # already logged by db commands
+    except Exception as e:  # catch all remaining errors
+        current_app.logger.error("Failure in proj {} for user {}.".format(
+                user_upload.file_id, user_upload.uploader.email))
+    finally:
+        if not user_upload.run_complete:
+            user_upload.run_complete = None
+            current_app.logger.info("Project {} failed for user {}.".format(
+                user_upload.file_id, user_upload.uploader.email))
+        else:
+            current_app.logger.info("Project {} completed for user {}.".format(
+                user_upload.file_id, user_upload.uploader.email))
+        if table:
+            drop_table(table_name)
         try:
-            table_name = user_upload.get_table_name()
-            table = MutationTable(table_name, data_path,
-                                  unused_path=unused_gene_path,
-                                  rejected_path=rejected_gene_path)
-            user_upload.n_rejected = table.n_rejected
-            user_upload.n_ignored = table.n_ignored
-            user_upload.n_loaded = table.n_loaded
             db.session.add(user_upload)
             db.session.commit()
-            if not table.loaded:
-                raise TableLoadException("Failed to load table {!r}."
-                                         .format(table_name))
-            user_upload.n_patients = count_patients(table_name)
-            db.session.add(user_upload)
-            db.session.commit()
-            run(proj_dir, table_name, user_upload)
-            user_upload.run_complete = True
-        except MatlabFailureException as e:
-            user_email = user_upload.uploader.email
-            current_app.logger.error("Matlab failure in proj {} ({}): {}"
-                                     .format(upload_id, user_email, e.args))
-        except TableLoadException as e:
-            user_email = user_upload.uploader.email
-            current_app.logger.error("Table load failure in proj {} ({}): {}"
-                                     .format(upload_id, user_email, e.args[0]))
-        except mdb.Error:
-            pass  # already logged by db commands
-        except Exception as e:  # catch all remaining errors
-            current_app.logger.error("Failure in proj {} for user {}.".format(
-                    user_upload.file_id, user_upload.uploader.email))
-        finally:
-            if not user_upload.run_complete:
-                user_upload.run_complete = None
-                current_app.logger.info("Project {} failed for user {}.".format(
-                    user_upload.file_id, user_upload.uploader.email))
-            else:
-                current_app.logger.info("Project {} completed for user {}.".format(
-                    user_upload.file_id, user_upload.uploader.email))
-            if table:
-                drop_table(table_name)
-            try:
-                db.session.add(user_upload)
-                db.session.commit()
-                emails.run_finished_notification(upload_id)
-            except StaleDataError as e:
-                current_app.logger.info("Early termination of stale project: {}".format(
-                    e.message))
+            emails.run_finished_notification(upload_id)
+        except StaleDataError as e:
+            current_app.logger.info("Early termination of stale project: {}".format(
+                e.message))
 
 
 def run_analysis(proj_dir, data_path, upload_id):
     # user_upload.run_accepted = True
     # db.session.add(user_upload)
     # db.session.commit()
-    app_obj = current_app._get_current_object()
-    run_analysis_async(app_obj, proj_dir, data_path, upload_id)
+    # app_obj = current_app._get_current_object()
+    run_analysis_async.delay(proj_dir, data_path, upload_id)
 
 
 def drop_table(table_name):
@@ -940,9 +940,11 @@ def run(dir_path, table_name, user_upload):
             genome_size = background_len_full
     else:
         raise Exception("Invalid algorithm selection ({})".format(alg))
+    # self.update_state(state='PROGRESS', meta={'status': 'Calculating L'})
     detail_path, matrix_folder = generate_initial_text_output(
         dir_path, table_name, user_upload, genome_size, alg=alg)
     # matrix_folder is typically 'matrix_txt'
+    # self.update_state(state='PROGRESS', meta={'status': 'Plotting'})
     generate_plot_files(user_upload, detail_path, table_name, dir_path,
                         matrix_folder, genome_size)
 
