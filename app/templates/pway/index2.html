@@ -54,13 +54,7 @@
         {% endif %}
 
             <!--<td>{{ proj.required_genes }} </td>-->
-        {% if proj.run_complete %}
-            <td>Complete</td>
-        {% elif proj.run_complete == False %}
-            <td>Running</td>
-        {% else %}
-            <td>Failed</td>
-        {% endif %}
+        <td>{{ proj.get_status() }}</td>
         {% if current_user.get_expiry_date() %}
             <td>{{ momentjs(current_user.get_expiry_date()).fromNow() }}</td>
         {% else %}

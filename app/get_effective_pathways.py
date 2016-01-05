@@ -51,6 +51,10 @@ class MatlabFailureException(Exception):
 @async
 def run_analysis_async(app, proj_dir, data_path, upload_id):
     """Asynchronous run of pathway analysis."""
+    user_upload = UserFile.query.get(upload_id)
+    user_upload.is_queued = 0
+    db.session.add(user_upload)
+    db.session.commit()
     # global dbvars
     with app.app_context():
         user_upload = UserFile.query.get(upload_id)

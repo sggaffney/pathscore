@@ -120,6 +120,7 @@ class UserFile(db.Model):
     filename = db.Column(db.String(255))
     upload_time = db.Column(db.DateTime(), default=datetime.utcnow)
     is_valid = db.Column(db.Boolean)
+    is_queued = db.Column(db.Boolean)
     run_complete = db.Column(db.Boolean)
     algorithm = db.Column(db.String(255), default='gene_length')
     genome_size = db.Column(db.String(255), default=False)
@@ -173,6 +174,18 @@ class UserFile(db.Model):
             return None
         timediff = timedelta(days=current_app.config['PROJ_MAX_AGE_DAYS'])
         return self.upload_time + timediff
+
+    def get_status(self):
+        """Status message for views."""
+        if self.is_queued:
+            return "Queued"
+        if self.run_complete:
+            return "Complete"
+        if self.run_complete is None:
+            return "Failed"
+        if not self.run_complete:
+            return "Running"
+        return "Unknown"
 
     def get_url(self):
         return url_for('api.get_project', file_id=self.file_id, _external=True)
@@ -293,6 +306,7 @@ def initialize_project(user_upload=None, mut_file=None):
     # CREATE USERFILE FROM FORM AND ADD TO DB
     user_upload.is_valid = True
     user_upload.run_complete = False
+    user_upload.is_queued = True
     db.session.add(user_upload)
     db.session.commit()
 
