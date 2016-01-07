@@ -15,11 +15,6 @@ sys.path.insert(1, os.path.join(user_dir,'pway_venv/lib/python2.7/site-packages'
 #sys.path.insert(0, '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7')  # for building cython
 #sys.path.insert(0,'/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/')
 
-
-# add most recent matlab
-matlab_path = sorted(glob('/Applications/MATLAB*'), reverse=True)[0] + '/bin'
-os.environ["PATH"] += os.pathsep + matlab_path
-
 from manage import app as application
 application.debug = False
 

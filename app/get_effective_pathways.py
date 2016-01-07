@@ -1211,7 +1211,7 @@ def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
         format(txtpath=txt_path, scores=scores_path, names=names_path,
                tree=tree_path, gsize=int(genome_size), hyper_path=hyper_path)
 
-    cmd = ['matlab', '-nosplash', '-nodesktop', '-r',
+    cmd = [current_app.config['MATLAB_PATH'], '-nosplash', '-nodesktop', '-r',
            plot_fn + ' exit;']
 
     with open(os.devnull, "r") as fnullin:
