@@ -41,7 +41,7 @@ def rate_limit(limit, period):
     def decorator(f):
         @functools.wraps(f)
         def wrapped(*args, **kwargs):
-            if current_app.config['USE_RATE_LIMITS']:
+            if hasattr(g, 'user') and current_app.config['USE_RATE_LIMITS']:
                 # generate a unique key to represent the decorated function and
                 # the IP address of the client. Rate limiting counters are
                 # maintained on each unique key.

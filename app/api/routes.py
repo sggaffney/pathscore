@@ -71,7 +71,7 @@ def delete_project(file_id):
 @api.route('/projects/', methods=['POST'])
 @limit_user_uploads
 # @ssl_required
-@auth_optional.login_required
+# @auth_optional.login_required  <- IN BEFORE_REQUEST
 @json
 def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""

@@ -553,8 +553,8 @@ class LCalculator():
     def _get_pway_likelihood_CI(self, pway_size=None):
         """Calculate pathway log likelihood at stated size."""
         ll = get_pway_likelihood_cython(self.G, pway_size,
-                                         self.n_patients, self.n_mutated_array,
-                                         self.is_mutated_array)
+                                        self.n_patients, self.n_mutated_array,
+                                        self.is_mutated_array)
         return ll - self.ne_ll + 1.92
 
     def _get_ne_old(self):
