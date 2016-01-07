@@ -456,7 +456,7 @@ def results():
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
     return render_template('pway/show_pathways_template.html',
                            projects=upload_list, user_id=current_user.id,
-                           show_proj=show_proj, proj_names=proj_names,
+                           show_proj=int(show_proj), proj_names=proj_names,
                            include_genes=include)
 
 

@@ -17,7 +17,7 @@
 			<div class="form-group">
 				<select class="form-control" id="projSelection" name="characters">
 				{% for proj in projects %}
-					{% if show_proj == proj.get_local_filename() %}
+					{% if show_proj == proj.file_id %}
 						<option value="{{ proj.file_id }}" selected="selected">
 					{% else %}
 						<option value="{{ proj.file_id }}">
