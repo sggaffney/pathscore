@@ -8,9 +8,6 @@ if os.path.exists('.env'):
 
 
 from app import celery, create_app
-print 'flask config:'
-print os.getenv('FLASK_CONFIG')
-
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 app.app_context().push()

@@ -1,5 +1,6 @@
 import os
 import redis
+from kombu import Exchange, Queue
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -52,6 +53,14 @@ class Config:
 
     CELERY_BROKER_URL = 'redis://localhost:6379/0'
     CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+    CELERY_DEFAULT_QUEUE = 'default'
+    CELERY_CREATE_MISSING_QUEUES = True
+    CELERY_ROUTES = {
+        'app.emails.run_finished_notification_async':
+            {'queue': 'mail'},
+        'app.get_effective_pathways.run_analysis_async':
+            {'queue': 'analysis'},
+    }
 
     # enable rate limits only if redis is running
     try:
