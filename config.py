@@ -40,6 +40,8 @@ class Config:
 
     DB_CNF = os.environ.get('MYSQLDB_CNF')
     DB_HOST = os.environ.get('MYSQLDB_HOST')
+    # recycle connection before mysql default 8hr wait timeout
+    SQLALCHEMY_POOL_RECYCLE = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', 3600))
 
     SERVER_NAME = os.environ.get('SERVER_NAME')
 

@@ -40,11 +40,7 @@ class TableLoadException(Exception):
 
 
 class MatlabFailureException(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __str__(self):
-        return repr(self.msg)
+    pass
 
 
 # @async
@@ -82,7 +78,7 @@ def run_analysis_async(proj_dir, data_path, upload_id):
     except MatlabFailureException as e:
         user_email = user_upload.uploader.email
         current_app.logger.error("Matlab failure in proj {} ({}): {}"
-                                 .format(upload_id, user_email, e.args))
+                                 .format(upload_id, user_email, e.args[0]))
     except TableLoadException as e:
         user_email = user_upload.uploader.email
         current_app.logger.error("Table load failure in proj {} ({}): {}"
