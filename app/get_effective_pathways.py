@@ -2,6 +2,7 @@
 
 from flask import current_app
 import MySQLdb as mdb
+import pandas as pd
 import numpy as np
 from scipy import stats
 from scipy.optimize import minimize_scalar, brentq
@@ -30,6 +31,7 @@ import naming_rules
 path_size_dict_full = lookup_path_sizes()
 path_len_dict_full = lookup_path_lengths()
 path_info_dict = fetch_path_info_global()
+path_name_dict = get_pathway_name_dict()
 
 background_len_full = lookup_background_size(use_length=True)
 background_count_full = lookup_background_size(use_length=False)
@@ -470,6 +472,7 @@ class LCalculator():
         self.G = genome_size  # genes in genome
         self.pway = pway
         self.likelihood = None
+        self.p_array = None  # p_value for each patient (pway.patients)
         self.ne = None
         self.ne_ll = None
         self.D = None
@@ -483,7 +486,7 @@ class LCalculator():
 
     def run(self):
         """ Calculate likelihood and maximum likelihood estimate."""
-        self.likelihood = self._get_pway_likelihood(self.pway.n_actual)
+        (self.likelihood, self.p_array) = self._get_pway_likelihood(self.pway.n_actual)
         (ne, lastll) = self._get_ne()
         self.ne = ne
         self.ne_ll = lastll
@@ -510,13 +513,13 @@ class LCalculator():
         """Calculate pathway log likelihood at stated size."""
         return get_pway_likelihood_cython(self.G, pway_size,
                                           self.n_patients, self.n_mutated_array,
-                                          self.is_mutated_array)
+                                          self.is_mutated_array, get_pvals=1)
 
     def _get_pway_likelihood_neg(self, pway_size=None):
         """Calculate pathway log likelihood at stated size."""
         ll = get_pway_likelihood_cython(self.G, pway_size,
-                                         self.n_patients, self.n_mutated_array,
-                                         self.is_mutated_array)
+                                        self.n_patients, self.n_mutated_array,
+                                        self.is_mutated_array, get_pvals=0)
         ll = np.nan if ll == -np.inf else ll
         return -1 * ll
 
@@ -550,7 +553,7 @@ class LCalculator():
         """Calculate pathway log likelihood at stated size."""
         ll = get_pway_likelihood_cython(self.G, pway_size,
                                         self.n_patients, self.n_mutated_array,
-                                        self.is_mutated_array)
+                                        self.is_mutated_array, get_pvals=0)
         return ll - self.ne_ll + 1.92
 
     def _get_ne_old(self):
@@ -746,7 +749,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
         GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
         self.allPathways = pway_object_list
-        self.nameDict = get_pathway_name_dict()
+        self.nameDict = path_name_dict
         self.outfile_name = self.root_name + self.name_postfix
         self.matrix_folder = 'matrix_txt'
         self.path_genelists_dict = path_genelists_dict
@@ -1019,7 +1022,10 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
     with open(hyper_path, 'w') as out:
         for patient_id in hypermutated:
             out.write(patient_id + '\n')
-
+    all_patient_names = [i for i in patient_size_dict]
+    df_p = pd.DataFrame(index=all_path_ids, columns=all_patient_names)
+    basic_writer = PathwayBasicFileWriter(dir_path, file_id,
+                                          name_suffix=proj_suffix)
     for pathway_number in all_path_ids:
         # Populate pathway object, and time pvalue calculation
         start = timeit.default_timer()
@@ -1030,14 +1036,18 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
         pway.set_pathway_size(path_size_dict)
         pway.patients = get_patient_list(pathway_number, patient_size_dict,
                                          path_patient_dict)
+        current_patient_names = [pa.patient_id for pa in pway.patients]
         lcalc = LCalculator(pway, genome_size)  # include optional genome_size
         lcalc.run()
         runtime = timeit.default_timer() - start
+        df_p.loc[pathway_number, current_patient_names] = lcalc.p_array
         # Write results to 'basic' file
-        basic_writer = PathwayBasicFileWriter(dir_path, file_id,
-                                              name_suffix=proj_suffix)
         basic_writer.write_pvalue_file(lcalc, runtime)
 
+    df_p['pathway'] = df_p.index.map(lambda x: path_name_dict.get(x, '?'))
+    df_p = df_p.set_index('pathway')
+    df_p.to_csv(naming_rules.get_pval_path(user_upload), sep='\t',
+                index=True, na_rep='nan')
     # Gather all pathway stats from text file
     assembler = PathwayListAssembler(dir_path, file_id, table_list,
                                      # patient_ids=None,

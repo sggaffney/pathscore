@@ -24,12 +24,15 @@ def get_pway_likelihood_cython(int G,
                         int pway_size,
                         int n_patients,
                         np.ndarray[DTYPE_ti, ndim=1] n_mutated_array,
-                        np.ndarray[DTYPE_ti, ndim=1] is_mutated_array):
+                        np.ndarray[DTYPE_ti, ndim=1] is_mutated_array,
+                        int get_pvals=0):
 
 
     cdef DTYPE_td Gd = np.float64(G)
     cdef np.ndarray[DTYPE_td, ndim=1] prob_array = np.zeros(n_patients,
                                                             dtype=np.float64)
+    cdef DTYPE_td log_sum = np.float64(0)
+
     cdef int patient_no
     cdef DTYPE_ti n_patient
     # cdef DTYPE_tb is_mutated
@@ -49,10 +52,14 @@ def get_pway_likelihood_cython(int G,
         else:
             # patient has too many hits to get zero pathway mutations
             p = 1  # observation (of mutation in pathway) certain
-        prob_array[patient_no] = -np.inf if p == 0 else np.log(p)
+        prob_array[patient_no] = p
+        log_sum += -np.inf if p == 0 else np.log(p)
         # prob_list.append(log(p))
     # prob_array = array(prob_list)
-    return prob_array.sum()
+    if get_pvals > 0:
+        return log_sum, prob_array
+    else:
+        return log_sum
 
 def get_p_no_mutations_cython(DTYPE_td G, int pway_size, DTYPE_ti n):
     """G is background genome size, x is pathway size, n is number of
