@@ -1,5 +1,5 @@
 import os
-from flask import Blueprint, g, flash, url_for, current_app
+from flask import Blueprint, g, flash, url_for, current_app, redirect
 from app.get_effective_pathways import path_info_dict
 from ..errors import LimitError
 
@@ -23,7 +23,7 @@ def get_n_pathways():
 @pway.errorhandler(LimitError)
 def validation_error(e):
     flash(str(e), "danger")
-    return url_for('.index')
+    return redirect(url_for('.index'), code=307)
 
 
 def get_common_js(is_archive=False):
