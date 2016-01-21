@@ -26,6 +26,7 @@ from ..admin import zip_project
 from .. import naming_rules
 from .. import misc
 from ..decorators import no_ssl, limit_user_uploads
+from .. import plot_fns
 
 
 @pway.route('/')
@@ -65,7 +66,7 @@ def scatter():
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
         filter_by(run_complete=True).order_by(UserFile.file_id).all()
     # proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
-    resources = Resources(mode="cdn")
+
     if upload_list:
         # Use specified project from args or highest file_id as CURRENT PROJECT
         current_proj = upload_list[-1]  # override if valid proj specified
@@ -77,77 +78,15 @@ def scatter():
                 current_proj = current_temp[0]
             else:
                 current_proj = upload_list[-1]
-        detail_path = naming_rules.get_detailed_path(current_proj)
-        all_pathways = load_pathway_list_from_file(detail_path)
-        data_pways, data_pvals, data_effect, data_d = [], [], [], []
-        for p in all_pathways:
-            pval = float(p.p_value)
-            if pval >= 0.05:
-                continue
-            data_pvals.append(pval)
-            data_effect.append(float(p.n_effective) / p.n_actual)
-            data_pways.append(p)
-            data_d.append(p.D)
-        x = np.log2(np.array(data_effect))  # effect size
-        y = -np.log10(np.array(data_pvals))  # p-value
-        d_vals = np.array(data_d)  # alternatively: np.log2...
-        # adjust zero pvalues. e-15.9 seems to be minimum.
-        max_y = max([np.ceil(max([i for i in x if i != np.inf])),
-                     np.float64(17)])
-        y[y == np.inf] = max_y
-        pnames = [misc.strip_contributors(p.nice_name) for p in data_pways]
-        xyvalues = ColumnDataSource({'effect': x,
-                                     'pvals': y,
-                                     'D': d_vals,
-                                     'pname': pnames})
-        tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
-                "box_select,hover"  # poly_select,lasso_select, previewsave
-        plot_config = dict(plot_height=400, plot_width=600, logo=None,
-                           tools=tools, title_text_font_size='14pt',
-                           toolbar_location='right')
-
-        plot1 = figure(title='Effect size vs p-value',
-                       x_axis_label="log2 fold change",
-                       y_axis_label="-log10 p-value",
-                       **plot_config)
-        plot1.xaxis.axis_label_text_font_size = "12pt"
-        plot1.yaxis.axis_label_text_font_size = "12pt"
-        plot1.scatter('effect', 'pvals', source=xyvalues, size=10, color="red",
-                      alpha=0.1, marker="circle", line_color="firebrick",
-                      line_alpha=0.5)
-
-        hover = plot1.select(dict(type=HoverTool))
-        hover.tooltips = OrderedDict([("name", "@pname")])
-        script, div = components(plot1, resources)
-        js_name = naming_rules.get_js_name(current_proj)
-        # IDS
-        all_ids = [p.path_id for p in all_pathways if float(p.p_value) < 0.05]
-        js_ids = [p.path_id for p in all_pathways if p.gene_set]
-        # INDICES IN JS_OBJECT OF PLOT POINTS. plot->js
-        js_inds = []
-        for i in all_ids:
-            try:
-                js_inds.append(js_ids.index(i))
-            except ValueError:
-                js_inds.append(-1)
-        # INDICES IN PLOT OF JS_OBJECT ITEMS (A SUBSET)
-        plot_inds = [all_ids.index(i) for i in js_ids]
-        proj_dir = naming_rules.get_project_folder(current_proj)
-        if os.path.exists(os.path.join(proj_dir, 'matrix_svg_cnv')):
-            has_cnv = True
-        else:
-            has_cnv = False
-
+        scatter_dict = plot_fns.get_scatter_dict(show_proj)
+        # includes js_name, js_inds, plot_inds, has_cnv, script, div
     else:  # no projects yet!
         flash("No project results to show yet.", "warning")
         return redirect(url_for('.index'))
 
     return render_template('pway/scatter.html', current_proj=current_proj,
-                           projects=upload_list, js_name=js_name,
-                           js_inds=js_inds, plot_inds=plot_inds,
-                           has_cnv=has_cnv, user_id=current_user.id,
-                           bokeh_script=script, bokeh_div=div,
-                           include_genes=include, resources=resources)
+                           projects=upload_list, user_id=current_user.id,
+                           include_genes=include, **scatter_dict)
 
 
 @pway.route('/compare')
@@ -374,24 +313,13 @@ def tree():
                 current_proj = current_temp[0]
             else:
                 current_proj = upload_list[-1]
-        # load ordered dictionary of path_ids : pathway_display_name
-        names_path, tree_path = naming_rules.get_tree_score_paths(current_proj)[1:3]
-        names_ordered_path = names_path + '.reorder'
-        tree_path = naming_rules.get_apache_path(tree_path) + 'z'
-        names_odict = OrderedDict()  # ordered dictionary of path_id: name
-        with open(names_ordered_path, 'rU') as f:
-            for line in f:
-                vals = line.strip('\n').split('\t')
-                if len(vals) != 2:
-                    continue
-                names_odict[vals[0]] = vals[1]
+        names_odict = plot_fns.get_tree_data(current_proj)
     else:  # no projects yet!
         flash("No project results to show yet.", "warning")
         return redirect(url_for('.index'))
     return render_template('pway/tree.html', current_proj=current_proj,
                            projects=upload_list, user_id=current_user.id,
-                           proj_names=proj_names, names_odict=names_odict,
-                           tree_path=tree_path)
+                           proj_names=proj_names, names_odict=names_odict)
 
 
 @pway.route('/faq')
