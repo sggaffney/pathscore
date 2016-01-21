@@ -1,4 +1,5 @@
-from flask import Flask
+import os
+from flask import Flask, request, url_for, current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import Security, SQLAlchemyUserDatastore  # for email verif.
 from flask_login import LoginManager
@@ -111,6 +112,15 @@ def create_app(config_name):
     def before_first_request():
         start_cleanup_thread()
         force_all_stopped_status()
+
+    @app.after_request
+    def add_svgz_encoding(response):
+        """Specify gzip encoding for svgzs in non-production environment."""
+        if request.endpoint != 'static':
+            return response
+        if request.path and request.path.endswith('.svgz'):
+            response.headers['Content-Encoding'] = 'gzip'
+        return response
 
     @user_registered.connect_via(app)
     def user_registered_sighandler(app, user, confirm_token):
