@@ -131,6 +131,22 @@ def drop_table(table_name):
             con.close()
 
 
+def save_project_params_txt(upload_obj):
+    """Save key upload parameters to text file."""
+    user_fields = ['proj_suffix', 'filename', 'algorithm',
+                   'ignore_genes', 'required_genes', 'genome_size']
+    data_fields = ['n_patients', 'n_ignored', 'n_rejected', 'n_loaded']
+    out_path = naming_rules.get_params_path(upload_obj)
+    with open(out_path, 'w') as out:
+        out.write('User data:\n')
+        for field in user_fields:
+            out.write("{}: {}\n".format(field, getattr(upload_obj, field)))
+        out.write('\n\n')
+        out.write('Data attributes:\n')
+        for field in user_fields:
+            out.write("{}: {}\n".format(field, getattr(upload_obj, field)))
+
+
 class NonSingleResult(Exception):
     pass
 
@@ -1095,9 +1111,9 @@ def generate_plot_files(user_upload, detail_path, table_name, dir_path,
 
     js_out_path = naming_rules.get_js_path(user_upload)
     make_js_file(allPathways, js_out_path)
-
+    save_project_params_txt(user_upload)  # params file
     readable_path = os.path.join(dir_path,
-                                 user_upload.get_local_filename() + ".xls")
+                                 user_upload.get_local_filename() + "_summary.txt")
     make_readable_file(allPathways, readable_path)
     # html_name = create_html(detail_path, out_dir, project_str, descriptive_name,
     #                         skipfew)

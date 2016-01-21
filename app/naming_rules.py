@@ -21,6 +21,13 @@ def get_js_path(upload_obj):
     js_name = get_js_name(upload_obj)
     return os.path.join(dir_path, js_name)
 
+
+def get_params_path(upload_obj):
+    dir_path = get_project_folder(upload_obj)
+    return os.path.join(dir_path,
+                        upload_obj.get_local_filename() + "_params.txt")
+
+
 def get_pval_path(upload_obj):
     dir_path = get_project_folder(upload_obj)
     root_name = upload_obj.get_local_filename()
