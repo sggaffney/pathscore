@@ -58,8 +58,16 @@
 
  <link rel="stylesheet" href="{{ resources.css_files[0] }}" type="text/css" />
  <script type="text/javascript" src="{{ resources.js_files[0] }}"></script>
- <script src="/static/pway_display_common.js"></script>
+ <!--<script src="/static/pway_display_common.js"></script>-->
+{{ get_common_js(is_archive)|safe }}
 {{ bokeh_script|safe }}
+
+{% if is_archive is undefined or is_archive == False %}
+    {% set js_path = "static/data/" ~ user_id ~ "/" ~ current_proj.file_id ~ "/" ~ js_name %}
+{% else %}
+	{% set js_path = js_name %}
+{% endif %}
+
 
 <script>
     $(function() {
@@ -88,7 +96,7 @@
 
 		selected_prv = [];
 
-		$.getScript( "static/data/{{ user_id }}/{{ current_proj.file_id }}/{{ js_name }}", function( data, textStatus, jqxhr ) {
+		$.getScript( "{{ js_path }}", function( data, textStatus, jqxhr ) {
 			console.log( "Loaded project." );
             $bokehContainer.click(updateIfSelectionChange_afterWait);
             $includeButton.click(true, selectPathwaysByGenes);

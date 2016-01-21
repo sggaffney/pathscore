@@ -4,7 +4,13 @@
 
 {% block head %}
 {{ super() }}
-<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+<!--<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">-->
+
+{% if is_archive is undefined %} 
+    {% set is_archive = False %} 
+{% endif %}
+{{ get_common_css(is_archive)|safe}}
+
 {% endblock %}
 
 {% block navbar %}
@@ -26,6 +32,7 @@
     <!-- Collect the nav links, forms, and other content for toggling -->
     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
       <ul class="nav navbar-nav">
+      {% if not is_archive %}
         <!--<li class="active"><a href="#">Link <span class="sr-only">(current)</span></a></li>-->
         {% if current_user.is_authenticated() %}
             <li><a href="{{ url_for('pway.index') }}">Status</a></li>
@@ -51,7 +58,13 @@
           <li><a href="{{ url_for('pway.upload') }}">Upload</a></li>
           <li><a href="{{ url_for('pway.faq') }}">FAQ</a></li>
         {% endif %}
+      {% else %}{# left navbar for is_archive #}
+          <li><a href="{{ proj.get_local_filename() + '_flat.html' }}">Flat</a></li>
+          <li><a href="{{ proj.get_local_filename() + '_scatter.html' }}">Scatter</a></li>
+          <li><a href="{{ proj.get_local_filename() + '_tree.html' }}">Tree</a></li>
+      {% endif %}
       </ul>
+      {% if not is_archive %}{# only show user/login if non-archive #}
       <ul class="nav navbar-nav navbar-right">
         {% if not current_user.is_authenticated() %}
         <li><a href="{{ url_for('security.login') }}">Login</a></li>
@@ -65,6 +78,7 @@
         {% endif %}
         </li>
       </ul>
+      {% endif %}
     </div><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
 </nav>

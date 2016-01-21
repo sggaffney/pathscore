@@ -1,15 +1,17 @@
 from datetime import datetime, timedelta
 from models import UserFile, User, Role
-from flask import current_app
+from flask import current_app, render_template
 from . import db
 import os
 import shutil
 from threading import Thread
 import time
 import zipfile
+import plot_fns
 from emails import run_finished_notification
-from app.get_effective_pathways import MutationTable
-from app.naming_rules import get_user_folder, get_project_folder
+from app.get_effective_pathways import MutationTable, save_project_params_txt
+from app.naming_rules import get_user_folder, get_project_folder, \
+    get_params_path
 
 _cleanup_thread = None
 
@@ -88,19 +90,68 @@ def force_all_stopped_status():
         db.session.commit()
 
 
-def save_project_params_txt(upload_obj):
-    """Save key upload parameters to text file."""
-    use_fields = ['proj_suffix', 'filename', 'n_patients', 'algorithm',
-                  'ignore_genes', 'required_genes', 'genome_size']
+def save_local_html(upload_obj, page_type='flat'):
+    """Save local html file for {flat, scatter, tree} project results."""
+    if page_type not in {'flat', 'scatter', 'tree'}:
+        raise ValueError("page_type must be flat, scatter or tree.")
+
+    if page_type == 'flat':
+        output = get_flat_results(upload_obj)
+    elif page_type == 'scatter':
+        output = get_scatter_results(upload_obj)
+    else:
+        output = get_tree_results(upload_obj)
+
+    proj_name = upload_obj.get_local_filename()
     proj_folder = get_project_folder(upload_obj)
-    out_path = os.path.join(proj_folder, 'params.txt')
-    with open(out_path, 'w') as out:
-        for field in use_fields:
-            out.write("{}: {}\n".format(field, getattr(upload_obj, field)))
+    html_path = os.path.join(proj_folder, proj_name + '_' + page_type + '.html')
+    with open(html_path, 'w') as out:
+        out.write(output)
+
+
+def get_flat_results(upload_obj):
+    proj_names = {int(upload_obj.file_id): upload_obj.get_local_filename()}
+    return render_template('pway/show_pathways_template.html',
+                           proj=upload_obj,
+                           projects=[upload_obj],
+                           user_id=upload_obj.user_id,
+                           show_proj=int(upload_obj.file_id),
+                           proj_names=proj_names,
+                           include_genes=None,
+                           is_archive=True)
+
+
+def get_scatter_results(upload_obj):
+    """Render scatter results for specified project."""
+    # get dictionary with js_name, js_inds, plot_inds, has_cnv, script, div
+    scatter_dict = plot_fns.get_scatter_dict(upload_obj)
+    return render_template('pway/scatter.html', current_proj=upload_obj,
+                           projects=[upload_obj], user_id=upload_obj.user_id,
+                           include_genes=None, is_archive=True, proj=upload_obj,
+                           **scatter_dict)
+
+
+def get_tree_results(upload_obj):
+    """Render tree results for specified project."""
+    proj_names = {int(upload_obj.file_id): upload_obj.get_local_filename()}
+    names_odict = plot_fns.get_tree_data(upload_obj)
+    return render_template('pway/tree.html', current_proj=upload_obj,
+                           projects=[upload_obj], user_id=upload_obj.user_id,
+                           proj_names=proj_names, names_odict=names_odict,
+                           proj=upload_obj, is_archive=True)
 
 
 def zip_project(upload_obj):
     """Zip project and save in user folder. Return path to zip file."""
+    # generate params file if not already present
+    params_path = get_params_path(upload_obj)
+    if not os.path.exists(params_path):
+        save_project_params_txt(upload_obj)
+    # CREATE STATIC PAGES
+    save_local_html(upload_obj, page_type='flat')
+    save_local_html(upload_obj, page_type='scatter')
+    save_local_html(upload_obj, page_type='tree')
+
     proj_name = upload_obj.get_local_filename()
     user_folder = get_user_folder(upload_obj.user_id)
     zip_path = os.path.join(user_folder, proj_name + '.zip')

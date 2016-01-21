@@ -7,6 +7,12 @@
 
 {% block page_content %}
 
+{% if is_archive is undefined or is_archive == False %}
+	{% set tree_path = "static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ "_tree.svgz" %} 
+{% else %}
+	{% set tree_path = proj_names[current_proj.file_id|int] ~ "_tree.svgz" %}
+{% endif %}
+
 <!--<div class="page-header">-->
 	<!--<h1>Pathway Dendrogram</h1>-->
 <!--</div>-->
@@ -53,7 +59,19 @@
 {% block scripts %}
 {{super()}}
 <script src="//code.jquery.com/ui/1.11.3/jquery-ui.js"></script>
-<script src="/static/pway_display_common.js"></script>
+<!--<script src="/static/pway_display_common.js"></script>-->
+{{ get_common_js(is_archive)|safe}}
+
+
+{% if is_archive is undefined or is_archive == False %}
+	{% set is_archive = False %}
+	{% set js_path = "static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ ".js" %} 
+{% else %}
+	{% set js_path = proj_names[current_proj.file_id|int] ~ ".js" %}
+{% endif %}
+
+
+
 <script>
     $(function() {
         $("#resizable-tree").resizable({handles: "s"});
@@ -63,7 +81,7 @@
         //pway_dict = {};  //set by get_pway_dict when projId set/refreshed
         //initialView = true;
 
-        $.getScript('{{"static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ ".js" }}', function( data, textStatus, jqxhr ) {
+        $.getScript('{{ js_path }}', function( data, textStatus, jqxhr ) {
                 // console.log( data ); // Data returned
                 // console.log( textStatus ); // Success
                 // console.log( jqxhr.status ); // 200

@@ -70,12 +70,23 @@
 
 
 {% block scripts %}
+
+{% if is_archive is undefined or is_archive == False %} 
+	{% set is_archive = False %}
+	{% set js_path = '"static/data/' ~ user_id ~ '/" + projId + "/" + proj_names[projId] + ".js"' %} 
+{% else %}
+	{% set js_path = 'proj_names[projId] + ".js"' %}
+{% endif %}
+
 {{super()}}
 
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1/jquery-ui.min.js"></script>
 <script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
-<script src="/static/pway_display_common.js"></script>
+<!--<script src="/static/pway_display_common.js"></script>-->
+
+{{ get_common_js(is_archive)|safe}}
+
 <script>
 	
 	//on window load
@@ -162,7 +173,7 @@
 	}
 
 	function updateProjId(){
-		$.getScript( "static/data/{{ user_id }}/" + projId + "/" + proj_names[projId] + ".js", function( data, textStatus, jqxhr ) {
+		$.getScript( {{ js_path|safe }}, function( data, textStatus, jqxhr ) {
 			// console.log( data ); // Data returned
 			// console.log( textStatus ); // Success
 			// console.log( jqxhr.status ); // 200

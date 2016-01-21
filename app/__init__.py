@@ -119,4 +119,22 @@ def create_app(config_name):
         app.logger.info('Registered user {}'.format(user.email))
         db.session.commit()
 
+    @app.context_processor
+    def inject_css():
+        return dict(get_common_css=get_common_css)
+
     return app
+
+
+def get_common_css(is_archive=False):
+    """Get text of common_js or script tag with link."""
+    if not is_archive:
+        css_text = '<link rel="stylesheet" type="text/css" href="' \
+                   + url_for('static', filename='styles.css') + '">'
+    else:
+        css_path = os.path.join(current_app.static_folder,
+                                'styles.css')
+        with open(css_path, 'r') as infile:
+            css_text = infile.read()
+        css_text = "<style>\n" + css_text + "\n</style>"
+    return css_text
