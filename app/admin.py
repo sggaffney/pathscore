@@ -154,11 +154,18 @@ def zip_project(upload_obj):
 
     proj_name = upload_obj.get_local_filename()
     user_folder = get_user_folder(upload_obj.user_id)
+    proj_path = get_project_folder(upload_obj)
+
+    # COPY SERVER.PY, DELETE AFTER ZIPPING
+    script_path = os.path.join(current_app.static_folder,
+                               'server.py')
+    shutil.copy(script_path, os.path.join(proj_path, 'server.py'))
+
     zip_path = os.path.join(user_folder, proj_name + '.zip')
     if os.path.exists(zip_path):
         os.remove(zip_path)
     zipf = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
-    proj_path = get_project_folder(upload_obj)
+
     for root, dirs, files in os.walk(proj_path):
         for this_file in files:
             # ignore raw .txt files in root of project directory
