@@ -380,7 +380,7 @@ def results():
         flash("No project results to show yet.", "warning")
         return redirect(url_for('.index'))
     if show_proj is None and len(upload_list):
-        show_proj = upload_list[-1].get_local_filename()
+        show_proj = upload_list[-1].file_id
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
     return render_template('pway/show_pathways_template.html',
                            projects=upload_list, user_id=current_user.id,
