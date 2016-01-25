@@ -78,7 +78,7 @@ def scatter():
                 current_proj = current_temp[0]
             else:
                 current_proj = upload_list[-1]
-        scatter_dict = plot_fns.get_scatter_dict(show_proj)
+        scatter_dict = plot_fns.get_scatter_dict(current_proj)
         # includes js_name, js_inds, plot_inds, has_cnv, script, div
     else:  # no projects yet!
         flash("No project results to show yet.", "warning")
