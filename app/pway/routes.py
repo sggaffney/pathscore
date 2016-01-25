@@ -349,7 +349,7 @@ def demo_file():
 @pway.route('/filtered')
 def get_filtered():
 
-    proj_id = request.args.get('projId', None)
+    proj_id = request.args.get('proj', None)
     filter_type = request.args.get('type', None)  # ignored or rejected
     if not proj_id.isdigit() or filter_type not in ('ignored', 'rejected'):
         abort(404)

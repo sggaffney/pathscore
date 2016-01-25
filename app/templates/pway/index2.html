@@ -42,7 +42,7 @@
             <td>{{ proj.n_loaded if proj.n_loaded is not none else '' }}</td>
 
         {% if proj.n_ignored %}
-            <td><a href="{{ url_dict['filtered_ignored'] }}">{{ proj.n_ignored }}</a></td>
+            <td><a href="{{ url_dict['filtered_unused'] }}">{{ proj.n_ignored }}</a></td>
         {% else  %}
             <td>{{ '' if proj.n_ignored is none else 0 }}</td>
         {% endif %}
