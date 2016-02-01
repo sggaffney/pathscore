@@ -55,6 +55,7 @@ class Config:
 
     CELERY_BROKER_URL = 'redis://localhost:6379/0'
     CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+    CELERY_RESULT_DB_SHORT_LIVED_SESSIONS = True
     CELERY_DEFAULT_QUEUE = 'default'
     CELERY_CREATE_MISSING_QUEUES = True
     CELERY_ROUTES = {
