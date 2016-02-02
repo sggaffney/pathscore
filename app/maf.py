@@ -42,14 +42,14 @@ class MutationFile(object):
             # want at least 2 lines now. 1 for header, 1 for data.
             headers = [i.lower() for i in line.strip('\n').split('\t')]
             if not self._compare_headers(headers):
-                raise ValidationError("Invalid headers.")
+                raise ValidationError("Invalid mutation file headers.")
             if not line:
-                raise ValidationError("File is empty.")
+                raise ValidationError("Mutation file is empty.")
             for ind, line in enumerate(tempfile):
                 if not self._line_valid(line):
                     raise ValidationError("Line {} is invalid".format(ind + 1))
             if not ind + 1:
-                raise ValidationError("No data found.")
+                raise ValidationError("No data found in mutation file.")
             self.line_endings = tempfile.newlines
             # could add minimum line count here
             # if ind < 9:
