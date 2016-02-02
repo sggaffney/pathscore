@@ -10,7 +10,7 @@ Filename = {{ project.filename }}.<br>
 Submitted at {{ project.upload_time }}.</p>
 
 {% if project.run_complete %}
-<p>Please visit the <a href="{{ url_for('pway.results', proj=project.get_local_filename(), _external=True) }}">results page</a> to view result graphics.</p>
+<p>Please visit the <a href="{{ url_for('pway.results', proj=project.file_id, _external=True) }}">results page</a> to view result graphics.</p>
 {% elif project.n_loaded == 0 %}
     <p>Your dataset was empty after filtering.</p>
     <ul>

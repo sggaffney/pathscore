@@ -59,20 +59,21 @@ def reset():
 @no_ssl
 def scatter():
     # if proj among arguments, show this tree first.
-    show_proj = request.args.get('proj', None)
+    try:
+        show_proj = int(request.args.get('proj', None))
+    except (TypeError, ValueError):
+        show_proj = None
     include = request.args.get('include', None)
-    # show_proj = '57'
     # list of projects (and proj_names) used to create dropdown project selector
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
         filter_by(run_complete=True).order_by(UserFile.file_id).all()
-    # proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
 
     if upload_list:
         # Use specified project from args or highest file_id as CURRENT PROJECT
         current_proj = upload_list[-1]  # override if valid proj specified
         if show_proj:
             current_temp = [u for u in upload_list
-                            if u.file_id == int(show_proj)]
+                            if u.file_id == show_proj]
             # if not among user's finished projects, use highest file_id
             if len(current_temp) == 1:
                 current_proj = current_temp[0]
@@ -94,8 +95,11 @@ def scatter():
 @no_ssl
 def compare():
     # if proj among arguments, show this tree first.
-    proj_a = request.args.get('proj_a', None)
-    proj_b = request.args.get('proj_b', None)
+    try:
+        proj_a = int(request.args.get('proj_a', None))
+        proj_b = int(request.args.get('proj_b', None))
+    except (TypeError, ValueError):
+        proj_a = proj_b = None
     include = request.args.get('include', None)
     resources = Resources(mode="cdn")
     show_logged = False
@@ -108,8 +112,8 @@ def compare():
         # Use specified project from args or highest file_id as CURRENT PROJECT
         current_proj = upload_list[-1]  # override if valid proj specified
         if proj_a and proj_b:
-            current_temp_a = [u for u in upload_list if u.file_id == int(proj_a)]
-            current_temp_b = [u for u in upload_list if u.file_id == int(proj_b)]
+            current_temp_a = [u for u in upload_list if u.file_id == proj_a]
+            current_temp_b = [u for u in upload_list if u.file_id == proj_b]
             # if not among user's finished projects, use highest file_id
             if len(current_temp_a) == 1 and len(current_temp_b) == 1:
                 current_proj_a = current_temp_a[0]
@@ -298,7 +302,10 @@ def compare():
 @login_required
 def tree():
     # if proj among arguments, show this tree first.
-    show_proj = request.args.get('proj', None)
+    try:
+        show_proj = request.args.get('proj', None)
+    except (TypeError, ValueError):
+        show_proj = None
     # list of projects (and proj_names) used to create dropdown project selector
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
         filter_by(run_complete=True).order_by(UserFile.file_id).all()
@@ -307,7 +314,7 @@ def tree():
         # Use specified project from args or highest file_id as CURRENT PROJECT
         current_proj = upload_list[-1]  # override if valid proj specified
         if show_proj:
-            current_temp = [u for u in upload_list if u.file_id == int(show_proj)]
+            current_temp = [u for u in upload_list if u.file_id == show_proj]
             # if not among user's finished projects, use highest file_id
             if len(current_temp) == 1:
                 current_proj = current_temp[0]
@@ -372,7 +379,10 @@ def get_filtered():
 @pway.route('/results')
 @login_required
 def results():
-    show_proj = request.args.get('proj', None)
+    try:
+        show_proj = int(request.args.get('proj', None))
+    except (TypeError, ValueError):
+        show_proj = None
     include = request.args.get('include', None)
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
         filter_by(run_complete=True).all()
@@ -384,7 +394,7 @@ def results():
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
     return render_template('pway/show_pathways_template.html',
                            projects=upload_list, user_id=current_user.id,
-                           show_proj=int(show_proj), proj_names=proj_names,
+                           show_proj=show_proj, proj_names=proj_names,
                            include_genes=include)
 
 
