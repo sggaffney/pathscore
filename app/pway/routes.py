@@ -303,7 +303,7 @@ def compare():
 def tree():
     # if proj among arguments, show this tree first.
     try:
-        show_proj = request.args.get('proj', None)
+        show_proj = int(request.args.get('proj', None))
     except (TypeError, ValueError):
         show_proj = None
     # list of projects (and proj_names) used to create dropdown project selector
