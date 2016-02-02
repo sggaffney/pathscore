@@ -29,12 +29,14 @@ import naming_rules
 
 # GLOBALS
 path_size_dict_full = lookup_path_sizes()
-path_len_dict_full = lookup_path_lengths()
+path_len_dict_full = lookup_path_lengths(alg='gene_length')
+path_bmr_dict_full = lookup_path_lengths(alg='bmr_length')
 path_info_dict = fetch_path_info_global()
 path_name_dict = get_pathway_name_dict()
 
-background_len_full = lookup_background_size(use_length=True)
-background_count_full = lookup_background_size(use_length=False)
+background_bmrlen_full = lookup_background_size(alg='bmr_length')
+background_len_full = lookup_background_size(alg='gene_length')
+background_count_full = lookup_background_size(alg='gene_count')
 
 
 class TableLoadException(Exception):
@@ -932,29 +934,24 @@ def run(dir_path, table_name, user_upload):
     alg='gene_count' --OR-- 'gene_length'
     user_upload is upload object (file_id, user_id, filename, ...etc)
     """
-    alg = user_upload.algorithm  # 'gene_count' or 'gene_length'
-    use_length = True if alg == 'gene_length' else False
+    alg = user_upload.algorithm  # 'gene_count', 'gene_length', 'bmr_length'
 
     ignore = user_upload.ignore_genes
     ignore_list = str(ignore).split(',') if ignore else []
 
-    genome_size = lookup_background_size(ignore_genes=ignore_list,
-                                         use_length=use_length)
     # GET BACKGROUND SIZE (varies with ignore_list)
-    if alg == 'gene_count':
-        if ignore_list:
-            genome_size = lookup_background_size(ignore_genes=ignore_list,
-                                                 use_length=False)
-        else:
-            genome_size = background_count_full
-    elif alg == 'gene_length':
-        if ignore_list:
-            genome_size = lookup_background_size(ignore_genes=ignore_list,
-                                                 use_length=True)
-        else:
-            genome_size = background_len_full
+    if ignore_list:
+        genome_size = lookup_background_size(ignore_genes=ignore_list,
+                                             alg=alg)
     else:
-        raise Exception("Invalid algorithm selection ({})".format(alg))
+        if alg == 'gene_count':
+            genome_size = background_count_full
+        elif alg == 'gene_length':
+                genome_size = background_len_full
+        elif alg == 'bmr_length':
+                genome_size = background_bmrlen_full
+        else:
+            raise Exception("Invalid algorithm selection ({})".format(alg))
     # self.update_state(state='PROGRESS', meta={'status': 'Calculating L'})
     detail_path, matrix_folder = generate_initial_text_output(
         dir_path, table_name, user_upload, genome_size, alg=alg)
@@ -1018,19 +1015,17 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
     all_path_ids = sorted(list(all_path_ids))
 
     if alg == 'gene_count':
+        path_size_dict = lookup_path_sizes(ignore_genes) if ignore_genes else \
+            path_size_dict_full
+    elif alg in ['gene_length', 'bmr_length']:
         if ignore_genes:
-            path_size_dict = lookup_path_sizes(ignore_genes)
+            path_size_dict = lookup_path_lengths(ignore_genes, alg=alg)
         else:
-            path_size_dict = path_size_dict_full
-    elif alg == 'gene_length':
-        if ignore_genes:
-            path_size_dict = lookup_path_lengths(ignore_genes)
-        else:
-            path_size_dict = path_len_dict_full
-
-    if alg == 'gene_count':
+            path_size_dict = path_len_dict_full if alg == 'gene_length' else \
+                path_bmr_dict_full
+    if alg in 'gene_count':
         patient_size_dict = lookup_patient_counts(table_name, ignore_genes)
-    elif alg == 'gene_length':
+    elif alg in ['gene_length', 'bmr_length']:
         patient_size_dict = lookup_patient_lengths(table_name, ignore_genes)
 
     hypermutated = lookup_hypermutated_patients(table_name)

@@ -4,7 +4,7 @@ import MySQLdb as mdb
 from collections import defaultdict
 
 
-def lookup_background_size(ignore_genes=None, use_length=None):
+def lookup_background_size(ignore_genes=None, alg=None):
     """Get background genome size sizes. Optional ignore_genes iterable.
 
     - Uses entrez_length table built from genes in msigdb (pathway_genes).
@@ -14,20 +14,28 @@ def lookup_background_size(ignore_genes=None, use_length=None):
 
     Args:
         ignore_genes (iterable): contains gene symbols to ignore.
-        use_length (bool): use 'length' algorithm rather than count.
+        alg (str): specifies algorithm. ['gene_count', 'gene_length',
+            or 'bmr_length']
 
     Return:
         int: length. Number of bases for length, else number of genes.
     """
-    if use_length is None:
-        raise Exception("Must specify use_length boolean.")
-
+    if alg is None:
+        raise Exception("Must specify algorithm type.")
+    if alg not in ['gene_count', 'gene_length', 'bmr_length']:
+        raise ValueError("Algorithm must be gene_count, gene_length, "
+                         "or bmr_length.")
     if ignore_genes:
         genes_str = repr(tuple(ignore_genes)).replace(",)", ")")
         genes_str = "WHERE hugo_symbol NOT IN {}".format(genes_str)
     else:
         genes_str = ""
-    field_str = "sum(effective_bp)" if use_length else "count(*)"
+    if alg == 'bmr_length':
+        field_str = "sum(effective_bp)"
+    elif alg == 'gene_length':
+        field_str = "sum(length_bp)"
+    else:
+        field_str = "count(*)"
     cmd = """SELECT {field_str} FROM refs.entrez_length {genes_str};""".format(
         field_str=field_str, genes_str=genes_str)
     background_size = None
@@ -84,17 +92,23 @@ def lookup_path_sizes(ignore_genes=None):
     return size_dict
 
 
-def lookup_path_lengths(ignore_genes=None):
+def lookup_path_lengths(ignore_genes=None, alg=None):
     """Get bp length for each pathway, with optional exclude genes."""
+    if alg is None:
+        raise Exception("Must specify algorithm type.")
+    if alg not in ['gene_length', 'bmr_length']:
+        raise ValueError("Algorithm must be gene_length, or bmr_length.")
     if ignore_genes:
         genes_string = repr(tuple(ignore_genes)).replace(",)", ")")
         genes_string = "WHERE hugo_symbol NOT IN {}".format(genes_string)
     else:
         genes_string = ""
-    cmd = """SELECT path_id, sum(effective_bp) AS bp FROM refs.entrez_length l
+    field_str = 'effective_bp' if alg == 'bmr_length' else 'length_bp'
+    cmd = """SELECT path_id, sum({field_str}) AS bp FROM refs.entrez_length l
         INNER JOIN refs.pathway_gene_link pgl ON l.entrez_id = pgl.entrez_id
         {genes_string}
-        GROUP BY pgl.path_id;""".format(genes_string=genes_string)
+        GROUP BY pgl.path_id;""".format(genes_string=genes_string,
+                                        field_str=field_str)
     len_dict = dict()
     try:
         con = mdb.connect(**app.dbvars)

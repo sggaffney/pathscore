@@ -21,8 +21,10 @@ class UploadForm(Form):
     ])
     algorithm = RadioField('Algorithm', validators=[
         DataRequired(), Length(1, 128)], choices=[
-        ('gene_length', 'Gene length'), ('gene_count', 'Gene count')],
-        default='gene_length')
+        ('bmr_length', 'Gene length, BMR-scaled'),
+        ('gene_length', 'Gene length, unscaled'),
+        ('gene_count', 'Gene count')],
+        default='bmr_length')
     # genome_size = RadioField('Genome size (gene count alg)', validators=[
     #     DataRequired(), Length(1, 128)], choices=[
     #     ('protein-coding', 'Protein-coding (20462)'),

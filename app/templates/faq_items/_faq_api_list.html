@@ -87,8 +87,8 @@ Examples:
 <h5>Putting it all together</h5>
 
 <p>The following request shows the most recent projects with over 200 patients
-that used the 'gene length' algorithm:</p>
-<code style="white-space: pre-wrap">http --auth=$TK: GET https://pathscore.publichealth.yale.edu/api/projects/?sort=upload_time,desc&filter=n_patients,gt,200;algorithm,eq,gene_length</code>
+that used the 'bmr-scaled gene length' algorithm:</p>
+<code style="white-space: pre-wrap">http --auth=$TK: GET https://pathscore.publichealth.yale.edu/api/projects/?sort=upload_time,desc&filter=n_patients,gt,200;algorithm,eq,bmr_length</code>
 
 
 

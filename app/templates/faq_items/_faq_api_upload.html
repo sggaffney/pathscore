@@ -16,7 +16,7 @@
 
 <p>
 <ul>
-    <li><code>algorithm</code> &mdash; <emph>gene_length</emph> or <emph>gene_count</emph></li>
+    <li><code>algorithm</code> &mdash; <emph>bmr_length</emph>, <emph>gene_length</emph> or <emph>gene_count</emph></li>
     <li><code>proj_suffix</code> &mdash; project name, appended to project id.</li>
     <li><code>ignore_genes</code> &mdash; list of genes to ignore, comma-separated, no spaces.</li>
     <li><code>required_genes</code> &mdash; list of required genes that must be present in a pathway, comma-separated, no spaces.</li>
@@ -32,11 +32,11 @@
 </p>
 
 <p>
-<code style="white-space: pre-wrap">$ http --auth=$TK: --form <strong>POST</strong> https://pathscore.publichealth.yale.edu/<strong>api/projects/</strong> algorithm=gene_length proj_suffix=LUAD_via_api mut_file@LUAD_test.txt ignore_genes=TP53,KRAS required_genes=CBL</code>
+<code style="white-space: pre-wrap">$ http --auth=$TK: --form <strong>POST</strong> https://pathscore.publichealth.yale.edu/<strong>api/projects/</strong> algorithm=bmr_length proj_suffix=LUAD_via_api mut_file@LUAD_test.txt ignore_genes=TP53,KRAS required_genes=CBL</code>
 </p>
 
 <ul>
-    <li>This command creates a project named 'LUAD_via_api', using the gene_length algorithm.</li>
+    <li>This command creates a project named 'LUAD_via_api', using the bmr_length algorithm.</li>
     <li>The mutation file is named 'LUAD_test.txt', satisfying the requirement
     for a 'txt' or 'csv' extension.</li>
     <li>The genes TP53 and KRAS are ignored, while CBL is required.</li>

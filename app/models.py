@@ -122,7 +122,7 @@ class UserFile(db.Model):
     is_valid = db.Column(db.Boolean)
     is_queued = db.Column(db.Boolean)
     run_complete = db.Column(db.Boolean)
-    algorithm = db.Column(db.String(255), default='gene_length')
+    algorithm = db.Column(db.String(255), default='bmr_length')
     genome_size = db.Column(db.String(255), default=False)
     n_cutoff = db.Column(db.Integer)
     required_genes = db.Column(db.Text())
@@ -253,9 +253,9 @@ class UserFile(db.Model):
         proj_suffix = data.get('proj_suffix', None)
 
         if algorithm:
-            if algorithm not in ['gene_count', 'gene_length']:
+            if algorithm not in ['gene_count', 'gene_length', 'bmr_length']:
                 raise ValidationError("Algorithm should be one of: "
-                                      "gene_count, gene_length.")
+                                      "gene_count, gene_length, bmr_length.")
             else:
                 self.algorithm = algorithm
         if required_genes:
