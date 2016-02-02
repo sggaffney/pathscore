@@ -31,7 +31,9 @@ class Config:
     SECURITY_MSG_INVALID_PASSWORD = ("Bad username or password", "error")
     SECURITY_MSG_PASSWORD_NOT_PROVIDED = ("Bad username or password", "error")
     SECURITY_MSG_USER_DOES_NOT_EXIST = ("Bad username or password", "error")
-    SECURITY_MSG_LOGIN = ('Please log in or select Register or Upload above.', 'info')
+    SECURITY_MSG_LOGIN = ('Please log in or select Register or Upload above. '
+                          'You do not need an account to upload a project.',
+                          'info')
 
     DATA_ROOT = os.environ.get('DATA_ROOT')
     TEMP_FOLDER = os.environ.get('TEMP_FOLDER')
