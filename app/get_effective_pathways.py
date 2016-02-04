@@ -8,6 +8,7 @@ from scipy import stats
 from scipy.optimize import minimize_scalar, brentq
 import timeit
 from collections import OrderedDict
+import json
 import os
 import subprocess
 import pyximport
@@ -136,7 +137,7 @@ def drop_table(table_name):
 def save_project_params_txt(upload_obj):
     """Save key upload parameters to text file."""
     user_fields = ['proj_suffix', 'filename', 'algorithm',
-                   'ignore_genes', 'required_genes', 'genome_size']
+                   'ignore_genes', 'required_genes']
     data_fields = ['n_patients', 'n_ignored', 'n_rejected', 'n_loaded']
     out_path = naming_rules.get_params_path(upload_obj)
     with open(out_path, 'w') as out:
@@ -145,7 +146,7 @@ def save_project_params_txt(upload_obj):
             out.write("{}: {}\n".format(field, getattr(upload_obj, field)))
         out.write('\n\n')
         out.write('Data attributes:\n')
-        for field in user_fields:
+        for field in data_fields:
             out.write("{}: {}\n".format(field, getattr(upload_obj, field)))
 
 
@@ -891,26 +892,6 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
     def full_url(self):
         return self.root_url + self.url
 
-    def as_string_readable(self):
-        """Return string for javascript."""
-        name_str = self.name.replace('_', ' ')
-        name_str = name_str.replace('BIOCARTA ', '')
-        name_str = name_str.replace('REACTOME ', '')
-        name_str = name_str.replace('KEGG ', '')
-        name_str = name_str.replace('TEL PATHWAY', 'TELOMERASE PATHWAY')
-        name_str = name_str.replace('RNA PATHWAY', 'PKR SIGNALING PATHWAY')
-        outstr = "{ id:" + self.path_id + ", " + "name:'" + name_str \
-                 + "', pval:'" + self.p_value + "', size:" + str(self.n_actual) \
-                 + ", effective:" + str(self.n_effective) + ", url:'" \
-                 + self.url + "', brief:'" + self.description + "', contrib:'" \
-                 + self.contrib + "', geneSet: "
-        if self.gene_set:
-            gene_set_str = "','".join(self.gene_set)
-            outstr = outstr + "['" + gene_set_str + "']}"
-        else:
-            outstr = outstr + "[]}"
-        return outstr
-
 
 def get_patient_list(path_id, patient_size_dict, path_patient_dict):
     """Get list of patient objects for given pathway using dictionary
@@ -1213,7 +1194,7 @@ def make_readable_file(allPathways, out_path):
                 line_vals.append(pway.p_value)
                 line_vals.append(pway.n_effective)
                 line_vals.append(pway.n_actual)
-                line_vals.append(pway.gene_pc)
+                line_vals.append(json.dumps(pway.gene_pc))
                 line_vals.extend(list(pway.lengths_tuple))
                 out.write('\t'.join([str(v) for v in line_vals]) + '\n')
 

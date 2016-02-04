@@ -172,7 +172,6 @@ def zip_project(upload_obj):
             if root is proj_path and \
                     (this_file.endswith('score_names.txt') or
                      this_file.endswith('scores.txt') or
-                     this_file.endswith('.js') or
                      this_file.startswith('pathways')):
                 continue
             zipf.write(os.path.join(root, this_file),
