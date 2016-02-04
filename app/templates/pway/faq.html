@@ -6,6 +6,60 @@
     <h1>FAQ</h1>
 </div>
 
+<h2><small>User data</small></h2>
+
+<div class="panel-group" id="accordion_data" role="tablist" aria-multiselectable="true">
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_ids">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_data"
+           href="#collapse_ids" aria-expanded="false" aria-controls="collapse_ids">
+          How do I obtain valid gene identifiers for my mutation file?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_ids" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_ids">
+      <div class="panel-body">
+        {% include "faq_items/_faq_ids.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_filtering">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_data"
+           href="#collapse_filtering" aria-expanded="false" aria-controls="collapse_filtering">
+          Do I need to perform any filtering on my data?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_filtering" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_filtering">
+      <div class="panel-body">
+        {% include "faq_items/_faq_filtering.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_alg">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_data"
+           href="#collapse_alg" aria-expanded="false" aria-controls="collapse_alg">
+          Which algorithm version is best suited for my data?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_alg" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_alg">
+      <div class="panel-body">
+        {% include "faq_items/_faq_algorithms.html" %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
 <h2><small>The web interface</small></h2>
 
 <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
@@ -22,22 +76,6 @@
     <div id="collapseTarget" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTarget">
       <div class="panel-body">
         {% include "faq_items/_faq_target.html" %}
-      </div>
-    </div>
-  </div>
-
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="heading_ids">
-      <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
-           href="#collapse_ids" aria-expanded="false" aria-controls="collapse_ids">
-          How do I obtain valid gene identifiers for my upload file?
-        </a>
-      </h4>
-    </div>
-    <div id="collapse_ids" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_ids">
-      <div class="panel-body">
-        {% include "faq_items/_faq_ids.html" %}
       </div>
     </div>
   </div>
@@ -63,7 +101,7 @@
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
            href="#collapse_genes" aria-expanded="false" aria-controls="collapse_genes">
-          How do the gene lists in the upload form differ from those in the results pages?
+          How do the gene lists in the upload form differ from the gene filters in the results pages?
         </a>
       </h4>
     </div>
@@ -95,7 +133,7 @@
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion"
            href="#collapse_export" aria-expanded="false" aria-controls="collapse_export">
-          How do I export project results?
+          How do I export project results and browse offline?
         </a>
       </h4>
     </div>
@@ -210,17 +248,17 @@
   </div>
 
   <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="heading_api_zip">
+    <div class="panel-heading" role="tab" id="heading_api_delete">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_api"
-           href="#collapse_api_zip" aria-expanded="false" aria-controls="collapse_api_zip">
+           href="#collapse_api_delete" aria-expanded="false" aria-controls="collapse_api_delete">
           How can I delete a project?
         </a>
       </h4>
     </div>
-    <div id="collapse_api_zip" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_zip">
+    <div id="collapse_api_delete" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_delete">
       <div class="panel-body">
-        {% include "faq_items/_faq_api_zip.html" %}
+        {% include "faq_items/_faq_api_delete.html" %}
       </div>
     </div>
   </div>
@@ -248,18 +286,19 @@
 <h2><small>Technical</small></h2>
 
 <div class="panel-group" id="accordion2" role="tablist" aria-multiselectable="true">
+
   <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="heading_alg">
+    <div class="panel-heading" role="tab" id="heading_bmr">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion2"
-           href="#collapse_alg" aria-expanded="false" aria-controls="collapse_alg">
-          What is the difference between the 'gene count' and 'gene length' algorithms?
+           href="#collapse_bmr" aria-expanded="false" aria-controls="collapse_bmr">
+          What values do you use for background mutation rate?
         </a>
       </h4>
     </div>
-    <div id="collapse_alg" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_alg">
+    <div id="collapse_bmr" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_bmr">
       <div class="panel-body">
-        {% include "faq_items/_faq_algorithms.html" %}
+        {% include "faq_items/_faq_bmr.html" %}
       </div>
     </div>
   </div>

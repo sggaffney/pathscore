@@ -1,18 +1,29 @@
 <p>
-    The 'gene length' and 'gene count' algorithms are both based on the
-    hypergeometric distribution, but variant data are considered to be samples of
-    individual bases in the former, and individual genes in the latter.
+    The short answer: use 'Gene length, BMR-scaled' for SNV data,
+    and use 'Gene count' for copy number data. For anything else, read on.
 </p>
 <p>
-    The 'gene length' algorithm assumes that all bases have an equal chance of mutation.
-    This accounts for the increasing probability of a mutation as gene length increases,
-    making it suitable for projects containing snvs and other small variants.
-    In this algorithm, a pathway's size is the total number of bases in the cds regions
-    of its genes.
+    The three algorithm variants are 'Gene length, BMR-scaled', 'Gene length, unscaled',
+    and 'Gene count'. Each uses a calculation based on the hypergeometric distribution,
+    and consider mutation to be a sampling process from the genome, but they vary in
+    terms of the 'target size' they assign to genes and pathways.
 </p>
 <p>
-    The 'gene count' algorithm assumes that all genes have an equal chance of mutation,
-    making it suitable for copy number variant data, for example, where the effect of gene
-    length will be small. In this algorithm, a pathway's size is the number of genes
-    in the pathway.
+    Each uses the following target size formula for a gene set &Gamma;:<br/>
+    <img src="/static/target_eqn.svgz" alt="target equation"><br/>
+    Here, &rho;<sub>g</sub> is gene-specific background mutation rate (BMR) and
+    &lambda;<sub>g</sub> is gene cds base-length.
 </p>
+<p>
+    The 'Gene length, unscaled' algorithm sets &rho;<sub>g</sub> to 1, preventing
+    BMR scaling. This treats each base as having equal chance of mutation, with
+    gene mutation probability proportional to length. This could be suitable for
+    chromatin mark data, for example.
+</p>
+<p>
+    The 'Gene count' algorithm sets both &rho;<sub>g</sub> and &lambda;<sub>g</sub>
+    to 1. This treats each gene as having equal chance of mutation. This is suitable
+    for situations where mutation probability doesn't scale reliably with length,
+    such as for somatic copy number aberration data.
+</p>
+

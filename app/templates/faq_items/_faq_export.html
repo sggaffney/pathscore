@@ -1,15 +1,35 @@
 <p>
     Project results can be downloaded as a zip archive from the status table, by
-    clicking the download icon on the right. The archive contains the following
-    files:
+    clicking the download icon on the right. The archive provides data files,
+    described below, and html files for offline graphical browsing of interactive
+    results pages.
+</p>
+
+<p>
+    To browse the interactive results pages, you can run the included 'server.py'
+    python script. Run this script with the command
+    <code>python server.py [port]</code>. Port is optinoal. If serving on
+    port 8000, for example, in the address bar of your browser enter
+    <code>localhost:8000</code>. From the directory listing shown, select one of
+    the html files.
+</p>
+
+<p>
+    The server script is python's built-in SimpleHTTPServer script, modified to
+    serve svgz files a 'Content-Encoding' header of 'gzip'. Other server
+    applications will work as long as this encoding is used.
+</p>
+
+<p>
+    The archive also contains the following data files:
 </p>
 <ul>
     <li>
         The original uploaded data, as a plain text file with no extension.
     </li>
     <li>
-        A tab-separated text file, with extension '.xls'. This is the main results
-        file, which can be opened in Excel. Each row contains the following pathway
+        A tab-separated results file ('_summary.txt'). This is the main results
+        data file, which can be opened in Excel. Each row contains the following pathway
         attributes:
         <ul>
             <li>Full name</li>
@@ -18,7 +38,7 @@
             <li><em>P</em> value</li>
             <li>Effective pathway size (n_effective)</li>
             <li>Actual pathway size (n_actual)</li>
-            <li>Gene mutation frequencies (%)</li>
+            <li>Gene mutation frequencies (%), json-formatted</li>
             <li>Shortest altered gene length (kbp)</li>
             <li>Shortest altered gene name</li>
             <li>Longest altered gene length (kbp)</li>
@@ -28,18 +48,37 @@
         </ul>
     </li>
     <li>
+        A record of the input parameters ('_params.txt').
+    </li>
+    <li>
         A list of 'hypermutated' patients (>500 variants).
     </li>
     <li>
-        A list of 'unused' variants (filename ends '_unused.txt').
+        A list of 'unused' variants ('_unused.txt').
     </li>
     <li>
-        A list of 'rejected' variants (filename ends '_rejected.txt').
+        A list of 'rejected' variants ('_rejected.txt').
     </li>
     <li>
-        Tree data, in 2 files. A compressed svg file (.svgz) contains the dendrogram
-        plot. This can be opened in a web browser, such as Chrome. An accompanying
-        text file (extension '.txt.reorder') contains the
-        pathway names to label the branches, from top to bottom.
+        A patient-pathway array containing all patient specific <em>P</em>
+        values ('_pvalues.txt').
+    </li>
+    <li>
+        A 'matrix_txt' folder, containing one text file per tested pathway. Each
+        file is a matrix showing mutation status for each gene in the pathway,
+        and each patient that has a mutation in the pathway. Asterisks next to a
+        gene symbol have the same meaning as 'red' boxes in the mutation plots:
+        that at least one patient has this gene mutated, and no other mutation in
+        the pathway.
+    </li>
+    <li>Resource files for offline browsing, used by the accompanying html pages:
+        <ul>
+            <li>Tree data, in 2 files. A compressed svg file (.svgz) contains
+                the dendrogram plot, and a text file ('.txt.reorder') contains
+                the pathway names to label the branches, from top to bottom.</li>
+            <li>A javascript (.js) file, containing pathway data.</li>
+        </ul>
+
+
     </li>
 </ul>
