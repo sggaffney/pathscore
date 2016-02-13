@@ -52,6 +52,7 @@ class MatlabFailureException(Exception):
 @celery.task
 def run_analysis_async(proj_dir, data_path, upload_id):
     """Asynchronous run of pathway analysis."""
+    db.engine.dispose()
     user_upload = UserFile.query.get(upload_id)
     user_upload.is_queued = 0
     db.session.add(user_upload)
