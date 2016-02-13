@@ -355,21 +355,24 @@ def demo_file():
 
 @pway.route('/filtered')
 def get_filtered():
-
-    proj_id = request.args.get('proj', None)
+    """Get filtered genes. Params are proj and filter_type (ignored/rejected)"""
+    try:
+        proj_id = int(request.args.get('proj', None))
+    except (TypeError, ValueError):
+        proj_id = None
     filter_type = request.args.get('type', None)  # ignored or rejected
-    if not proj_id.isdigit() or filter_type not in ('ignored', 'rejected'):
+    if proj_id is None or filter_type not in ('ignored', 'rejected'):
         abort(404)
     proj_id = int(proj_id)
-    upload_obj = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(file_id=proj_id).all()[0]
-    if not upload_obj:
+    try:
+        upload_obj = UserFile.query.filter_by(user_id=current_user.id).\
+            filter_by(file_id=proj_id).all()[0]
+    except IndexError:
         abort(404)
     if filter_type == 'ignored':
         file_path = naming_rules.get_unused_gene_path(upload_obj)
     else:
         file_path = naming_rules.get_rejected_gene_path(upload_obj)
-
     try:
         return send_file(file_path, as_attachment=True)
     except IOError:
