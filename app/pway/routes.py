@@ -369,6 +369,8 @@ def get_filtered():
             filter_by(file_id=proj_id).all()[0]
     except IndexError:
         abort(404)
+    except AttributeError:  # catches current_user is anonymous
+        abort(403)
     if filter_type == 'ignored':
         file_path = naming_rules.get_unused_gene_path(upload_obj)
     else:
