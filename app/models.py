@@ -284,7 +284,7 @@ class UserFile(db.Model):
 def create_anonymous_user():
     """Create a new anonymous user with random password."""
     temp_pswd = User.generate_random_password()
-    temp_user = User(password_raw=temp_pswd)
+    temp_user = User(password_raw=temp_pswd, active=1)
     db.session.add(temp_user)
     db.session.commit()
     temp_uname = User.get_guest_username(temp_user.id)
