@@ -52,7 +52,7 @@ class MatlabFailureException(Exception):
 @celery.task
 def run_analysis_async(proj_dir, data_path, upload_id):
     """Asynchronous run of pathway analysis."""
-    db.engine.dispose()
+    db.session.remove()  # guarantee new db session for this thread
     user_upload = UserFile.query.get(upload_id)
     user_upload.is_queued = 0
     db.session.add(user_upload)
@@ -111,6 +111,8 @@ def run_analysis_async(proj_dir, data_path, upload_id):
         except StaleDataError as e:
             current_app.logger.info("Early termination of stale project: {}".format(
                 e.message))
+        finally:
+            db.session.remove()
 
 
 def run_analysis(proj_dir, data_path, upload_id):
