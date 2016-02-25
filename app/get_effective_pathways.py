@@ -344,6 +344,8 @@ class PathwaySummaryBasic():
         # self.patients = list() # tuples. (patient_id, n_mutations, is_mutated)
         self.n_effective = None
         self.p_value = None
+        self.n_cov = None
+        self.pc_cov = None
 
 
 class PathwaySummary(PathwaySummaryBasic):
@@ -371,7 +373,7 @@ class PathwaySummary(PathwaySummaryBasic):
         self.ne_high = None
 
     def set_up_from_file(self, pval, psize, peffect, ll_actual, ll_effective, d,
-                         ne_low, ne_high, runtime):
+                         ne_low, ne_high, n_cov, pc_cov, runtime):
         """Manually specify pathway summary properties (after running init)."""
         self.p_value = pval
         self.n_actual = psize
@@ -381,6 +383,8 @@ class PathwaySummary(PathwaySummaryBasic):
         self.D = d
         self.ne_low = ne_low
         self.ne_high = ne_high
+        self.n_cov = n_cov
+        self.pc_cov = pc_cov
         self.runtime = runtime
         # # fetch gene_coverage, exclusive_genes, cooccurring genes
         # self._populate_exclusive_cooccurring()
@@ -691,12 +695,15 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
         bufsize = 1  # line buffered output
         outfile_name = self.root_name + '.txt'
         path_id = lcalc.pway.path_id
+        n_mutated = sum(lcalc.is_mutated_array)
+        pc_mutated = 100 * float(n_mutated) / len(lcalc.is_mutated_array)
         with open(outfile_name, 'a', bufsize) as out:
-            out.write('{}\t{:.3e}\t{}\t{}\t{:.3g}\t{:.3g}\t{:.3g}\t{}\t{}\t{:.2f}\n'.format(
-                path_id, lcalc.pvalue, lcalc.pway.n_actual, lcalc.ne,
-                lcalc.likelihood, lcalc.ne_ll, lcalc.D,
-                lcalc.ne_low, lcalc.ne_high,
-                runtime))
+            out_str = '{}\t{:.3e}\t{}\t{}\t{:.3g}\t{:.3g}\t{:.3g}\t{}\t{}' \
+                      '\t{:g}\t{:.1f}\t{:.2f}\n'
+            out.write(out_str.format(path_id, lcalc.pvalue, lcalc.pway.n_actual,
+                                     lcalc.ne, lcalc.likelihood, lcalc.ne_ll,
+                                     lcalc.D, lcalc.ne_low, lcalc.ne_high,
+                                     n_mutated, pc_mutated, runtime))
 
 
 class PathwayListAssembler(GenericPathwayFileProcessor):
@@ -729,14 +736,17 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 D = float(row[6])
                 ne_low = int(row[7])
                 ne_high = int(row[8])
-                runtime = float(row[9])
+                n_cov = int(row[9])
+                pc_cov = float(row[10])
+                runtime = float(row[11])
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.proj_abbrvs,
                                       patient_ids=self.filter_patient_ids,
                                       expressed_table=self.expressed_table,
                                       ignore_genes=self.ignore_genes)
                 pway.set_up_from_file(pval, psize, peffect, ll_actual,
-                                      ll_effective, D, ne_low, ne_high, runtime)
+                                      ll_effective, D, ne_low, ne_high,
+                                      n_cov, pc_cov, runtime)
                 all_pathways.append(pway)
         # sort pathways by p-value FIRST
         all_pathways.sort(key=lambda pw: pw.D, reverse=True)
@@ -824,10 +834,14 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                     [repr(i) for i in pway.exclusive_genes]) + '}'
                 cooccurring_string = '{' + ','.join(
                     [repr(i) for i in pway.cooccurring_genes]) + '}'
+                n_genes_mutated = len(self.path_genepatients_dict[pway.path_id])
+                n_genes_total = path_size_dict_full[pway.path_id]
+
                 format_str = "{path_id}\t{name}\t{n_actual}\t{n_effective}\t" \
                              "{p_value:.3e}\t{ll_actual:.4g}\t{ll_effective:.4g}\t" \
                              "{D:.4g}\t{ne_low}\t{ne_high}\t{runtime:.2f}\t{exclusive_string}\t" \
-                             "{cooccurring}\t{coverage_string}\t{pway_ngenes}\n"""
+                             "{cooccurring}\t{coverage_string}\t{ngenes_mut}\t" \
+                             "{ngenes_total}\t{n_cov}\t{pc_cov:.1f}\n"
                 out.write(format_str.format(path_id=pway.path_id,
                                             name=path_name,
                                             coverage_string=coverage_string,
@@ -842,7 +856,10 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                                             runtime=pway.runtime,
                                             exclusive_string=exclusive_string,
                                             cooccurring=cooccurring_string,
-                                            pway_ngenes=path_size_dict_full[pway.path_id]))
+                                            ngenes_mut=n_genes_mutated,
+                                            ngenes_total=n_genes_total,
+                                            n_cov=pway.n_cov,
+                                            pc_cov=pway.pc_cov))
 
     def write_matrix_files(self, pway):
         """Write text file containing presence matrix for patient-gene pair."""
@@ -867,6 +884,8 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         self.contrib = path_info_dict[pathway_number]['contrib']
         self.gene_set = set()
         self.gene_pc = dict()
+        self.n_genes_mutated = None
+        self.n_genes_total = None
         self.lengths_tuple = tuple()  # set externally
 
     @property
@@ -880,7 +899,10 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
     def as_string_js(self):
         """Return string for javascript."""
         outstr = "{ id:" + self.path_id + ", " + "name:'" + misc.html_quotes(self.nice_name) \
-                 + "', pval:'" + self.p_value + "', size:" + str(self.n_actual) \
+                 + "', pval:'" + self.p_value + "', n_cov:" + str(self.n_cov) \
+                 + ", pc_cov:" + '{:.1f}'.format(self.pc_cov) + ", n_genes_mutated:" \
+                 + str(self.n_genes_mutated) + ", n_genes_total:{:.1f}".format(self.n_genes_total) \
+                 + ", size:" + str(self.n_actual) \
                  + ", effective:" + str(self.n_effective) + ", url:'" \
                  + self.url + "', contrib: '" + misc.html_quotes(self.contrib) + "' , brief: '" \
                  + misc.html_quotes(self.description) + "', lengths:" + str(list(self.lengths_tuple)) \
@@ -1143,6 +1165,11 @@ def load_pathway_list_from_file(results_path):
             pc_str = "{" + pc_str.lstrip('struct(').rstrip(')')\
                 .replace("',", "':") + "}"  # e.g. {'ACADS':2.44,'ACADVL':2.44}
             pway.gene_pc = eval(pc_str)
+            pway.n_genes_mutated = int(vals[14])
+            if len(vals) > 15:
+                pway.n_genes_total = int(vals[15])
+                pway.n_cov = int(vals[16])
+                pway.pc_cov = float(vals[17])
             allPathways.append(pway)
     return allPathways
 
@@ -1183,6 +1210,7 @@ def make_js_file(allPathways, out_path):
 def make_readable_file(allPathways, out_path):
     """Create file suitable for archiving for user."""
     header_str = "pathway_name, pathway_id, url, p_value, n_effective, n_actual, " \
+                 "n_patients, pc_patients, n_genes_mutated, n_genes_total, " \
                  "genes_mutated_pc, gene_len_min_kbp, shortest_gene(s), " \
                  "gene_len_max_kbp, longest_gene(s), " \
                  "gene_len_avg_kbp, gene_len_variance"
@@ -1198,6 +1226,10 @@ def make_readable_file(allPathways, out_path):
                 line_vals.append(pway.p_value)
                 line_vals.append(pway.n_effective)
                 line_vals.append(pway.n_actual)
+                line_vals.append(pway.n_cov)
+                line_vals.append(pway.pc_cov)
+                line_vals.append(pway.n_genes_mutated)
+                line_vals.append(pway.n_genes_total)
                 line_vals.append(json.dumps(pway.gene_pc))
                 line_vals.extend(list(pway.lengths_tuple))
                 out.write('\t'.join([str(v) for v in line_vals]) + '\n')

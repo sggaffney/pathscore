@@ -7,7 +7,11 @@ function create_plot_div(pway_obj, n_pathways, user_id, projId, matrix_dir, n_ge
     opt_header = opt_header || "";
     var driver_text = get_driver_str(pway_obj);
 	var max_height = 25 * n_genes + 80;
-	var pval = pway_obj['pval'];
+    if(pway_obj['pc_cov'])
+        var pc_str = pway_obj['pc_cov'] + '% patients, ';
+    else
+        var pc_str = '';
+    var pval = pway_obj['pval'];
 	var pq_str = null;
 	if(pval == '0.000e+00')
 		pq_str = '<em>P</em><1e-16, <em>Q</em><' + Number(1e-16 * n_pathways).toPrecision(1);
@@ -17,7 +21,7 @@ function create_plot_div(pway_obj, n_pathways, user_id, projId, matrix_dir, n_ge
 	div_str ='<div class="panel panel-primary">' +
 		'<div class="panel-heading">' + opt_header +
 		'<h2 class="panel-title"><a href="'+ root_url + pway_obj['url'] +'" target="_blank">'+ pway_obj['name'] +
-		'</a> (' + pq_str + ') </h2>' + pway_obj['brief'] + ' (' + pway_obj['contrib'] + ')</div>' +
+		'</a> (' + pc_str + pq_str + ') </h2>' + pway_obj['brief'] + ' (' + pway_obj['contrib'] + ')</div>' +
 		'<div class="panel-body" style="padding:0"><code class="p-lengths">Gene lengths: ' +
 		'<span class="keyword-text">min</span>=' + pway_obj['lengths'][0] + 'kbp (' + pway_obj['lengths'][1] + '); ' +
 		'<span class="keyword-text">max</span>=' + pway_obj['lengths'][2] + 'kbp (' + pway_obj['lengths'][3] + '); ' +
