@@ -76,7 +76,7 @@ def run_analysis_async(proj_dir, data_path, upload_id):
         if not table.loaded:
             raise TableLoadException("Failed to load table {!r}."
                                      .format(table_name))
-        user_upload.n_patients = count_patients(table_name)
+        user_upload.n_patients = table.n_patients
         db.session.add(user_upload)
         db.session.commit()
         run(proj_dir, table_name, user_upload)
@@ -175,6 +175,7 @@ class MutationTable:
         self.n_rejected = None
         self.n_ignored = None
         self.populate_table()
+        self.n_patients = count_patients(self.table_name)
         self.remove_genes_unrecognized(rejected_path)
         self.remove_genes_outwith_pathways(unused_path)
         self.n_loaded = self.n_initial - self.n_rejected - self.n_ignored
