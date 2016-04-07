@@ -7,7 +7,7 @@ from app import db
 from ..decorators import limit_user_uploads  # ssl_required
 from decorators import json, etag, collection
 from ..errors import ValidationError
-from ..maf import MutationFile
+from ..uploads import MutationFile
 from ..models import UserFile, create_anonymous_user, initialize_project
 from ..admin import delete_project_folder
 from ..get_effective_pathways import run_analysis

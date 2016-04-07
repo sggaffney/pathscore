@@ -1,7 +1,6 @@
 import os
+import shutil
 from datetime import datetime, timedelta
-import random
-import string
 from collections import OrderedDict
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app, url_for
@@ -10,9 +9,11 @@ from flask_security import RoleMixin, UserMixin
 from . import db, login_manager
 from unidecode import unidecode
 from flask.ext.security.utils import encrypt_password, verify_password
+
 import naming_rules
 from errors import ValidationError
-from misc import GeneListTester
+from misc import GeneListTester, generate_random_str
+
 
 # Define models
 roles_users = db.Table('roles_users',
@@ -73,9 +74,7 @@ class User(UserMixin, db.Model):
 
     @staticmethod
     def generate_random_password(size=12):
-        # via http://stackoverflow.com/a/2257449
-        chars = string.ascii_uppercase + string.digits + string.ascii_lowercase
-        return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
+        return generate_random_str(length=size)
 
     @staticmethod
     def get_guest_username(int_id):
@@ -133,6 +132,9 @@ class UserFile(db.Model):
     n_rejected = db.Column(db.Integer)
     n_ignored = db.Column(db.Integer)
     n_loaded = db.Column(db.Integer)
+    bmr_id = db.Column(db.Integer, db.ForeignKey('bmr.bmr_id'))
+
+    bmr = db.relationship("CustomBMR", back_populates="projects")
 
     def get_local_filename(self):
         keepcharacters = (' ', '.', '_')
@@ -280,6 +282,23 @@ class UserFile(db.Model):
             self.proj_suffix = proj_suffix
         return self
 
+    def load_bmr(self):
+        """load bmr file into db table."""
+        bmr = self.bmr  # type: CustomBMR
+        if not self.bmr:
+            pass  # no custom bmr, so no loading required
+        bmr_path = bmr.get_path('final')
+        BmrProcessor(bmr).load_final(self.file_id)
+        # if not loaded:
+        #     raise Exception("Failed to load bmr {!r}.".format(bmr_path))
+
+    def remove_bmr(self):
+        """delete bmr table."""
+        bmr = self.bmr  # type: CustomBMR
+        if not self.bmr:
+            pass  # no custom bmr, so no loading required
+        BmrProcessor(bmr).remove_table(self.file_id)
+
 
 def create_anonymous_user():
     """Create a new anonymous user with random password."""
@@ -325,3 +344,228 @@ def initialize_project(user_upload=None, mut_file=None):
     mut_file.move_file(file_path)  # move to project folder
 
     return user_upload, proj_folder, file_path
+
+
+class CustomBMR(db.Model):
+    __tablename__ = 'bmr'
+    # save mut_filename, time, size, user_id in uploads table
+    # with 'is_valid' field, 'run_complete'
+    # run_id primary key
+    # only accept this file if user has no running jobs.
+    # will create folder for job: <run_id>
+    bmr_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    title = db.Column(db.String(255))
+    tissue = db.Column(db.String(255))
+    description = db.Column(db.String(255))
+    upload_time = db.Column(db.DateTime(), default=datetime.utcnow)
+    rand_str = db.Column(db.String(255))
+    is_valid = db.Column(db.Boolean)
+    uploader = db.relationship('User', backref='bmr_files')
+    n_rejected = db.Column(db.Integer)
+    n_ignored = db.Column(db.Integer)
+    n_loaded = db.Column(db.Integer)
+
+    projects = db.relationship("UserFile", back_populates="bmr")
+
+    def get_filename(self, kind='final'):
+        """Custom BMR filename. Kind in {'final', 'ignored', 'rejected'}."""
+        assert kind in {'final', 'orig', 'ignored', 'rejected'}, "Inappropriate kind."
+        keepcharacters = (' ','.', '_')
+        safe_title = "".join(c for c in self.title if c.isalnum()
+                              or c in keepcharacters) \
+            .rstrip().replace(' ', '_')
+
+        safe_title = unidecode(safe_title)  # returns ascii str
+        # safe_suffix = ud.normalize("NFC", safe_suffix)
+        filename = '_'.join([safe_title, str(self.rand_str), kind]) + '.txt'
+        return filename
+
+    def get_path(self, kind='final'):
+        """Custom BMR file location. Kind in {'final', 'ignored', 'rejected'}."""
+        assert kind in {'final', 'orig', 'ignored', 'rejected'}, "Inappropriate kind."
+        filename = self.get_filename(kind=kind)
+        dir_path = naming_rules.get_bmr_folder(self.uploader.id)
+        return os.path.join(dir_path, filename)
+
+    def get_init_table_name(self):
+        return 'bmr_init_{}'.format(self.user_id)
+
+    def get_proj_table_name(self, proj_id):
+        return 'bmr_{}'.format(proj_id)
+
+
+class BmrProcessor:
+    """Loads data from initial file into table, given table_name and file path.
+
+    Method initial_process performs filtering and CustomBMR object updates.
+    """
+    def __init__(self, bmr):
+        self.bmr = bmr  # type: CustomBMR
+        self.table_name = None
+        self.headers = ['hugo_symbol', 'entrez_id', 'per_Mb', 'length_bp',
+                        'effective_bp']
+
+    def load_final(self, proj_id):
+        """Populate project-specific table with final custom bmr file."""
+        file_path = self.bmr.get_path('final')
+        table_name = self.bmr.get_proj_table_name(proj_id)
+        cmd = u"CREATE TABLE `{}` (`hugo_symbol` VARCHAR(255) NOT NULL, " \
+              "`entrez_id` INT(11), `per_Mb` FLOAT, " \
+              "KEY `bmr_hugo_entrez` (`entrez_id`, `hugo_symbol`) USING HASH);"
+        load_str = u"""load data local infile '{}'
+            into table `{}` fields terminated by '\t'
+            lines terminated by '\n' ignore 1 lines;""".format(
+            file_path, table_name)
+        db.session.execute(cmd.format(table=table_name))
+        db.session.execute(load_str.format(table=table_name))
+        db.session.commit()
+
+    def remove_table(self, proj_id):
+        """Delete final bmr table. Called after custom analyses completes."""
+        table_name = self.bmr.get_proj_table_name(proj_id)
+        cmd = u"drop table {table};".format(table_name)
+        db.session.execute(cmd)
+        db.session.commit()
+
+    def initial_process(self):
+        """Takes CustomBMR instance; filters file; updates model."""
+        loaded = False
+        self.table_name = self.bmr.get_init_table_name()
+        n_initial = self._populate_table()
+        if n_initial:
+            n_rejected = self._remove_genes_unrecognized()
+
+        n_ignored = self._remove_genes_outwith_pathways()
+        n_loaded = n_initial - n_rejected - n_ignored
+        if n_loaded:
+            # join to entrez_length to get lengths for scaling and extra genes
+            self._fill_missing_genes()
+            loaded = True
+        self._update_db(loaded, n_loaded, n_rejected, n_ignored)
+        # save final file (for simple future loading)
+        self._save_final()
+
+    def _populate_table(self):
+        """Build mutation table before filtering. Return boolean for success."""
+        table_name, data_path = self.table_name, self.data_path
+        # chrom?: `chrom` VARCHAR(255) DEFAULT NULL,
+        # `effective_bp` FLOAT NOT NULL,
+        create_str = u"""CREATE TABLE `{}` (
+          `hugo_symbol` VARCHAR(255) NOT NULL,
+          `entrez_id` INT(11) DEFAULT NULL,
+          `per_Mb` FLOAT DEFAULT NULL,
+          KEY `bmr_hugo_entrez` (`entrez_id`, `hugo_symbol`) USING HASH);"""\
+            .format(table_name)
+        load_str = u"""load data local infile '{}'
+            into table `{}` fields terminated by '\t'
+            lines terminated by '\n' ignore 1 lines;""".format(
+            data_path, table_name)
+        cmd = u"select count(*) from `{}` m;".format(self.table_name)
+        db.session.execute(create_str)
+        db.session.execute(load_str)
+        n_initial = db.session.execute(cmd).scalar()
+        db.session.commit()
+        return n_initial
+
+    def _remove_genes_unrecognized(self):
+        cmd1 = u"""SELECT m.* FROM `{}` m
+            LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.geneId
+            WHERE n.geneId IS NULL OR m.hugo_symbol <> n.symbol;""".format(
+            self.table_name)
+        cmd2 = u"""delete from m using `{}` m
+          LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.geneId
+            WHERE n.geneId IS NULL OR m.hugo_symbol <> n.symbol;""" \
+            .format(self.table_name)
+        # EXPORT REJECTED GENES
+        result = db.session.execute(cmd1)
+        n_rejected = result.rowcount
+        if self.n_rejected > 0:
+            self._save_mutations_subset(result, self.bmr.get_path(kind='rejected'))
+            # DELETE EXTRA GENE LINES
+            db.session.execute(cmd2)
+            db.session.commit()
+        return n_rejected
+
+    def _remove_genes_outwith_pathways(self, rejected_path=None):
+        """
+        Remove genes outwith pathways, save to reject file,
+        return remaining mutation count.
+
+        return: remaining mutation count
+        :rtype : int
+        """
+        cmd1 = """SELECT m.* FROM `{}` m
+          LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
+          ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;""" \
+            .format(self.table_name)
+        cmd2 = u"""delete from m using `{}` m
+          LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
+          ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;""" \
+            .format(self.table_name)
+        # EXPORT EXTRA GENE LINES
+        result = db.session.execute(cmd1)
+        self.n_ignored = result.rowcount
+        if self.n_ignored > 0:
+            self._save_mutations_subset(result,
+                                        self.bmr.get_path(kind='ignored'))
+            # DELETE EXTRA GENE LINES
+            db.session.execute(cmd2)
+            db.session.commit()
+
+    @staticmethod
+    def _save_mutations_subset(result, save_path):
+        """Export mutation subset."""
+        with open(save_path, 'w') as out:
+            for row in result:
+                out.write('\t'.join([str(i) for i in row]) + '\n')
+
+    def _fill_missing_genes(self):
+        """Combine with refs.entrez_length for length_bp; get effective_bp."""
+        cmd_alter = u"ALTER TABLE {table} ADD COLUMN length_bp INT(11), " \
+                    "ADD COLUMN effective_bp INT(11);"
+        cmd_fetch_len = u"UPDATE refs.entrez_length e LEFT JOIN {table} b " \
+                        "ON e.`entrez_id` = b.`entrez_id` " \
+                        "SET b.length_bp = e.length_bp;"
+        cmd_extra = u"INSERT INTO {table} (hugo_symbol, entrez_id, per_Mb, " \
+                    "length_bp, effective_bp) SELECT e.hugo_symbol, " \
+                    "e.entrez_id, NULL, e.length_bp, NULL FROM " \
+                    "refs.entrez_length e LEFT JOIN bmr_go b " \
+                    "ON e.`entrez_id` = b.`entrez_id` " \
+                    "WHERE b.`entrez_id` IS NULL;"
+        cmd_permb = u"UPDATE {table} b INNER JOIN (SELECT AVG(per_Mb) AS " \
+                    "per_Mb FROM {table}) a SET b.per_Mb = a.per_Mb " \
+                    "WHERE b.per_Mb IS NULL;"
+        cmd_effective = u"UPDATE {table} SET `effective_bp` = `per_Mb` * " \
+                        u"`length_bp`;"
+        db.session.execute(cmd_alter.format(table=self.table_name))
+        db.session.execute(cmd_fetch_len.format(table=self.table_name))
+        db.session.execute(cmd_extra.format(table=self.table_name))
+        db.session.execute(cmd_permb.format(table=self.table_name))
+        db.session.execute(cmd_effective.format(table=self.table_name))
+        db.session.commit()
+
+    def _update_db(self, loaded, n_loaded, n_rejected, n_ignored):
+        """create db entry, even if there are no valid/kept genes"""
+        self.bmr.is_valid = loaded
+        self.bmr.n_rejected = n_rejected
+        self.bmr.n_ignored = n_ignored
+        self.bmr.n_loaded = n_loaded
+        db.session.add(self.bmr)
+        db.session.commit()
+
+    def _save_final(self):
+        """Save filtered file to final path."""
+        tmp_dir = current_app.config['TEMP_FOLDER']
+        user_id = self.bmr.user_id
+        time = datetime.utcnow().strftime('%Y-%m-%d_%H%M%S_%f')
+        rand = generate_random_str(3)
+        tmp_name = 'bmr_{user}_{time}_{rand}.txt'.format(user_id, time, rand)
+        tmp_path = os.path.join(tmp_dir, tmp_name)
+        final_path = self.bmr.get_path('final')
+        columns_str = ', '.join([repr(i) for i in self.headers])
+        cmd_fetch = u"select {columns} union all select * from {table} " \
+                    u"into outfile {tmp};".\
+            format(columns=columns_str, table=self.table_name, tmp=tmp_path)
+        db.session.execute(cmd_fetch)
+        shutil(tmp_path, final_path)

@@ -3,6 +3,8 @@ from subprocess import check_call
 from glob import glob
 import os
 import re
+import random
+import string
 from itertools import combinations_with_replacement
 import numpy as np
 import subprocess
@@ -119,3 +121,10 @@ def get_wait_time_string(wait_time):
     # < 1 min
     else:
         return str(wait_time.seconds) + 's'
+
+
+def generate_random_str(length=6):
+    """ascii letters (upper+lower), numbers. http://stackoverflow.com/a/2257449"""
+    charset = string.ascii_uppercase + string.digits + string.ascii_lowercase
+    char_list = [random.SystemRandom().choice(charset) for _ in xrange(length)]
+    return ''.join(char_list)

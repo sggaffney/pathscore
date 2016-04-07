@@ -17,7 +17,7 @@ from bokeh.models import Callback
 from bokeh.io import vform
 
 from . import pway  # FileTester, TempFile
-from ..maf import MutationFile
+from ..uploads import MutationFile
 from ..errors import ValidationError
 from .forms import UploadForm
 from ..models import UserFile, create_anonymous_user, initialize_project

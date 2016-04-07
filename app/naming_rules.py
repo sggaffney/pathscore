@@ -12,6 +12,11 @@ def get_project_folder(upload_obj):
     return os.path.join(user_folder, str(upload_obj.file_id))
 
 
+def get_bmr_folder(user_id):
+    user_folder = get_user_folder(user_id)
+    return os.path.join(user_folder, 'bmr')
+
+
 def get_js_name(upload_obj):
     return upload_obj.get_local_filename() + ".js"
 
