@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+{% from "_formhelpers.html" import render_field %}
+
+{% block page_content %}
+<div class="page-header">
+    <h1>Upload</h1>
+</div>
+
+
+    <p class="lead">Please complete the form below to set the project running.</p>
+
+    <div class="sgg_center">
+    <form method="post" action="/bmr" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        {{ render_field(form.title, placeholder="e.g. LUAD_CCLE_50samples") }}
+        {{ render_field(form.tissue) }}
+        {{ render_field(form.description, placeholder="Optional descriptive text", rows="1") }}
+
+        {% if form.bmr_file.errors %}
+            <div class="form-group has-error">
+        {% else %}
+            <div class="form-group">
+        {% endif %}
+            {{ form.bmr_file.label }}
+            {{ form.bmr_file }}
+            {% for error in form.bmr_file.errors %}
+                <p class="text-danger">{{ error }}</p>
+            {% endfor %}
+            <p class="help-block">Tab-separated plain text file, with the following headers:
+                hugo_symbol, entrez_id, per_Mb</p>
+            </div>
+
+        {{ form.submit(class_="btn btn-default") }}
+
+    </form>
+    </div>
+
+{# wtf.quick_form(form, enctype="multipart/form-data") #}
+{% endblock %}

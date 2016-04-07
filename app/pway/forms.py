@@ -58,3 +58,26 @@ class UploadForm(Form):
             upload.ignore_genes = str(self.ignore_genes.data)
         if self.proj_suffix.data:
             upload.proj_suffix = self.proj_suffix.data
+
+
+class BmrForm(Form):
+    bmr_file = FileField('Custom BMR file', validators=[
+        FileRequired(),
+        FileAllowed(['txt', 'tsv'], 'Use txt or tsv extension')
+    ])
+    # title, tissue, description
+    title = StringField(u'Brief name', [DataRequired(), length(
+        max=32, message="32 character limit.")])
+    tissue = StringField(u'Tissue type (optional)', validators=
+        [optional(), length(max=100, message="100 character limit.")])
+    description = TextAreaField('Description', validators=
+        [optional(), length(max=255, message="255 character limit.")])
+    submit = SubmitField('Upload')
+
+    def to_model(self, bmr):
+        # upload.mut_file = self.mut_file.data
+        # upload.genome_size = self.genome_size.data
+        bmr.title = self.title.data
+        bmr.tissue = self.tissue.data
+        if self.description.data:
+            bmr.description = self.description.data

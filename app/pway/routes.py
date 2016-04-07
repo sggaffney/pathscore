@@ -17,14 +17,15 @@ from bokeh.models import Callback
 from bokeh.io import vform
 
 from . import pway  # FileTester, TempFile
-from ..uploads import MutationFile
+from ..uploads import MutationFile, BmrFile
 from ..errors import ValidationError
-from .forms import UploadForm
-from ..models import UserFile, create_anonymous_user, initialize_project
+from .forms import UploadForm, BmrForm
+from ..models import UserFile, create_anonymous_user, initialize_project, \
+    CustomBMR, BmrProcessor
 from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
 from ..admin import zip_project
 from .. import naming_rules
-from .. import misc
+from .. import misc, db
 from ..decorators import no_ssl, limit_user_uploads
 from .. import plot_fns
 
@@ -401,6 +402,30 @@ def results():
                            projects=upload_list, user_id=current_user.id,
                            show_proj=show_proj, proj_names=proj_names,
                            include_genes=include)
+
+
+@pway.route('/bmr', methods=('GET', 'POST'))
+@login_required
+def bmr():
+    """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
+
+    form = BmrForm()
+    if form.validate_on_submit():
+        try:
+            bmr_file = BmrFile(form.bmr_file.data)
+        except ValidationError as e:
+            flash(str(e), 'danger')
+            return render_template('pway/bmr.html', form=form)
+        # CREATE CustomBMR object FROM FORM
+        bmr = CustomBMR(user_id=current_user.id)
+        form.to_model(bmr)
+        bmr.init_from_upload(bmr_file)  # copies file to user folder
+        BmrProcessor(bmr).initial_process()
+        db.session.add(bmr)
+        db.session.commit()
+        flash('File accepted and validated.', 'success')
+        return redirect(url_for('.index'))
+    return render_template('pway/bmr.html', form=form)
 
 
 @pway.route('/upload', methods=('GET', 'POST'))

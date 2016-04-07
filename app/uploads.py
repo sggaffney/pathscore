@@ -98,5 +98,5 @@ class MutationFile(BasicFile):
 class BmrFile(BasicFile):
     """Tests and saves uploaded custom BMR file."""
 
-    want_headers = ['hugo_symbol', 'entrez_id', 'per_Mb']
+    want_headers = ['hugo_symbol', 'entrez_id', 'per_mb']
     int_columns = [1]

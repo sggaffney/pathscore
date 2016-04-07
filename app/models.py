@@ -127,13 +127,13 @@ class UserFile(db.Model):
     required_genes = db.Column(db.Text())
     ignore_genes = db.Column(db.Text())
     proj_suffix = db.Column(db.String(255))
-    uploader = db.relationship('User', backref='uploads')
     n_patients = db.Column(db.Integer)
     n_rejected = db.Column(db.Integer)
     n_ignored = db.Column(db.Integer)
     n_loaded = db.Column(db.Integer)
     bmr_id = db.Column(db.Integer, db.ForeignKey('bmr.bmr_id'))
 
+    uploader = db.relationship('User', backref='uploads')
     bmr = db.relationship("CustomBMR", back_populates="projects")
 
     def get_local_filename(self):
@@ -361,11 +361,11 @@ class CustomBMR(db.Model):
     upload_time = db.Column(db.DateTime(), default=datetime.utcnow)
     rand_str = db.Column(db.String(255))
     is_valid = db.Column(db.Boolean)
-    uploader = db.relationship('User', backref='bmr_files')
     n_rejected = db.Column(db.Integer)
     n_ignored = db.Column(db.Integer)
     n_loaded = db.Column(db.Integer)
 
+    uploader = db.relationship('User', backref='bmr_files')
     projects = db.relationship("UserFile", back_populates="bmr")
 
     def get_filename(self, kind='final'):
@@ -385,8 +385,17 @@ class CustomBMR(db.Model):
         """Custom BMR file location. Kind in {'final', 'ignored', 'rejected'}."""
         assert kind in {'final', 'orig', 'ignored', 'rejected'}, "Inappropriate kind."
         filename = self.get_filename(kind=kind)
-        dir_path = naming_rules.get_bmr_folder(self.uploader.id)
+        dir_path = naming_rules.get_bmr_folder(self.user_id)
         return os.path.join(dir_path, filename)
+
+    def init_from_upload(self, bmr_file):
+
+        bmr_dir = naming_rules.get_bmr_folder(self.user_id)
+        if not os.path.exists(bmr_dir):
+            os.mkdir(bmr_dir)
+        self.rand_str = generate_random_str(6)
+        bmr_file.move_file(self.get_path('orig'))
+        return self
 
     def get_init_table_name(self):
         return 'bmr_init_{}'.format(self.user_id)
@@ -442,13 +451,14 @@ class BmrProcessor:
             # join to entrez_length to get lengths for scaling and extra genes
             self._fill_missing_genes()
             loaded = True
+            self._save_final()
         self._update_db(loaded, n_loaded, n_rejected, n_ignored)
         # save final file (for simple future loading)
-        self._save_final()
 
     def _populate_table(self):
         """Build mutation table before filtering. Return boolean for success."""
-        table_name, data_path = self.table_name, self.data_path
+        table_name = self.table_name
+        data_path = self.bmr.get_path('orig')
         # chrom?: `chrom` VARCHAR(255) DEFAULT NULL,
         # `effective_bp` FLOAT NOT NULL,
         create_str = u"""CREATE TABLE `{}` (
@@ -480,7 +490,7 @@ class BmrProcessor:
         # EXPORT REJECTED GENES
         result = db.session.execute(cmd1)
         n_rejected = result.rowcount
-        if self.n_rejected > 0:
+        if n_rejected > 0:
             self._save_mutations_subset(result, self.bmr.get_path(kind='rejected'))
             # DELETE EXTRA GENE LINES
             db.session.execute(cmd2)
@@ -505,13 +515,14 @@ class BmrProcessor:
             .format(self.table_name)
         # EXPORT EXTRA GENE LINES
         result = db.session.execute(cmd1)
-        self.n_ignored = result.rowcount
-        if self.n_ignored > 0:
+        n_ignored = result.rowcount
+        if n_ignored > 0:
             self._save_mutations_subset(result,
                                         self.bmr.get_path(kind='ignored'))
             # DELETE EXTRA GENE LINES
             db.session.execute(cmd2)
             db.session.commit()
+        return n_ignored
 
     @staticmethod
     def _save_mutations_subset(result, save_path):
@@ -530,7 +541,7 @@ class BmrProcessor:
         cmd_extra = u"INSERT INTO {table} (hugo_symbol, entrez_id, per_Mb, " \
                     "length_bp, effective_bp) SELECT e.hugo_symbol, " \
                     "e.entrez_id, NULL, e.length_bp, NULL FROM " \
-                    "refs.entrez_length e LEFT JOIN bmr_go b " \
+                    "refs.entrez_length e LEFT JOIN {table} b " \
                     "ON e.`entrez_id` = b.`entrez_id` " \
                     "WHERE b.`entrez_id` IS NULL;"
         cmd_permb = u"UPDATE {table} b INNER JOIN (SELECT AVG(per_Mb) AS " \
@@ -556,16 +567,18 @@ class BmrProcessor:
 
     def _save_final(self):
         """Save filtered file to final path."""
+        # bmr knows final path.
         tmp_dir = current_app.config['TEMP_FOLDER']
         user_id = self.bmr.user_id
         time = datetime.utcnow().strftime('%Y-%m-%d_%H%M%S_%f')
         rand = generate_random_str(3)
-        tmp_name = 'bmr_{user}_{time}_{rand}.txt'.format(user_id, time, rand)
+        tmp_name = 'bmr_{user}_{time}_{rand}.txt'.format(
+            user=user_id, time=time, rand=rand)
         tmp_path = os.path.join(tmp_dir, tmp_name)
         final_path = self.bmr.get_path('final')
         columns_str = ', '.join([repr(i) for i in self.headers])
         cmd_fetch = u"select {columns} union all select * from {table} " \
-                    u"into outfile {tmp};".\
+                    u"into outfile {tmp!r};".\
             format(columns=columns_str, table=self.table_name, tmp=tmp_path)
         db.session.execute(cmd_fetch)
-        shutil(tmp_path, final_path)
+        shutil.move(tmp_path, final_path)
