@@ -1,5 +1,4 @@
 import unicodedata as ud
-from subprocess import check_call
 from glob import glob
 import os
 import re
@@ -8,7 +7,9 @@ import string
 from itertools import combinations_with_replacement
 import numpy as np
 import subprocess
+from collections import OrderedDict
 
+import pandas as pd
 
 class GeneListTester(object):
     """Holds regex string for testing gene lists."""
@@ -49,7 +50,7 @@ def zip_svgs(proj_dir):
         file_names = glob(os.path.join(plot_path, '*.svg'))
         for file_name in file_names:
             # check_call(['/usr/local/bin/svgo', file_name])
-            check_call(['gzip', file_name])
+            subprocess.check_call(['gzip', file_name])
             os.rename(file_name + '.gz', file_name + 'z')
 
 
@@ -128,3 +129,23 @@ def generate_random_str(length=6):
     charset = string.ascii_uppercase + string.digits + string.ascii_lowercase
     char_list = [random.SystemRandom().choice(charset) for _ in xrange(length)]
     return ''.join(char_list)
+
+
+def objects_to_dataframe(object_list, attr_list, index_col=None,
+                         header_map=dict(), dtype=None):
+    """Create pandas dataframe from list of model instances.
+
+    Args:
+         attr_list (str[]): object attributes to turn into columns
+         index_col (str): optional attribute to use as index
+         header_map (dict): attribute name -> column name map
+         dtype (type|dict) = optional dtype for dataframe. e.g. object
+    """
+    d = OrderedDict()
+    for header in attr_list:
+        new_header = header_map[header] if header in header_map else header
+        d[new_header] = [getattr(obj, header) for obj in object_list]
+    inds = [getattr(ob, index_col) for ob in object_list] if index_col else None
+    df = pd.DataFrame(d, dtype=dtype, index=inds)
+    df = df.where((pd.notnull(df)), None)  # None instead of nan
+    return df

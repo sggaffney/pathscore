@@ -4,11 +4,43 @@
 
 {% block page_content %}
 <div class="page-header">
-    <h1>Upload</h1>
+    <h1>Custom BMR files</h1>
 </div>
 
+{% if not bmr_df.empty %}
 
-    <p class="lead">Please complete the form below to set the project running.</p>
+You have {{ bmr_df.shape[0] }} custom BMR files.
+
+<div class="table-responsive">
+<table class="table table-hover vmiddle_sgg">
+    <tr>
+    {% for header in bmr_df %}
+        <th>{{ header }}</th>
+    {% endfor %}
+    </tr>
+    {% for ind, row in bmr_df.iterrows() %}
+        <tr>
+        {% for header, val in row.iterkv() %}
+            {% if (ind, header) in url_dict %}
+                <td><a href="{{ url_dict[(ind, header)] }}">{{ val if val is not none else '' }}</a></td>
+            {% else %}
+
+                <td>{{ val if val is not none else '' }}</td>
+
+            {% endif %}
+        {% endfor %}
+        </tr>
+    {% endfor %}
+</table>
+</div>
+
+{% else %}
+No uploaded BMR files yet.
+{% endif %}
+
+
+
+    <p class="lead">Please complete the form below to add a new BMR file.</p>
 
     <div class="sgg_center">
     <form method="post" action="/bmr" enctype="multipart/form-data">

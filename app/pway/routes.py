@@ -382,6 +382,31 @@ def get_filtered():
         abort(404)
 
 
+@pway.route('/fetchbmr/<int:bmr_id>/<kind>')
+def fetch_bmr(bmr_id=None, kind=None):
+    """Get filtered genes. Params: proj and kind (final/orig/ignored/rejected)"""
+    # try:
+    #     bmr_id = int(request.args.get('id', None))
+    # except (TypeError, ValueError):
+    #     bmr_id = None
+    # kind = request.args.get('type', None)  # ignored or rejected
+    if bmr_id is None or kind not in ('final', 'orig', 'ignored', 'rejected'):
+        abort(404)
+    try:
+        bmr = CustomBMR.query.filter_by(user_id=current_user.id).\
+            filter_by(bmr_id=bmr_id).all()[0]  # type: CustomBMR
+    except IndexError:
+        abort(404)
+    except AttributeError:  # catches current_user is anonymous
+        abort(403)
+    bmr = bmr  # type: CustomBMR
+    file_path = bmr.get_path(kind=kind)
+    try:
+        return send_file(file_path, as_attachment=True)
+    except IOError:
+        abort(404)
+
+
 @pway.route('/results')
 @login_required
 def results():
@@ -404,11 +429,26 @@ def results():
                            include_genes=include)
 
 
+
 @pway.route('/bmr', methods=('GET', 'POST'))
 @login_required
 def bmr():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
 
+    # load previous bmr objects for table display
+    bmr_list = CustomBMR.query.filter_by(user_id=current_user.id).all()
+    headers = ['title', 'tissue', 'n_loaded', 'n_rejected',
+               'n_ignored', 'description']
+    header_map = {'n_rejected': 'rejected', 'n_loaded': 'loaded',
+                  'n_ignored': 'ignored'}
+    bmr_df = misc.objects_to_dataframe(bmr_list, headers, index_col='bmr_id',
+                                       header_map=header_map, dtype=object)
+    url_dict = dict()
+    kind_map = dict(rejected='rejected', ignored='ignored', loaded='final')
+    for bmr_id in bmr_df.index:
+        for header in kind_map:
+            url_dict[(bmr_id, header)] = url_for(
+                'pway.fetch_bmr', bmr_id=bmr_id, kind=kind_map[header])
     form = BmrForm()
     if form.validate_on_submit():
         try:
@@ -425,7 +465,8 @@ def bmr():
         db.session.commit()
         flash('File accepted and validated.', 'success')
         return redirect(url_for('.index'))
-    return render_template('pway/bmr.html', form=form)
+    return render_template('pway/bmr.html', form=form, bmr_df=bmr_df,
+                           url_dict=url_dict)
 
 
 @pway.route('/upload', methods=('GET', 'POST'))
