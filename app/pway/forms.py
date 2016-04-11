@@ -3,7 +3,7 @@
 from flask.ext.wtf import Form
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 from wtforms import SubmitField, RadioField, TextAreaField, \
-    StringField
+    StringField, SelectField
 from flask.ext.wtf.html5 import IntegerField
 from wtforms.validators import Length, DataRequired, optional, length, Regexp
 from ..misc import GeneListTester
@@ -45,6 +45,7 @@ class UploadForm(Form):
     proj_suffix = StringField('Project name',
                               validators=[DataRequired(), length(
                                   max=40, message="40 character limit.")])
+    bmr = SelectField('Custom BMR', validators=[DataRequired()], coerce=int)
     submit = SubmitField('Upload')
 
     def to_model(self, upload):
@@ -52,6 +53,8 @@ class UploadForm(Form):
         # upload.genome_size = self.genome_size.data
         upload.n_cutoff = self.n_cutoff.data
         upload.algorithm = self.algorithm.data
+        if self.bmr.data > 0:
+            upload.bmr_id = self.bmr.data
         if self.required_genes.data:
             upload.required_genes = str(self.required_genes.data)
         if self.ignore_genes.data:

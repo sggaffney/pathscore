@@ -20,7 +20,8 @@
         {# <!--{ render_field(form.n_cutoff, placeholder="500") }--> #}
         {{ render_field(form.required_genes, placeholder="e.g. BRAF,NRAS", rows="1") }}
         {# render_field(form.ignore_genes, placeholder="e.g. TP53", rows="1") #}
-        {% if form.mut_file.ignore_genes %}
+
+        {% if form.ignore_genes.errors %}
             <div class="form-group has-error">
         {% else %}
             <div class="form-group">
@@ -33,6 +34,7 @@
             <p class="help-block"><button type="button" class="form-filler-button" id="fill-fishy">Fill in sample fishy genes</button></p>
             </div>
 
+        {{ render_field(form.bmr) }}
 
         {% if form.mut_file.errors %}
             <div class="form-group has-error">
