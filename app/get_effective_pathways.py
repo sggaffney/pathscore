@@ -942,6 +942,11 @@ def run(dir_path, table_name, user_upload):
     user_upload is upload object (file_id, user_id, filename, ...etc)
     """
     alg = user_upload.algorithm  # 'gene_count', 'gene_length', 'bmr_length'
+    bmr_table = None
+    if user_upload.bmr:
+        bmr = user_upload.bmr
+        bmr.load_final(user_upload.file_id)
+        bmr_table = bmr.get_proj_table_name(user_upload.file_id)
 
     ignore = user_upload.ignore_genes
     ignore_list = str(ignore).split(',') if ignore else []
@@ -949,7 +954,7 @@ def run(dir_path, table_name, user_upload):
     # GET BACKGROUND SIZE (varies with ignore_list)
     if ignore_list:
         genome_size = lookup_background_size(ignore_genes=ignore_list,
-                                             alg=alg)
+                                             alg=alg, bmr_table=bmr_table)
     else:
         if alg == 'gene_count':
             genome_size = background_count_full
@@ -961,14 +966,19 @@ def run(dir_path, table_name, user_upload):
             raise Exception("Invalid algorithm selection ({})".format(alg))
     # self.update_state(state='PROGRESS', meta={'status': 'Calculating L'})
     detail_path, matrix_folder = generate_initial_text_output(
-        dir_path, table_name, user_upload, genome_size, alg=alg)
+        dir_path, table_name, user_upload, genome_size, alg=alg,
+        bmr_table=bmr_table)
     # matrix_folder is typically 'matrix_txt'
     # self.update_state(state='PROGRESS', meta={'status': 'Plotting'})
+    if bmr:
+        bmr.remove_table(user_upload.file_id)
+    import pdb; pdb.set_trace()
     generate_plot_files(user_upload, detail_path, table_name, dir_path,
                         matrix_folder, genome_size)
 
 
-def generate_initial_text_output(dir_path, table_name, user_upload, genome_size, alg='gene_count'):
+def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
+                                 alg='gene_count', bmr_table=None):
     # max_mutations
     file_id = user_upload.file_id
     table_list = [table_name]  # code can iterate through list of tables
@@ -1026,7 +1036,8 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
             path_size_dict_full
     elif alg in ['gene_length', 'bmr_length']:
         if ignore_genes:
-            path_size_dict = lookup_path_lengths(ignore_genes, alg=alg)
+            path_size_dict = lookup_path_lengths(ignore_genes, alg=alg,
+                                                 bmr_table=bmr_table)
         else:
             path_size_dict = path_len_dict_full if alg == 'gene_length' else \
                 path_bmr_dict_full

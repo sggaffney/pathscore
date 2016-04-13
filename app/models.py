@@ -388,8 +388,30 @@ class CustomBMR(db.Model):
         dir_path = naming_rules.get_bmr_folder(self.user_id)
         return os.path.join(dir_path, filename)
 
-    def init_from_upload(self, bmr_file):
+    def load_final(self, proj_id):
+        """Populate project-specific table with final custom bmr file."""
+        file_path = self.get_path('final')
+        table_name = self.get_proj_table_name(proj_id)
+        cmd = u"CREATE TABLE `{table}` (`hugo_symbol` VARCHAR(255) NOT NULL, " \
+              "`entrez_id` INT(11), `per_Mb` FLOAT, `length_bp` int(11), " \
+              "`effective_bp` int(11) unsigned, " \
+              "KEY `bmr_hugo_entrez` (`entrez_id`, `hugo_symbol`) USING HASH);"
+        load_str = u"""load data local infile '{}'
+            into table `{}` fields terminated by '\t'
+            lines terminated by '\n' ignore 1 lines;""".format(
+            file_path, table_name)
+        db.session.execute(cmd.format(table=table_name))
+        db.session.execute(load_str.format(table=table_name))
+        db.session.commit()
 
+    def remove_table(self, proj_id):
+        """Delete final bmr table. Called after custom analyses completes."""
+        table_name = self.get_proj_table_name(proj_id)
+        cmd = u"drop table {};".format(table_name)
+        db.session.execute(cmd)
+        db.session.commit()
+
+    def init_from_upload(self, bmr_file):
         bmr_dir = naming_rules.get_bmr_folder(self.user_id)
         if not os.path.exists(bmr_dir):
             os.mkdir(bmr_dir)
@@ -414,28 +436,6 @@ class BmrProcessor:
         self.table_name = None
         self.headers = ['hugo_symbol', 'entrez_id', 'per_Mb', 'length_bp',
                         'effective_bp']
-
-    def load_final(self, proj_id):
-        """Populate project-specific table with final custom bmr file."""
-        file_path = self.bmr.get_path('final')
-        table_name = self.bmr.get_proj_table_name(proj_id)
-        cmd = u"CREATE TABLE `{}` (`hugo_symbol` VARCHAR(255) NOT NULL, " \
-              "`entrez_id` INT(11), `per_Mb` FLOAT, " \
-              "KEY `bmr_hugo_entrez` (`entrez_id`, `hugo_symbol`) USING HASH);"
-        load_str = u"""load data local infile '{}'
-            into table `{}` fields terminated by '\t'
-            lines terminated by '\n' ignore 1 lines;""".format(
-            file_path, table_name)
-        db.session.execute(cmd.format(table=table_name))
-        db.session.execute(load_str.format(table=table_name))
-        db.session.commit()
-
-    def remove_table(self, proj_id):
-        """Delete final bmr table. Called after custom analyses completes."""
-        table_name = self.bmr.get_proj_table_name(proj_id)
-        cmd = u"drop table {table};".format(table_name)
-        db.session.execute(cmd)
-        db.session.commit()
 
     def initial_process(self):
         """Takes CustomBMR instance; filters file; updates model."""

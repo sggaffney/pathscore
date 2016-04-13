@@ -4,7 +4,7 @@ import MySQLdb as mdb
 from collections import defaultdict
 
 
-def lookup_background_size(ignore_genes=None, alg=None):
+def lookup_background_size(ignore_genes=None, alg=None, bmr_table=None):
     """Get background genome size sizes. Optional ignore_genes iterable.
 
     - Uses entrez_length table built from genes in msigdb (pathway_genes).
@@ -16,6 +16,8 @@ def lookup_background_size(ignore_genes=None, alg=None):
         ignore_genes (iterable): contains gene symbols to ignore.
         alg (str): specifies algorithm. ['gene_count', 'gene_length',
             or 'bmr_length']
+        bmr_table: specify table name for custom bmr, else use
+            entrez_length table. only applies to 'bmr_length' algorithm.
 
     Return:
         int: length. Number of bases for length, else number of genes.
@@ -30,14 +32,15 @@ def lookup_background_size(ignore_genes=None, alg=None):
         genes_str = "WHERE hugo_symbol NOT IN {}".format(genes_str)
     else:
         genes_str = ""
+    table_name = bmr_table if bmr_table else 'refs.entrez_length'
     if alg == 'bmr_length':
         field_str = "sum(effective_bp)"
     elif alg == 'gene_length':
         field_str = "sum(length_bp)"
     else:
         field_str = "count(*)"
-    cmd = """SELECT {field_str} FROM refs.entrez_length {genes_str};""".format(
-        field_str=field_str, genes_str=genes_str)
+    cmd = """SELECT {field_str} FROM {table} {genes_str};""".format(
+        field_str=field_str, table=table_name, genes_str=genes_str)
     background_size = None
     con = None
     try:
@@ -92,7 +95,7 @@ def lookup_path_sizes(ignore_genes=None):
     return size_dict
 
 
-def lookup_path_lengths(ignore_genes=None, alg=None):
+def lookup_path_lengths(ignore_genes=None, alg=None, bmr_table=None):
     """Get bp length for each pathway, with optional exclude genes."""
     if alg is None:
         raise Exception("Must specify algorithm type.")
@@ -103,12 +106,13 @@ def lookup_path_lengths(ignore_genes=None, alg=None):
         genes_string = "WHERE hugo_symbol NOT IN {}".format(genes_string)
     else:
         genes_string = ""
+    table_name = bmr_table if bmr_table else 'refs.entrez_length'
     field_str = 'effective_bp' if alg == 'bmr_length' else 'length_bp'
-    cmd = """SELECT path_id, sum({field_str}) AS bp FROM refs.entrez_length l
+    cmd = """SELECT path_id, sum({field_str}) AS bp FROM {table} l
         INNER JOIN refs.pathway_gene_link pgl ON l.entrez_id = pgl.entrez_id
         {genes_string}
         GROUP BY pgl.path_id;""".format(genes_string=genes_string,
-                                        field_str=field_str)
+                                        field_str=field_str, table=table_name)
     len_dict = dict()
     try:
         con = mdb.connect(**app.dbvars)
@@ -199,7 +203,6 @@ def lookup_patient_lengths(table_name, ignore_genes):
         genes_string = ""
     cmd = """SELECT patient_id, count(*)
       FROM {table_name} m
-      INNER JOIN refs.`entrez_length` l ON m.entrez_id = l.entrez_id
       {genes_string} GROUP BY patient_id;"""\
         .format(table_name=table_name, genes_string=genes_string)
     patient_len_dict = dict()
