@@ -24,7 +24,8 @@ from .db_lookups import lookup_path_sizes, lookup_background_size, \
     lookup_patient_counts, lookup_patient_lengths, build_path_patient_dict, \
     lookup_path_lengths, fetch_path_ids_interest_genes, get_pathway_name_dict, \
     get_gene_combs_hit, get_gene_counts, get_pway_lenstats_dict, \
-    fetch_path_info_global, count_patients, lookup_hypermutated_patients
+    fetch_path_info_global, count_patients, lookup_hypermutated_patients, \
+    get_annotation_dict
 import misc
 import naming_rules
 
@@ -67,12 +68,11 @@ def run_analysis_async(proj_dir, data_path, upload_id):
         table_name = user_upload.get_table_name()
         table = MutationTable(table_name, data_path,
                               unused_path=unused_gene_path,
-                              rejected_path=rejected_gene_path)
+                              rejected_path=rejected_gene_path,
+                              has_annot=user_upload.has_annot)
         user_upload.n_rejected = table.n_rejected
         user_upload.n_ignored = table.n_ignored
         user_upload.n_loaded = table.n_loaded
-        db.session.add(user_upload)
-        db.session.commit()
         if not table.loaded:
             raise TableLoadException("Failed to load table {!r}."
                                      .format(table_name))
@@ -167,13 +167,14 @@ class Patient():
 class MutationTable:
     """Loads data from file into table, given table_name and file path."""
     def __init__(self, table_name, data_path, unused_path=None,
-                 rejected_path=None):
+                 rejected_path=None, has_annot=None):
         self.table_name = table_name
         self.data_path = data_path
         self.loaded = False
         self.n_initial = None
         self.n_rejected = None
         self.n_ignored = None
+        self.has_annot = has_annot
         self.populate_table()
         self.n_patients = count_patients(self.table_name)
         self.remove_genes_unrecognized(rejected_path)
@@ -182,16 +183,18 @@ class MutationTable:
         if self.n_loaded:
             self.loaded = True
 
+
     def populate_table(self):
         """Build mutation table before filtering. Return boolean for success."""
         table_name, data_path = self.table_name, self.data_path
+        annot_str = u'`annot` varchar(255), ' if self.has_annot else u''
         create_str = u"""CREATE TABLE `{}` (
           `hugo_symbol` VARCHAR(255) DEFAULT NULL,
           `entrez_id` INT(11) DEFAULT NULL,
           `patient_id` VARCHAR(255) DEFAULT NULL,
-          KEY `temp_patient_id` (`patient_id`) USING HASH,
+          {annot_str} KEY `temp_patient_id` (`patient_id`) USING HASH,
           KEY `temp_patient_entrez` (`patient_id`,`entrez_id`) USING HASH);"""\
-            .format(table_name)
+            .format(table_name, annot_str=annot_str)
         load_str = u"""load data local infile '{}'
             into table `{}` fields terminated by '\t'
             lines terminated by '\n' ignore 1 lines;""".format(
@@ -293,12 +296,10 @@ class GeneMatrix:
     """Holds patient-gene matrix info for a single pathway.
     Write matrix to file with call to export_matrix."""
 
-    def __init__(self):
-        self.genePatientDict = dict()
-
-    def add_gene_patients(self, genepatients_dict):
-        """Add gene-patientList pairs into dictionary."""
+    def __init__(self, genepatients_dict, annot_dict=None):
+        """Add gene-patientList pairs into dictionary, and optional annot_dict."""
         self.genePatientDict = genepatients_dict
+        self.annot_dict = annot_dict
 
     def export_matrix(self, outfile, exclusive_genes):
         """Writes tab-separated matrix file for patient/gene
@@ -320,7 +321,7 @@ class GeneMatrix:
                 if patient in self.genePatientDict[gene]:
                     patient_counts[patient] += 1
         patient_list = list(patient_set)
-        patient_list.sort()  # sort alphabetically        
+        patient_list.sort()  # sort alphabetically
         patient_list.sort(key=lambda patient: patient_counts[patient],
                           reverse=True)
         outfile.write("\t".join(['GENE'] + patient_list) + '\n')
@@ -330,7 +331,11 @@ class GeneMatrix:
             outfile.write(gene)
             for patient in patient_list:
                 if patient in self.genePatientDict[gene]:
-                    outfile.write('\t1')
+                    if self.annot_dict and (gene, patient) in self.annot_dict:
+                        annot = self.annot_dict[(gene, patient)]
+                        outfile.write('\t{}'.format(annot))
+                    else:
+                        outfile.write('\t1')
                 else:
                     outfile.write('\t0')
             outfile.write('\n')
@@ -445,7 +450,6 @@ class PathwaySummary(PathwaySummaryBasic):
                                               gene_patients):
         """POSTPROCESSING.
         Gather pathway gene info and write detailed output."""
-        self.geneMatrix = GeneMatrix()  # populated during update_gene_coverage
         self._populate_exclusive_cooccurring(genelists)
         self._update_gene_coverage(n_patients, gene_patients)
 
@@ -492,7 +496,7 @@ class PathwaySummary(PathwaySummaryBasic):
 
 
 class LCalculator():
-    """Calculates likelihood of observing pathway mutations in patients, and 
+    """Calculates likelihood of observing pathway mutations in patients, and
     MLE pathway size from these observations. Takes a pathwaySummary object."""
 
     def __init__(self, pway, genome_size=18852):
@@ -777,7 +781,8 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
     name_postfix = '_detail.txt'
     def __init__(self, dir_path, file_id, pway_object_list,
                  name_suffix=None, path_genelists_dict=dict(),
-                 path_genepatients_dict=dict(), n_patients=None):
+                 path_genepatients_dict=dict(), n_patients=None,
+                 annot_dict=None):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
@@ -788,6 +793,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
         self.path_genelists_dict = path_genelists_dict
         self.path_genepatients_dict = path_genepatients_dict
         self.n_patients = n_patients
+        self.annot_dict = annot_dict
 
     @staticmethod
     def dict_to_struct(coverage_dict):
@@ -805,7 +811,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
         return struct_string
 
     def write_detailed_file(self):
-        """Perform lookup of coverage etc for low pvalue pathways and write 
+        """Perform lookup of coverage etc for low pvalue pathways and write
         ordered list of pathways plus info to file."""
         bufsize = 1
         with open(self.outfile_name, 'w', bufsize) as out:
@@ -819,8 +825,10 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                         self.path_genepatients_dict[pway.path_id])
                     if pway.gene_coverage:  # if genes are hit...
                         if pway.n_effective > pway.n_actual:
-                            pway.geneMatrix.add_gene_patients(
-                                self.path_genepatients_dict[pway.path_id])
+                            pway.geneMatrix = GeneMatrix(
+                                self.path_genepatients_dict[pway.path_id],
+                                annot_dict=self.annot_dict
+                            )
                             self.write_matrix_files(pway)
                 path_name = self.nameDict[pway.path_id]
                 coverage_string = self.dict_to_struct(pway.gene_coverage)
@@ -947,7 +955,6 @@ def run(dir_path, table_name, user_upload):
         bmr = user_upload.bmr
         bmr.load_final(user_upload.file_id)
         bmr_table = bmr.get_proj_table_name(user_upload.file_id)
-
     ignore = user_upload.ignore_genes
     ignore_list = str(ignore).split(',') if ignore else []
 
@@ -970,9 +977,8 @@ def run(dir_path, table_name, user_upload):
         bmr_table=bmr_table)
     # matrix_folder is typically 'matrix_txt'
     # self.update_state(state='PROGRESS', meta={'status': 'Plotting'})
-    if bmr:
+    if user_upload.bmr:
         bmr.remove_table(user_upload.file_id)
-    import pdb; pdb.set_trace()
     generate_plot_files(user_upload, detail_path, table_name, dir_path,
                         matrix_folder, genome_size)
 
@@ -1087,6 +1093,10 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
 
     path_genelists_dict = get_gene_combs_hit(table_name)
     path_genepatients_dict = get_gene_counts(table_name)
+    if user_upload.has_annot:
+        annot_dict = get_annotation_dict(table_name)
+    else:
+        annot_dict = None
     n_patients = len(patient_size_dict)
 
     # Rank pathways, gather extra stats and write to final file
@@ -1094,7 +1104,7 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
                                              name_suffix=proj_suffix,
                                              path_genelists_dict=path_genelists_dict,
                                              path_genepatients_dict=path_genepatients_dict,
-                                             n_patients=n_patients)
+                                             n_patients=n_patients, annot_dict=annot_dict)
     final_writer.write_detailed_file()
 
     # generate_files(dir_path, final_writer.outfile_name, user_upload)

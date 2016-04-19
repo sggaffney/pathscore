@@ -10,7 +10,8 @@ class BasicFile(object):
 
     Used by MutationFile and CustomBmr."""
 
-    want_headers = None
+    req_headers = None
+    opt_headers = []
     int_columns = [None]
 
     def __init__(self, filestorage):
@@ -23,9 +24,9 @@ class BasicFile(object):
 
     def _compare_headers(self, headers):
         """Return True if provided headers list matches desired headers."""
-        if len(self.want_headers) != len(headers):
+        if len(self.req_headers) != len(headers):
             return False
-        for pair in zip(self.want_headers, headers):
+        for pair in zip(self.req_headers, headers):
             if pair[0] != pair[1]:
                 return False
         return True
@@ -52,11 +53,10 @@ class BasicFile(object):
 
     def _line_valid(self, line):
         vals = line.strip('\n').split('\t')
-        if len(vals) != len(self.want_headers):
+        if len(vals) != len(self.req_headers):
             return False
         int_vals = [vals[j] for j in self.int_columns]
         if False in [i.isdigit() for i in int_vals]:
-            print line
             return False
         return True
 
@@ -91,12 +91,41 @@ class BasicFile(object):
 class MutationFile(BasicFile):
     """Tests and saves uploaded mutation file."""
 
-    want_headers = ['hugo_symbol', 'entrez_id', 'patient_id']
+    req_headers = ['hugo_symbol', 'entrez_id', 'patient_id']
+    opt_headers = ['annot']
     int_columns = [1]
+    has_annot = None
+
+    def _compare_headers(self, headers):
+        """Return True if provided headers list matches desired headers."""
+        header_lists = [self.req_headers, self.req_headers + self.opt_headers] \
+            if len(self.opt_headers) > 0 else [self.req_headers]
+        header_counts = [len(i) for i in header_lists]
+        if len(headers) not in header_counts:
+            return False
+        ind = header_counts.index(len(headers))
+        if ind > 0:
+            self.has_annot = True
+        else:
+            self.has_annot = False
+        self.want_headers = header_lists[ind]
+        for pair in zip(self.want_headers, headers):
+            if pair[0] != pair[1]:
+                return False
+        return True
+
+    def _line_valid(self, line):
+        vals = line.strip('\n').split('\t')
+        if len(vals) != len(self.want_headers):
+            return False
+        int_vals = [vals[j] for j in self.int_columns]
+        if False in [i.isdigit() for i in int_vals]:
+            return False
+        return True
 
 
 class BmrFile(BasicFile):
     """Tests and saves uploaded custom BMR file."""
 
-    want_headers = ['hugo_symbol', 'entrez_id', 'per_mb']
+    req_headers = ['hugo_symbol', 'entrez_id', 'per_mb']
     int_columns = [1]

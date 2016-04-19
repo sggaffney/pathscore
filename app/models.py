@@ -132,6 +132,7 @@ class UserFile(db.Model):
     n_ignored = db.Column(db.Integer)
     n_loaded = db.Column(db.Integer)
     bmr_id = db.Column(db.Integer, db.ForeignKey('bmr.bmr_id'))
+    has_annot = db.Column(db.Boolean)
 
     uploader = db.relationship('User', backref='uploads')
     bmr = db.relationship("CustomBMR", back_populates="projects")
@@ -326,6 +327,7 @@ def initialize_project(user_upload=None, mut_file=None):
     user_upload.is_valid = True
     user_upload.run_complete = False
     user_upload.is_queued = True
+    user_upload.has_annot = mut_file.has_annot
     db.session.add(user_upload)
     db.session.commit()
 
@@ -453,7 +455,8 @@ class BmrProcessor:
             loaded = True
             self._save_final()
         self._update_db(loaded, n_loaded, n_rejected, n_ignored)
-        # save final file (for simple future loading)
+        db.session.execute('drop table {}'.format(self.table_name))
+        db.session.commit()
 
     def _populate_table(self):
         """Build mutation table before filtering. Return boolean for success."""

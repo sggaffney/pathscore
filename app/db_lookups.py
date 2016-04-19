@@ -1,7 +1,8 @@
 __author__ = 'sgg'
 import app
 import MySQLdb as mdb
-from collections import defaultdict
+from collections import defaultdict, Counter
+from . import db
 
 
 def lookup_background_size(ignore_genes=None, alg=None, bmr_table=None):
@@ -537,3 +538,26 @@ def get_gene_counts(table_name):
         # OLD: count_dict : gene -> n_patients; total_patients
         # self.geneMatrix.add_gene_patients(gene, patient_names)
         return path_gene_dict
+
+
+def get_annotation_dict(table_name):
+    """ Fetch annotation dictionary: (hugo, patient) -> annot."""
+    annot_dict = dict()
+    cmd0 = """SET SESSION group_concat_max_len = 30000;"""
+    # HUGO LIST AND PATIENT COUNTS
+    cmd1 = """SELECT hugo_symbol, patient_id, GROUP_CONCAT(DISTINCT annot) AS annot
+        FROM {table} t
+        GROUP BY patient_id, hugo_symbol;""" \
+        .format(table=table_name)
+
+    db.session.execute(cmd0)
+    result = db.session.execute(cmd1)
+    for row in result:
+        hugo, patient, annot = row
+        annot_list = annot.split(',')
+        # shorten annotation if necessary
+        if len(annot_list) > 1:
+            c = Counter(annot_list)  # Counter({'a': 5, 's': 1})
+            annot = c.iterkeys().next() + '+'
+        annot_dict[(hugo, patient)] = annot
+    return annot_dict

@@ -128,7 +128,7 @@ end
 function plot_patient_genes_for_file(matrix_file, out_dir, gzip_bool, svg_bool)
 
 % patient names stored in patient array
-global hypermutated_patients;
+global hypermutated_patients m_annot presence;
 
 sortGenes = true;
 orientation = 2; % transposes axes. 1 (genes on x axis) or 2 (patients on x axis)
@@ -150,12 +150,12 @@ fline = fgetl(fid);
 patients = strsplit(fline,'\t');
 patients = patients(2:end);
 n_patients = length(patients);
-formatSpec = ['%s' repmat('%f',1,n_patients)];
+formatSpec = ['%s' repmat('%s',1,n_patients)];
 dataArray = textscan(fid, formatSpec, 'Delimiter', '\t', 'HeaderLines' ,0, 'ReturnOnError', false);
 genes = dataArray{1}';
 n_genes = length(genes);
-presence = cell2mat(dataArray(2:end));
-presence = presence'; % 1 row for each patient (gives boolean for each gene)
+m_annot = cat(2,dataArray{2:end})';  % transposing gives 1 row per patient
+presence = uplus(~cellfun(@(x) strcmp(x, '0'), m_annot));
 
 % CLEAN UP
 fclose(fid);
@@ -190,6 +190,7 @@ if(sortGenes)
     [~,gene_order] = sort(sum(presence,1),'descend');
     genes = genes(gene_order);
     presence = presence(:,gene_order);
+    m_annot = m_annot(:,gene_order);
 end
 
 presenceBits = presence * twos;  % column: n_patients * 1
@@ -226,10 +227,13 @@ axes('Units','pixels','Position',[fig_w-ax_x.len-10,fig_h-ax_y.len-10,ax_x.len,a
 
 
 if orientation==1
-    fig_array = presence(j,:);
+    m_annot = m_annot(j, :);
+    presence = presence(j,:);
 else
-    fig_array = presence(j,:)';
+    presence = presence(j,:)';
+    m_annot = m_annot(j, :)';
 end
+fig_array = presence;
 % imagesc(fig_array)
 % set(gca,'CLim',[0,1])
 
@@ -348,6 +352,8 @@ end
 
 function addBox(x_i, y_i, ax_x, ax_y,facecolor)
 
+global presence m_annot
+
 % l = ax_topleft(1) + (x_i-1)*ax_x.boxlen + 1;
 % b = ax_topleft(2) + (y_i)*ax_y.boxlen - 1;
 % w = ax_x.boxlen-2;
@@ -359,6 +365,17 @@ w = ax_x.boxlen-2;
 h = ax_y.boxlen-2;
 
 rectangle('Position',[xm,ym,w,h],'FaceColor',facecolor,'EdgeColor','none')
+
+
+if presence(y_i, x_i)
+    tx = text(xm + w/2, ym + h/2, m_annot(y_i, x_i));
+    set(tx,'HorizontalAlignment','center','VerticalAlignment','middle', ...
+          'Rotation',0,'FontSize',14,'FontName','Helvetica',...
+          'Interpreter','none', 'Color', 'w');
+end
+
+
+
 
 end
 
