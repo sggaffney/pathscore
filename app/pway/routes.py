@@ -437,7 +437,7 @@ def bmr():
 
     # load previous bmr objects for table display
     bmr_list = CustomBMR.query.filter_by(user_id=current_user.id).all()
-    headers = ['title', 'tissue', 'n_loaded', 'n_rejected',
+    headers = ['bmr_id', 'title', 'tissue', 'n_loaded', 'n_rejected',
                'n_ignored', 'description']
     header_map = {'n_rejected': 'rejected', 'n_loaded': 'loaded',
                   'n_ignored': 'ignored'}
