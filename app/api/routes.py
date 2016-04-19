@@ -1,14 +1,18 @@
 import os
+
 from flask import current_app, g, send_file  # redirect, url_for, abort,
 from flask_login import current_user, login_user
 from flask import request
+from werkzeug.utils import secure_filename
+
 from . import api
 from app import db
 from ..decorators import limit_user_uploads  # ssl_required
 from decorators import json, etag, collection
 from ..errors import ValidationError
-from ..uploads import MutationFile
-from ..models import UserFile, create_anonymous_user, initialize_project
+from ..uploads import MutationFile, BmrFile
+from ..models import UserFile, create_anonymous_user, initialize_project, \
+    CustomBMR, BmrProcessor
 from ..admin import delete_project_folder
 from ..get_effective_pathways import run_analysis
 from ..admin import zip_project
@@ -35,6 +39,50 @@ def archive(proj):
     filename = os.path.basename(zip_path)
     return send_file(zip_path, mimetype='application/zip',
                      as_attachment=True, attachment_filename=filename)
+
+
+@api.route('/bmr/', methods=['GET'])
+@etag
+@auth.login_required
+@json
+@collection(UserFile, name='bmr')
+def get_user_bmr():
+    return CustomBMR.query.filter_by(user_id=g.user.id)
+
+
+@api.route('/bmr/<int:bmr_id>', methods=['GET'])
+@etag
+@auth.login_required
+@json
+def get_bmr(bmr_id):
+    # import pdb; pdb.set_trace()
+    return CustomBMR.query.filter_by(user_id=g.user.id, bmr_id=bmr_id).\
+        first_or_404()
+
+
+@api.route('/bmr/', methods=['POST'])
+@limit_user_uploads
+@auth.login_required
+@json
+def upload_bmr():
+    """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
+    # VALIDATE FORM/FILE DATA
+    bmr = CustomBMR().import_data(request.form)  # title, tissue, description
+    if 'bmr_file' not in request.files:
+        raise ValidationError("Missing input file: bmr_file.")
+    filestore = request.files['bmr_file']
+    bmr_filename = filestore.filename
+    if not bmr_filename.endswith('.txt') and not bmr_filename.endswith('.tsv'):
+        raise ValidationError("Use txt or tsv extension for bmr_file.")
+    bmr_file = BmrFile(filestore)
+    bmr.user_id = g.user.id
+    bmr.init_from_upload(bmr_file)  # copies file to user folder
+    BmrProcessor(bmr).initial_process()
+    db.session.add(bmr)
+    db.session.commit()
+
+    rv = dict(status='Success', message='File accepted and validated.')
+    return rv, 201, {'Location': bmr.get_url()}
 
 
 @api.route('/projects/', methods=['GET'])
@@ -78,11 +126,17 @@ def upload():
 
     # VALIDATE FORM/FILE DATA
     user_upload = UserFile().import_data(request.form)
+    if 'mut_file' not in request.files:
+        raise ValidationError("Missing input file: mut_file.")
     filestore = request.files['mut_file']
     mut_filename = filestore.filename
     if not mut_filename.endswith('.txt') and not mut_filename.endswith('.tsv'):
         raise ValidationError("Use txt or tsv extension for mut_file.")
     mut_file = MutationFile(filestore)
+    if user_upload.bmr_id:
+        if not current_user.is_authenticated() or not CustomBMR.query.filter_by(
+                user_id=current_user.id, bmr_id=user_upload.bmr_id).all():
+            raise ValidationError("Invalid bmr_id specified.")
 
     rv = {}
     # CREATE NEW USER IF UNAUTHENTICATED (HERE, FILE IS VALID)
@@ -96,7 +150,7 @@ def upload():
         login_user(temp_user, force=True, remember=True)
 
     # CREATE USERFILE OBJECT
-    user_upload.filename = mut_filename
+    user_upload.filename = secure_filename(mut_filename)
     user_upload.user_id = current_user.id
     out = initialize_project(user_upload=user_upload, mut_file=mut_file)
     user_upload, proj_folder, file_path = out

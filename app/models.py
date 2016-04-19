@@ -223,6 +223,7 @@ class UserFile(db.Model):
             ('name', self.get_local_filename()),
             ('upload_time', self.upload_time),
             ('algorithm', self.algorithm),
+            ('bmr_id', self.bmr_id),
             ('required_genes', self.required_genes),
             ('ignore_genes', self.ignore_genes),
             ('n_patients', self.n_patients),
@@ -243,7 +244,7 @@ class UserFile(db.Model):
         """
         # CHECK FOR BAD PARAMETERS
         allowed_keys = {'algorithm', 'required_genes', 'ignore_genes',
-                        'proj_suffix'}
+                        'proj_suffix', 'bmr_id'}
         provided_keys = set(data.keys())
         unrecognized = provided_keys.difference(allowed_keys)
         if unrecognized:
@@ -254,6 +255,7 @@ class UserFile(db.Model):
         required_genes = data.get('required_genes', None)
         ignore_genes = data.get('ignore_genes', None)
         proj_suffix = data.get('proj_suffix', None)
+        bmr_id = data.get('bmr_id', None)
 
         if algorithm:
             if algorithm not in ['gene_count', 'gene_length', 'bmr_length']:
@@ -281,6 +283,10 @@ class UserFile(db.Model):
             if len(proj_suffix) > 40:
                 raise ValidationError("40 char limit for proj_suffix.")
             self.proj_suffix = proj_suffix
+        if bmr_id:
+            if not bmr_id.isdigit():
+                raise ValidationError("bmr_id must be a positive integer.")
+            self.bmr_id = int(bmr_id)
         return self
 
     def load_bmr(self):
@@ -426,6 +432,63 @@ class CustomBMR(db.Model):
 
     def get_proj_table_name(self, proj_id):
         return 'bmr_{}'.format(proj_id)
+
+    def get_url(self):
+        """For API."""
+        return url_for('api.get_bmr', bmr_id=self.bmr_id, _external=True)
+
+    def export_data(self):
+        """For API."""
+        info_dict = OrderedDict([
+            ('self_url', self.get_url()),
+            ('title', self.title),
+            ('tissue', self.tissue),
+            ('description', self.description),
+            ('upload_time', self.upload_time),
+            ('n_rejected', self.n_rejected),
+            ('n_unused', self.n_ignored),
+            ('n_loaded', self.n_loaded)
+        ])
+        # url_dict = self.get_related_urls()
+        # for key, val in url_dict.iteritems():
+        #     info_dict[key] = val
+        return info_dict
+
+    def import_data(self, data):
+        """Create CustomBMR from http form data - used by API.
+
+        Args:
+            data (dict): form data from http request.
+        """
+        # CHECK FOR BAD PARAMETERS
+        allowed_keys = {'title', 'tissue', 'description'}
+        provided_keys = set(data.keys())
+        unrecognized = provided_keys.difference(allowed_keys)
+        if unrecognized:
+            raise ValidationError("Unrecognized parameters: {}". \
+                                  format(list(unrecognized)))
+
+        title = data.get('title', None)
+        tissue = data.get('tissue', None)
+        description = data.get('description', None)
+
+        if not title:
+            raise ValidationError("`title` parameter is required.")
+        if len(title) > 32:
+            raise ValidationError("32 character limit for `title`.")
+        self.title = title
+        if tissue:
+            if len(tissue) > 100:
+                raise ValidationError("100 char limit for `tissue`.")
+            else:
+                self.tissue = tissue
+        if description:
+            if len(tissue) > 255:
+                raise ValidationError("255 char limit for `description`.")
+            else:
+                self.description = description
+
+        return self
 
 
 class BmrProcessor:
