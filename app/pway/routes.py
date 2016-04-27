@@ -474,8 +474,10 @@ def bmr():
 def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
 
-    bmr_titles = [(-1, 'Default')] + [(i.bmr_id, i.title) for i in CustomBMR.query.filter_by(
-        user_id=current_user.id).all()]
+    bmr_titles = [(-1, 'Default')]
+    if not current_user.is_anonymous():
+        bmr_titles += [(i.bmr_id, i.title) for i in CustomBMR.query.filter_by(
+            user_id=current_user.id).all()]
 
     form = UploadForm()
     form.bmr.choices = bmr_titles
