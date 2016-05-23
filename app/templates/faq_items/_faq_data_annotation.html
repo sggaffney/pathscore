@@ -1,34 +1,21 @@
 <p>
-    If you select the 'BMR-scaled gene length" algorithm, you have the option to
-    use a custom background mutation rate file. As described in the FAQ item
-    "What values do you use for background mutation rate?", the default
-    BMR values are taken from an average across multiple tissue types,
-    from 91 cancer cell lines. The high correlation of BMR across these tissue
-    types makes this a sensible source of per-gene BMR rates. This default may
-    be adequate for most use cases, but further refinement is possible by
-    creating a BMR dataset that is specific to the samples in your project or to
-    the tissue type of your project. Increasing the accuracy of each gene's BMR
-    estimate for improves the estimate of each gene's relative mutational
-    'target size', and can therefore reduce false positives (where averaged BMR
-    might be too low) and false negatives (where averaged BMR might be too high).
+    When you upload a mutation dataset, you have the option of including a column
+    called 'annot_str' (short for 'annotation string'). The values you specify here
+    do not affect any pathway calculation, but will be used to add an extra
+    dimension of information to the resulting matrix plots. The annotation strings
+    you provide will be overlaid on the corresponding patient&ndash;gene boxes,
+    so try to keep these to a single character. In cases where there are multiple
+    mutations in a single gene, the most common annotation string will be used,
+    appended with a '+'. To convey activating or silencing
+    mutations, for example, you might use 'a' and 's', respectively, as in the
+    example matrix below. Copy number gain or loss could be conveyed with '+'
+    and '-'.
 </p>
+<img src="static/annot_matrix_demo.svgz" alt="annot_matrix_demo.svgz">
 <p>
-    Whole genome sequencing is best suited to identifying local BMR
-    values. Its coverage of introns and intergenic regions as well as the exome
-    can give a more complete picture of mutation frequencies than exome sequencing
-    alone. A custom BMR file will contain three columns: hugo_symbol, entrez_id,
-    per_Mb. The first two columns identify the gene, the third is the
-    gene-specific per-megabase mutation rate. Ideally you would provide rates for
-    every gene in the pathway database, but you can supply an incomplete list and
-    PathScore will use the average mutation rate for missing genes.
-</p>
-<p>
-    Upload your custom BMR file at <a
-        href="{{ url_for('pway.bmr') }}"> {{ url_for('pway.bmr', _external=True) }}
-    </a>, where you can maintain a repository of BMR files.
-    Choose a <strong>title</strong> and <strong>description</strong> for your
-    file. The title will be used in the BMR dropdown field in the project upload
-    form, so make it short and recognizable. You will be able to download the
-    processed BMR file, as well as a lists of unrecognized/'rejected' genes and
-    'ignored' genes that are not in the pathways database.
+    The motivation behind this feature is to aid interpretation. The observation
+    of the same annotation across all mutations of a gene might suggest a common
+    mutational mechanism, e.g. consistent copy number loss. Informative patterns
+    can emerge this way, assisting the search for plausibly cancer-driving
+    pathways among false positives.
 </p>

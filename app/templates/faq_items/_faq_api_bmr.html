@@ -1,58 +1,36 @@
 <p>
-    All users, registered and anonymous alike, can create a project by sending
-    a POST request to the <strong>api/projects/</strong> endpoint that includes
-    form data and a file attachment. The upload requirements are the same
-    as for submission through the <a href="upload" target="_blank">Upload</a> web form.
-</p>
-
-<p>Uploads that are not accompanied by an authentication token are treated as
-    submissions by a new anonymous user. A username and password will be automatically
-    generated, and returned as part of the response.
-</p>
-
-<p>
-    The required form fields are as follows:
-</p>
-
-<p>
-<ul>
-    <li><code>algorithm</code> &mdash; <emph>bmr_length</emph>, <emph>gene_length</emph> or <emph>gene_count</emph></li>
-    <li><code>proj_suffix</code> &mdash; project name, appended to project id.</li>
-    <li><code>ignore_genes</code> &mdash; list of genes to ignore, comma-separated, no spaces.</li>
-    <li><code>required_genes</code> &mdash; list of required genes that must be present in a pathway, comma-separated, no spaces.</li>
-    <li><code>mut_file</code> &mdash; the mutation file, as described on the <a href="upload" target="_blank">Upload</a> page.</li>
-</ul>
-</p>
-
-<p>These fields should be form-encoded and the request should be sent with
-    content-type <code>multipart/form-data</code>. In
-    <a href="https://github.com/jkbrzt/httpie" target="_blank">httpie</a> this is
-    accomplished with the '--form' flag, and files are specified using the '@' symbol,
-    as shown in the following example:
-</p>
-
-<p>
-<code style="white-space: pre-wrap">$ http --auth=$TK: --form <strong>POST</strong> https://pathscore.publichealth.yale.edu/<strong>api/projects/</strong> algorithm=bmr_length proj_suffix=LUAD_via_api mut_file@LUAD_test.txt ignore_genes=TP53,KRAS required_genes=CBL</code>
+    Uploading and browsing custom BMR files follows the same process as uploading
+    projects&mdash;only the arguments and endpoint of the POST request differ.
+    Send a POST request to <strong>api/bmr/</strong>, with the following
+    fields:
 </p>
 
 <ul>
-    <li>This command creates a project named 'LUAD_via_api', using the bmr_length algorithm.</li>
-    <li>The mutation file is named 'LUAD_test.txt', satisfying the requirement
-    for a 'txt' or 'csv' extension.</li>
-    <li>The genes TP53 and KRAS are ignored, while CBL is required.</li>
+    <li><code>title</code> &mdash; a short, recognizable string. Max 32 characters.
+        You will use the title to refer to this BMR file when creating a project
+        that uses it.
+    <li><code>tissue</code> &mdash; (optional) a tissue of origin, max 100 characters.</li>
+    <li><code>description</code> &mdash; (optional) A description of the file,
+        for your reference. Max 255 characters.</li>
+    <li><code>bmr_file</code> &mdash; the bmr file, as described on the
+        <a href="{{ url_for('pway.bmr') }}" target="_blank">BMR</a> page.</li>
 </ul>
 
+<p>Refer to project upload instructions for help with form-encoding and setting
+    content type.
+</p>
 
-<p>A 'Location' header in the response gives a URL for the newly created project:</p>
+<p>The following httpie command uploads a BMR file, with title 'lung_ccle':</p>
+<p>
+<code style="white-space: pre-wrap">$ http --auth=$TK: --form <strong>POST</strong> https://{{ request.host }}/<strong>api/bmr/</strong> title=lung_ccle tissue=lung description='16 lung samples from CCLE' bmr_file@lung_ccle.txt</code>
+</p>
+
+<p>As with project upload, the 'Location' header in the response gives a URL for
+    the newly created BMR file.</p>
 
 <p>
-<pre><code>HTTP/1.0 201 CREATED
-Content-Length: 90
-<strong>Location: http://localhost:5000/api/projects/50</strong>
-
-{
-    "msg": "File accepted and validated. Analysis in progress.",
-    "status": "Success."
-}</code></pre>
+    You can browse your BMR archive in the same manner as you would browse projects,
+    sending GET requests to the <strong>api/bmr/</strong> endpoint. As with project
+    browsing, you can filter results using url query strings.
 </p>
 

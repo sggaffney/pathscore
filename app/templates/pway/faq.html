@@ -74,6 +74,38 @@
     </div>
   </div>
 
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_custom_bmr">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_data"
+           href="#collapse_custom_bmr" aria-expanded="false" aria-controls="collapse_custom_bmr">
+          How and when should I provide my own custom BMR data?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_custom_bmr" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_custom_bmr">
+      <div class="panel-body">
+        {% include "faq_items/_faq_data_custom_bmr.html" %}
+      </div>
+    </div>
+  </div>
+
+    <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_annotation">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_data"
+           href="#collapse_annotation" aria-expanded="false" aria-controls="collapse_annotation">
+          What, if any, mutation annotation data should I provide?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_annotation" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_annotation">
+      <div class="panel-body">
+        {% include "faq_items/_faq_data_annotation.html" %}
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <h2><small>The web interface</small></h2>
@@ -291,6 +323,22 @@
     <div id="collapse_api_zip" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_zip">
       <div class="panel-body">
         {% include "faq_items/_faq_api_zip.html" %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading_api_bmr">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion_api"
+           href="#collapse_api_bmr" aria-expanded="false" aria-controls="collapse_api_bmr">
+          How can I upload and browse my custom BMR files?
+        </a>
+      </h4>
+    </div>
+    <div id="collapse_api_bmr" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_api_bmr">
+      <div class="panel-body">
+        {% include "faq_items/_faq_api_bmr.html" %}
       </div>
     </div>
   </div>
