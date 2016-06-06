@@ -128,7 +128,7 @@ end
 function plot_patient_genes_for_file(matrix_file, out_dir, gzip_bool, svg_bool)
 
 % patient names stored in patient array
-global hypermutated_patients m_annot presence;
+global hypermutated_patients m_annot has_annot presence;
 
 sortGenes = true;
 orientation = 2; % transposes axes. 1 (genes on x axis) or 2 (patients on x axis)
@@ -156,6 +156,9 @@ genes = dataArray{1}';
 n_genes = length(genes);
 m_annot = cat(2,dataArray{2:end})';  % transposing gives 1 row per patient
 presence = uplus(~cellfun(@(x) strcmp(x, '0'), m_annot));
+
+has_annot = cellfun(@(v) ~ismember(v, {'0', '1'}), m_annot);
+has_annot = any(has_annot(:));  % boolean for presence of annotation
 
 % CLEAN UP
 fclose(fid);
@@ -352,7 +355,7 @@ end
 
 function addBox(x_i, y_i, ax_x, ax_y,facecolor)
 
-global presence m_annot
+global presence m_annot has_annot
 
 % l = ax_topleft(1) + (x_i-1)*ax_x.boxlen + 1;
 % b = ax_topleft(2) + (y_i)*ax_y.boxlen - 1;
@@ -366,14 +369,14 @@ h = ax_y.boxlen-2;
 
 rectangle('Position',[xm,ym,w,h],'FaceColor',facecolor,'EdgeColor','none')
 
-
-if presence(y_i, x_i)
-    tx = text(xm + w/2, ym + h/2, m_annot(y_i, x_i));
-    set(tx,'HorizontalAlignment','center','VerticalAlignment','middle', ...
-          'Rotation',0,'FontSize',14,'FontName','Helvetica',...
-          'Interpreter','none', 'Color', 'w');
+if has_annot
+    if presence(y_i, x_i)
+        tx = text(xm + w/2, ym + h/2, m_annot(y_i, x_i));
+        set(tx,'HorizontalAlignment','center','VerticalAlignment','middle', ...
+              'Rotation',0,'FontSize',14,'FontName','Helvetica',...
+              'Interpreter','none', 'Color', 'w');
+    end
 end
-
 
 
 
