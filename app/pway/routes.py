@@ -267,7 +267,7 @@ def compare():
             updateIfSelectionChange_afterWait();
             """)
         text_input = TextInput(value='',
-                               title="Q cutoff:",
+                               title="P* cutoff:",
                                callback=callback)
         callback.args["q_widget"] = text_input
         callback.args["fullset"] = source.clone().data
