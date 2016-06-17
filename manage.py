@@ -10,8 +10,10 @@ if os.path.exists('.env'):
 from app import create_app
 from flask_script import Manager
 from app import db
-from app.models import User, Role
+from app.models import User, Role, UserFile
+from app.naming_rules import get_project_folder
 from flask.ext.migrate import Migrate, MigrateCommand
+import shutil
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 migrate = Migrate(app, db)
@@ -45,6 +47,29 @@ def adduser(email, role='general'):
     db.session.add(user)
     db.session.commit()
     print('User {0} was registered successfully.'.format(email))
+
+
+@manager.option('-p', '--proj', dest='proj_str', default=None)
+def delete_proj(proj_str):
+
+    in_list = [i for i in proj_str.split(',')]
+    proj_list = [int(i) for i in in_list if i.isdigit()]
+    if len(in_list) != len(proj_list):
+        import sys
+        sys.exit("Provide project ids as comma-separated integers.")
+    for proj in proj_list:
+        upload = UserFile.query.get(proj)
+        if upload:
+            try:
+                proj_folder = get_project_folder(upload)
+                shutil.rmtree(proj_folder)
+            except OSError as e:
+                print e
+            db.session.delete(upload)
+            print("Project {} deleted successfully.".format(proj))
+        else:
+            print "Project {} not found.".format(proj)
+    db.session.commit()
 
 
 if __name__ == '__main__':
