@@ -125,16 +125,7 @@ def run_analysis(proj_dir, data_path, upload_id):
 
 def drop_table(table_name):
     cmd = """drop table {};""".format(table_name)
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        con.commit()
-    except mdb.Error as e:
-        current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
-    finally:
-        if con:
-            con.close()
+    db.session.execute(cmd)
 
 
 def save_project_params_txt(upload_obj):
