@@ -1,6 +1,6 @@
 import os
 from flask import Blueprint, g, flash, url_for, current_app, redirect
-from app.get_effective_pathways import path_info_dict
+from app.get_effective_pathways import ref_info
 from ..errors import LimitError
 
 
@@ -10,14 +10,14 @@ pway = Blueprint('pway', __name__)
 @pway.context_processor
 def inject_n_pathways():
     return dict(
-        n_pathways=len(path_info_dict),
+        n_pathways=len(ref_info.path_info_dict),
         get_common_js=get_common_js,
     )
 
 
 @pway.before_request
 def get_n_pathways():
-    g.n_pathways = len(path_info_dict)
+    g.n_pathways = len(ref_info.path_info_dict)
 
 
 @pway.errorhandler(LimitError)

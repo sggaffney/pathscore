@@ -73,6 +73,9 @@ def create_app(config_name):
     mail.init_app(app)
     celery.conf.update(app.config)
 
+    import get_effective_pathways
+    get_effective_pathways.set_refs(app)
+
     from .pway import pway as pway_blueprint
     app.register_blueprint(pway_blueprint)
 

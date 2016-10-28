@@ -29,16 +29,26 @@ from .db_lookups import lookup_path_sizes, lookup_background_size, \
 import misc
 import naming_rules
 
-# GLOBALS
-path_size_dict_full = lookup_path_sizes()
-path_len_dict_full = lookup_path_lengths(alg='gene_length')
-path_bmr_dict_full = lookup_path_lengths(alg='bmr_length')
-path_info_dict = fetch_path_info_global()
-path_name_dict = get_pathway_name_dict()
+ref_info = None
 
-background_bmrlen_full = lookup_background_size(alg='bmr_length')
-background_len_full = lookup_background_size(alg='gene_length')
-background_count_full = lookup_background_size(alg='gene_count')
+class RefInfo():
+    """Holds initial pathway sizes and info dictionaries. Created at launch."""
+    def __init__(self, app):
+        with app.app_context():
+            self.path_size_dict_full = lookup_path_sizes()
+            self.path_len_dict_full = lookup_path_lengths(alg='gene_length')
+            self.path_bmr_dict_full = lookup_path_lengths(alg='bmr_length')
+            self.path_info_dict = fetch_path_info_global()
+            self.path_name_dict = get_pathway_name_dict()
+
+            self.background_bmrlen_full = lookup_background_size(alg='bmr_length')
+            self.background_len_full = lookup_background_size(alg='gene_length')
+            self.background_count_full = lookup_background_size(alg='gene_count')
+
+
+def set_refs(app):
+    global ref_info
+    ref_info = RefInfo(app)
 
 
 class TableLoadException(Exception):
@@ -84,27 +94,27 @@ def run_analysis_async(proj_dir, data_path, upload_id):
     except MatlabFailureException as e:
         user_email = user_upload.uploader.email
         current_app.logger.error("Matlab failure in proj {} ({}): {}"
-                                 .format(upload_id, user_email, e.args[0]))
+                                 .format(upload_id, user_email, e))
     except TableLoadException as e:
         user_email = user_upload.uploader.email
         current_app.logger.error("Table load failure in proj {} ({}): {}"
-                                 .format(upload_id, user_email, e.args[0]))
+                                 .format(upload_id, user_email, e))
     except mdb.Error:
         pass  # already logged by db commands
     except Exception as e:  # catch all remaining errors
-        current_app.logger.error("Failure in proj {} for user {}.".format(
-                user_upload.file_id, user_upload.uploader.email))
+        current_app.logger.error("Failure in proj {} for user {}: {}.".format(
+                user_upload.file_id, user_upload.uploader.email, e))
     finally:
-        if not user_upload.run_complete:
-            user_upload.run_complete = None
-            current_app.logger.info("Project {} failed for user {}.".format(
-                user_upload.file_id, user_upload.uploader.email))
-        else:
-            current_app.logger.info("Project {} completed for user {}.".format(
-                user_upload.file_id, user_upload.uploader.email))
-        if table:
-            drop_table(table_name)
         try:
+            if not user_upload.run_complete:
+                user_upload.run_complete = None
+                current_app.logger.info("Project {} failed for user {}.".format(
+                    user_upload.file_id, user_upload.uploader.email))
+            else:
+                current_app.logger.info("Project {} completed for user {}.".format(
+                    user_upload.file_id, user_upload.uploader.email))
+            if table:
+                drop_table(table_name)
             db.session.add(user_upload)
             db.session.commit()
             emails.run_finished_notification(upload_id)
@@ -125,7 +135,12 @@ def run_analysis(proj_dir, data_path, upload_id):
 
 def drop_table(table_name):
     cmd = """drop table {};""".format(table_name)
-    db.session.execute(cmd)
+    try:
+        db.session.execute(cmd)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(str(e))
 
 
 def save_project_params_txt(upload_obj):
@@ -174,7 +189,6 @@ class MutationTable:
         if self.n_loaded:
             self.loaded = True
 
-
     def populate_table(self):
         """Build mutation table before filtering. Return boolean for success."""
         table_name, data_path = self.table_name, self.data_path
@@ -191,22 +205,15 @@ class MutationTable:
             lines terminated by '\n' ignore 1 lines;""".format(
             data_path, table_name)
         cmd = u"select count(*) from `{}` m;".format(self.table_name)
-        con = None
+
         try:
-            con = mdb.connect(**app.dbvars)
-            cur = con.cursor()
-            cur.execute(create_str)
-            cur.execute(load_str)
-            cur.execute(cmd)
-            result = cur.fetchone()
-            self.n_initial = result[0]
-            con.commit()
-        except mdb.Error as e:
-            current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
-            raise
-        finally:
-            if con:
-                con.close()
+            db.session.execute(create_str)
+            db.session.execute(load_str)
+            self.n_initial = db.session.execute(cmd).scalar()
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(str(e))
 
     def remove_genes_unrecognized(self, rejected_path=None):
         if not self.n_initial:
@@ -219,25 +226,20 @@ class MutationTable:
           LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.geneId
             WHERE n.geneId IS NULL OR m.hugo_symbol <> n.symbol;"""\
             .format(self.table_name)
-        con = None
+
         try:
-            con = mdb.connect(**app.dbvars)
-            cur = con.cursor()
-            # EXPORT REJECTED GENES
-            cur.execute(cmd1)
-            self.n_rejected = cur.rowcount
+            rej = db.session.execute(cmd1)
+            self.n_rejected = rej.rowcount
             if self.n_rejected > 0:
                 if rejected_path:
-                    self.save_mutations_subset(cur, rejected_path)
+                    self.save_mutations_subset(rej, rejected_path)
                 # DELETE EXTRA GENE LINES
-                cur.execute(cmd2)
-                con.commit()
-        except mdb.Error as e:
-            current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
-            raise
-        finally:
-            if con:
-                con.close()
+                db.session.execute(cmd2)
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(str(e))
+
 
     def remove_genes_outwith_pathways(self, rejected_path=None):
         """
@@ -255,31 +257,25 @@ class MutationTable:
           LEFT JOIN (SELECT DISTINCT entrez_id FROM refs.pathway_gene_link) l
           ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;"""\
             .format(self.table_name)
-        con = None
         try:
-            con = mdb.connect(**app.dbvars)
-            cur = con.cursor()
-            # EXPORT EXTRA GENE LINES
-            cur.execute(cmd1)
-            self.n_ignored = cur.rowcount
+            rej = db.session.execute(cmd1)
+            self.n_ignored = rej.rowcount
             if self.n_ignored > 0:
                 if rejected_path:
-                    self.save_mutations_subset(cur, rejected_path)
+                    self.save_mutations_subset(rej, rejected_path)
                 # DELETE EXTRA GENE LINES
-                cur.execute(cmd2)
-                con.commit()
-        except mdb.Error as e:
-            current_app.logger.error("Error %d: %s" % (e.args[0], e.args[1]))
-            raise
-        finally:
-            if con:
-                con.close()
+                db.session.execute(cmd2)
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(str(e))
+
 
     @staticmethod
-    def save_mutations_subset(cursor, save_path):
+    def save_mutations_subset(results, save_path):
         """Export mutation subset."""
         with open(save_path, 'w') as out:
-            for row in cursor:
+            for row in results:
                 out.write('\t'.join([str(i) for i in row]) + '\n')
 
 
@@ -778,7 +774,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
         GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
         self.allPathways = pway_object_list
-        self.nameDict = path_name_dict
+        self.nameDict = ref_info.path_name_dict
         self.outfile_name = self.root_name + self.name_postfix
         self.matrix_folder = 'matrix_txt'
         self.path_genelists_dict = path_genelists_dict
@@ -796,7 +792,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
         # struct_string = "struct" + struct_string
         # return struct_string
         # name,coverage pairs
-        pairs = ",".join(["{!r},{:.2f}".format(gene, coverage_dict[gene]) for
+        pairs = ",".join(["{!r},{:.2f}".format(str(gene), coverage_dict[gene]) for
                           gene in coverage_dict])
         struct_string = "struct(" + pairs + ")"
         return struct_string
@@ -830,11 +826,11 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                                             pway.gene_coverage[gene],
                                             reverse=True)
                 exclusive_string = '{' + ','.join(
-                    [repr(i) for i in pway.exclusive_genes]) + '}'
+                    [repr(str(i)) for i in pway.exclusive_genes]) + '}'
                 cooccurring_string = '{' + ','.join(
-                    [repr(i) for i in pway.cooccurring_genes]) + '}'
+                    [repr(str(i)) for i in pway.cooccurring_genes]) + '}'
                 n_genes_mutated = len(self.path_genepatients_dict[pway.path_id])
-                n_genes_total = path_size_dict_full[pway.path_id]
+                n_genes_total = ref_info.path_size_dict_full[pway.path_id]
 
                 format_str = "{path_id}\t{name}\t{n_actual}\t{n_effective}\t" \
                              "{p_value:.3e}\t{ll_actual:.4g}\t{ll_effective:.4g}\t" \
@@ -878,9 +874,9 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         pathway_number = int(pathway_number)  # ensure int
         self.name = None
         self.root_url = "http://www.broadinstitute.org/gsea/msigdb/cards/"
-        self.url = path_info_dict[pathway_number]['url'].split(self.root_url)[1]
-        self.description = path_info_dict[pathway_number]['desc']
-        self.contrib = path_info_dict[pathway_number]['contrib']
+        self.url = ref_info.path_info_dict[pathway_number]['url'].split(self.root_url)[1]
+        self.description = ref_info.path_info_dict[pathway_number]['desc']
+        self.contrib = ref_info.path_info_dict[pathway_number]['contrib']
         self.gene_set = set()
         self.gene_pc = dict()
         self.n_genes_mutated = None
@@ -955,11 +951,11 @@ def run(dir_path, table_name, user_upload):
                                              alg=alg, bmr_table=bmr_table)
     else:
         if alg == 'gene_count':
-            genome_size = background_count_full
+            genome_size = ref_info.background_count_full
         elif alg == 'gene_length':
-                genome_size = background_len_full
+                genome_size = ref_info.background_len_full
         elif alg == 'bmr_length':
-                genome_size = background_bmrlen_full
+                genome_size = ref_info.background_bmrlen_full
         else:
             raise Exception("Invalid algorithm selection ({})".format(alg))
     # self.update_state(state='PROGRESS', meta={'status': 'Calculating L'})
@@ -1030,14 +1026,14 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
 
     if alg == 'gene_count':
         path_size_dict = lookup_path_sizes(ignore_genes) if ignore_genes else \
-            path_size_dict_full
+            ref_info.path_size_dict_full
     elif alg in ['gene_length', 'bmr_length']:
         if ignore_genes:
             path_size_dict = lookup_path_lengths(ignore_genes, alg=alg,
                                                  bmr_table=bmr_table)
         else:
-            path_size_dict = path_len_dict_full if alg == 'gene_length' else \
-                path_bmr_dict_full
+            path_size_dict = ref_info.path_len_dict_full if alg == 'gene_length' else \
+                ref_info.path_bmr_dict_full
     if alg in 'gene_count':
         patient_size_dict = lookup_patient_counts(table_name, ignore_genes)
     elif alg in ['gene_length', 'bmr_length']:
@@ -1070,7 +1066,7 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
         # Write results to 'basic' file
         basic_writer.write_pvalue_file(lcalc, runtime)
 
-    df_p['pathway'] = df_p.index.map(lambda x: path_name_dict.get(x, '?'))
+    df_p['pathway'] = df_p.index.map(lambda x: ref_info.path_name_dict.get(x, '?'))
     df_p = df_p.set_index('pathway')
     df_p.to_csv(naming_rules.get_pval_path(user_upload), sep='\t',
                 index=True, na_rep='nan')
@@ -1267,4 +1263,8 @@ def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
                                     stderr=subprocess.PIPE)
             (output, error) = proc.communicate()
             if error:
+                current_app.logger.error("Matlab proc returncode: {}.".format(proc.returncode))
+                current_app.logger.error("Matlab stderr: {}.".format(error))
+                current_app.logger.error("Matlab stdout: {}.".format(output))
+            if proc.returncode:
                 raise MatlabFailureException('pway plot error: ' + error)

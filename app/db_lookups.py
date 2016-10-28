@@ -1,4 +1,3 @@
-__author__ = 'sgg'
 import app
 import MySQLdb as mdb
 from collections import defaultdict, Counter
@@ -42,24 +41,15 @@ def lookup_background_size(ignore_genes=None, alg=None, bmr_table=None):
         field_str = "count(*)"
     cmd = """SELECT {field_str} FROM {table} {genes_str};""".format(
         field_str=field_str, table=table_name, genes_str=genes_str)
-    background_size = None
-    con = None
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if row_count != 1:
-            print "Background size lookup failed."
-            return
-        row = cur.fetchone()
-        background_size = int(row[0])
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+
+    result = db.session.execute(cmd)
+    row_count = result.rowcount
+    if row_count != 1:
+        print "Background size lookup failed."
+        return
+    row = result.fetchone()
+    background_size = int(row[0])
+
     return background_size
 
 
@@ -75,24 +65,15 @@ def lookup_path_sizes(ignore_genes=None):
     INNER JOIN refs.ncbi_entrez n ON pgl.entrez_id = n.geneId
     {genes_string} GROUP BY path_id;""".format(genes_string=genes_string)
     size_dict = dict()
-    con = None
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            print "No pathways found."
-            return size_dict
-        for row_no in xrange(row_count):
-            row = cur.fetchone()
-            size_dict[row[0]] = row[1]
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+
+    result = db.session.execute(cmd)
+    row_count = result.rowcount
+    if not row_count:
+        print "No pathways found."
+        return size_dict
+    for row_no in xrange(row_count):
+        row = result.fetchone()
+        size_dict[row[0]] = row[1]
     return size_dict
 
 
@@ -115,23 +96,15 @@ def lookup_path_lengths(ignore_genes=None, alg=None, bmr_table=None):
         GROUP BY pgl.path_id;""".format(genes_string=genes_string,
                                         field_str=field_str, table=table_name)
     len_dict = dict()
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            print "No pathways found."
-            return len_dict
-        for i in xrange(row_count):
-            row = cur.fetchone()
-            len_dict[row[0]] = row[1]
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+
+    result = db.session.execute(cmd)
+    row_count = result.rowcount
+    if not row_count:
+        print "No pathways found."
+        return len_dict
+    for i in xrange(row_count):
+        row = result.fetchone()
+        len_dict[row[0]] = row[1]
     return len_dict
 
 
@@ -148,24 +121,15 @@ def lookup_patient_counts(table_name, ignore_genes):
         .format(table_name=table_name, genes_string=genes_string)
 
     patient_size_dict = dict()
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            print "No pathways found."
-            return patient_size_dict
-        for row_no in xrange(row_count):
-            row = cur.fetchone()
-            patient_size_dict[row[0]] = row[1]
+    result = db.session.execute(cmd)
+    row_count = result.rowcount
+    if not row_count:
+        print "No pathways found."
+        return patient_size_dict
+    for row_no in xrange(row_count):
+        row = result.fetchone()
+        patient_size_dict[row[0]] = row[1]
 
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
     return patient_size_dict
 
 
@@ -175,23 +139,9 @@ def lookup_hypermutated_patients(table_name, cutoff=500):
               GROUP BY patient_id HAVING count(*)>{cutoff};"""\
         .format(table_name=table_name, cutoff=cutoff)
     patient_list = []
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            # print "No hypermutated patients."
-            return patient_list
-        for row_no in xrange(row_count):
-            row = cur.fetchone()
-            patient_list.append(row[0])
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+    result = db.session.execute(cmd)
+    for row in result:
+        patient_list.append(row[0])
     return patient_list
 
 
@@ -207,24 +157,9 @@ def lookup_patient_lengths(table_name, ignore_genes):
       {genes_string} GROUP BY patient_id;"""\
         .format(table_name=table_name, genes_string=genes_string)
     patient_len_dict = dict()
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            print "No pathways found."
-            return patient_len_dict
-        for row_no in xrange(row_count):
-            row = cur.fetchone()
-            patient_len_dict[row[0]] = row[1]
-
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+    result = db.session.execute(cmd)
+    for row in result:
+        patient_len_dict[row[0]] = row[1]
     return patient_len_dict
 
 
@@ -233,22 +168,13 @@ def count_patients(table_name):
     cmd = """SELECT count(distinct patient_id) FROM {table_name};"""\
         .format(table_name=table_name)
     patient_count = None
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count == 1:
-            print "Non single result from patient count query."
-            return patient_count
-        row = cur.fetchone()
-        patient_count = row[0]
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+    result = db.session.execute(cmd)
+    row_count = result.rowcount
+    if not row_count == 1:
+        print "Non single result from patient count query."
+        return patient_count
+    row = result.fetchone()
+    patient_count = row[0]
     return patient_count
 
 
@@ -266,28 +192,18 @@ def build_path_patient_dict(table_name, ignore_genes):
             refs.pathway_gene_link pgl ON pg.entrez_id = pgl.entrez_id;"""\
         .format(table_name=table_name, genes_string=genes_string)
     path_patient_dict = dict()
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        # assert isinstance(cur.rowcount, int)
-        row_count = cur.rowcount
-        if not row_count:
-            print "No patient-pathway pairs found."
-            return path_patient_dict
-        for row_no in xrange(row_count):
-            row = cur.fetchone()
-            path_id = row[0]
-            patient_id = row[1]
-            if path_id in path_patient_dict:
-                path_patient_dict[path_id].add(patient_id)
-            else:
-                path_patient_dict[path_id] = {patient_id}
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+    result = db.session.execute(cmd)
+    row_count = result.rowcount
+    if not row_count:
+        print "No patient-pathway pairs found."
+        return path_patient_dict
+    for row in result:
+        path_id = row[0]
+        patient_id = row[1]
+        if path_id in path_patient_dict:
+            path_patient_dict[path_id].add(patient_id)
+        else:
+            path_patient_dict[path_id] = {patient_id}
     return path_patient_dict
 
 
@@ -307,24 +223,15 @@ def fetch_path_ids_interest_genes(interest_genes):
             {genes_string}) g
         ON pgl.entrez_id = g.geneId ORDER BY path_id;""".format(
         genes_string=genes_string)
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd1)
-        rowCount = cur.rowcount
-        if not rowCount:
-            raise Exception(
-                "Result contains %g rows Ids for pathway lookup."
-                % (rowCount))
-        rows = cur.fetchall()
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+    result = db.session.execute(cmd1)
+    rowCount = result.rowcount
+    if not rowCount:
+        raise Exception(
+            "Result contains %g rows Ids for pathway lookup." % rowCount)
+
     # rows is [[id,name],[id,name],...]
-    for id in rows:
-        all_path_ids.append(int(id[0]))
+    for row in result:
+        all_path_ids.append(int(row[0]))
     return all_path_ids
 
 
@@ -337,23 +244,14 @@ def get_pathway_name_dict():
     INNER JOIN
     (SELECT DISTINCT path_id FROM refs.pathway_gene_link) l
     ON p.path_id = l.path_id;"""
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd1)
-        row_count = cur.rowcount
-        if not row_count > 1:
-            raise Exception(
-                "Result contains %g rows Ids for pathway lookup."
-                % row_count)
-        rows = cur.fetchall()
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+    result = db.session.execute(cmd1)
+    row_count = result.rowcount
+    if not row_count > 1:
+        raise Exception(
+            "Result contains %g rows Ids for pathway lookup."
+            % row_count)
     # rows is [[id,name],[id,name],...]
-    for pair in rows:
+    for pair in result:
         path_id = int(pair[0])
         path_name = pair[1]
         pathway_dict[path_id] = path_name
@@ -391,24 +289,14 @@ def get_pway_lenstats_dict(mutation_table, ignore_genes):
             {exclude_str} GROUP BY path_id) g ON g.path_id = pgl.`path_id`
             {exclude_str} GROUP BY g.path_id;"""\
         .format(mutation_table=mutation_table, exclude_str=genes_string)
-
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd1)
-        row_count = cur.rowcount
-        if not row_count > 1:
-            raise Exception(
-                "Result contains %g rows Ids for pathway lookup."
-                % row_count)
-        rows = cur.fetchall()
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+    result = db.session.execute(cmd1)
+    row_count = result.rowcount
+    if not row_count > 1:
+        raise Exception(
+            "Result contains %g rows Ids for pathway lookup."
+            % row_count)
     # rows is [[id,min,max,avg],[id,min,max,avg],...]
-    for temp_lengths in rows:
+    for temp_lengths in result:
         path_id = int(temp_lengths[0])
         len_min = str(temp_lengths[1])
         gene_min = str(temp_lengths[2])
@@ -427,21 +315,12 @@ def fetch_path_info_global():
     cmd = "SELECT path_id, info_url, `description_brief`, contributor " \
           "FROM refs.pathways;"
     info_dict = dict()
-    try:
-        con = mdb.connect(**app.dbvars)
-        cur = con.cursor()
-        cur.execute(cmd)
-        rowCount = cur.rowcount
-        if not rowCount > 1:
-            raise Exception("Failed info lookup for all pathways.")
-        rows = cur.fetchall()
-    except mdb.Error as e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-    finally:
-        if con:
-            con.close()
+    result = db.session.execute(cmd)
+    row_count = result.rowcount
+    if not row_count > 1:
+        raise Exception("Failed info lookup for all pathways.")
     # rows is [[id,url,desc,contrib],[id,url,desc,contrib],...]
-    for row in rows:
+    for row in result:
         path_id = row[0]
         url = row[1]
         desc = row[2]
@@ -470,26 +349,15 @@ def get_gene_combs_hit(table_name):
             GROUP BY path_id, patient_id
             ) g;""". \
             format(table=table_name)
-        try:
-            con = mdb.connect(**app.dbvars)
-            cur = con.cursor()
-            cur.execute(cmd_maxlen)
-            cur.execute(cmd)
-            # rows = cur.fetchall()
-            numrows = cur.rowcount
-            for i in xrange(numrows):
-                row = cur.fetchone()
-                path_id = row[0]
-                gene_list = row[1].split(',')
-                if path_id in path_genes_dict:
-                    path_genes_dict[path_id].append(gene_list)
-                else:
-                    path_genes_dict[path_id] = [gene_list]
-        except mdb.Error as e:
-            print "Error %d: %s" % (e.args[0], e.args[1])
-        finally:
-            if con:
-                con.close()
+        db.session.execute(cmd_maxlen)
+        result = db.session.execute(cmd)
+        for row in result:
+            path_id = row[0]
+            gene_list = row[1].split(',')
+            if path_id in path_genes_dict:
+                path_genes_dict[path_id].append(gene_list)
+            else:
+                path_genes_dict[path_id] = [gene_list]
         # prev returned list of lists, now dictionary with list of lists as vals
         return path_genes_dict
 
@@ -509,32 +377,24 @@ def get_gene_counts(table_name):
             ON t.entrez_id = pgl.entrez_id
             GROUP BY path_id, hugo_symbol;""" \
             .format(table=table_name)
-        try:
-            con = mdb.connect(**app.dbvars)
-            cur = con.cursor()
-            cur.execute(cmd0)
-            cur.execute(cmd2)
-            row_count = cur.rowcount
-            if not row_count:
-                # NO GENES MUTATED. n_effective < n_pathway
-                return path_gene_dict
-            for i in xrange(row_count):
-                row = cur.fetchone()
-                path_id = row[0]
-                gene = row[1]
-                coverage = int(row[2])
-                patient_names = row[3].split(',')
-                if not len(patient_names) == coverage:
-                    raise Exception(
-                        "Pathway coverage query gives inconsistent " +
-                        "patient counts and patient names; truncated "
-                        "group_concat?")
-                path_gene_dict[path_id][gene] = patient_names
-        except mdb.Error as e:
-            print "Error %d: %s" % (e.args[0], e.args[1])
-        finally:
-            if con:
-                con.close()
+        db.session.execute(cmd0)
+        result = db.session.execute(cmd2)
+        row_count = result.rowcount
+        if not row_count:
+            # NO GENES MUTATED. n_effective < n_pathway
+            return path_gene_dict
+        for row in result:
+            path_id = row[0]
+            gene = row[1]
+            coverage = int(row[2])
+            patient_names = row[3].split(',')
+            if not len(patient_names) == coverage:
+                raise Exception(
+                    "Pathway coverage query gives inconsistent " +
+                    "patient counts and patient names; truncated "
+                    "group_concat?")
+            path_gene_dict[path_id][gene] = patient_names
+
         # OLD: count_dict : gene -> n_patients; total_patients
         # self.geneMatrix.add_gene_patients(gene, patient_names)
         return path_gene_dict
