@@ -12,7 +12,7 @@ from flask_script import Manager
 from app import db
 from app.models import User, Role, UserFile
 from app.naming_rules import get_project_folder
-from flask.ext.migrate import Migrate, MigrateCommand
+from flask_migrate import Migrate, MigrateCommand
 import shutil
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')

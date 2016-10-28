@@ -1,5 +1,5 @@
 from flask import current_app, render_template, url_for
-from flask.ext.mail import Message
+from flask_mail import Message
 from . import mail, celery
 from .models import UserFile
 

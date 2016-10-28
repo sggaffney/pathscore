@@ -134,13 +134,13 @@ def upload():
         raise ValidationError("Use txt or tsv extension for mut_file.")
     mut_file = MutationFile(filestore)
     if user_upload.bmr_id:
-        if not current_user.is_authenticated() or not CustomBMR.query.filter_by(
+        if not current_user.is_authenticated or not CustomBMR.query.filter_by(
                 user_id=current_user.id, bmr_id=user_upload.bmr_id).all():
             raise ValidationError("Invalid bmr_id specified.")
 
     rv = {}
     # CREATE NEW USER IF UNAUTHENTICATED (HERE, FILE IS VALID)
-    if not current_user.is_authenticated():
+    if not current_user.is_authenticated:
         # create guest user
         temp_user, temp_pswd = create_anonymous_user()
         rv['user_name'] = temp_user.email

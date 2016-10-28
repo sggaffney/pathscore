@@ -34,7 +34,7 @@
       <ul class="nav navbar-nav">
       {% if not is_archive %}
         <!--<li class="active"><a href="#">Link <span class="sr-only">(current)</span></a></li>-->
-        {% if current_user.is_authenticated() %}
+        {% if current_user.is_authenticated %}
             <li><a href="{{ url_for('pway.index') }}">Status</a></li>
             <li><a href="{{ url_for('pway.upload') }}">Upload</a></li>
             <li><a href="{{ url_for('pway.bmr') }}">BMR</a></li>
@@ -67,7 +67,7 @@
       </ul>
       {% if not is_archive %}{# only show user/login if non-archive #}
       <ul class="nav navbar-nav navbar-right">
-        {% if not current_user.is_authenticated() %}
+        {% if not current_user.is_authenticated %}
         <li><a href="{{ url_for('security.login') }}">Login</a></li>
         {% else %}
         <li class="dropdown">

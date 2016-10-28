@@ -43,7 +43,7 @@ def limit_user_uploads(f):
     @wraps(f)
     def wrapped(*args, **kwargs):
         # CHECK IF RUNNING PROJECT COUNT IS WITHIN USER LIMITS
-        if current_user.is_authenticated():
+        if current_user.is_authenticated:
             incomplete = UserFile.query.filter_by(user_id=current_user.id)\
                 .filter_by(run_complete=0).all()
             role_names = [r.name for r in current_user.roles]

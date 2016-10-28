@@ -5,7 +5,7 @@ from flask_security import Security, SQLAlchemyUserDatastore  # for email verif.
 from flask_login import LoginManager
 from flask_bootstrap import Bootstrap
 from flask_mail import Mail
-from flask.ext.security.signals import user_registered
+from flask_security.signals import user_registered
 from celery import Celery
 from config import config, Config
 import logging

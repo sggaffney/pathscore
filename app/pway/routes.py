@@ -489,7 +489,7 @@ def upload():
             return render_template('pway/upload.html', form=form)
 
         # CREATE NEW USER IF UNAUTHENTICATED (HERE, FILE IS VALID)
-        if not current_user.is_authenticated():
+        if not current_user.is_authenticated:
             # create guest user
             temp_user, temp_pswd = create_anonymous_user()
             flash('Your temporary username is {} and password is {}. '.format(
@@ -514,7 +514,7 @@ def upload():
         return redirect(url_for('.index'))
 
     # MESSAGES FOR INITIAL UPLOAD PAGE ACCESS OR FAILED UPLOAD
-    if current_user.is_authenticated():
+    if current_user.is_authenticated:
         message = "You've run {} projects in the last week. ".format(g.n_week)
         message += "Your weekly limit is {}.".format(g.n_week_max)
         if g.incomplete:

@@ -8,7 +8,7 @@ from flask_login import current_user
 from flask_security import RoleMixin, UserMixin
 from . import db, login_manager
 from unidecode import unidecode
-from flask.ext.security.utils import encrypt_password, verify_password
+from flask_security.utils import encrypt_password, verify_password
 
 import naming_rules
 from errors import ValidationError
