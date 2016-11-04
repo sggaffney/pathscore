@@ -39,6 +39,7 @@ def get_pval_path(upload_obj):
     pval_name = root_name + '_pvalues.txt'
     return os.path.join(dir_path, pval_name)
 
+
 def get_tree_score_paths(upload_obj):
     """Get path tuple (scores_path, scored_names) from upload object."""
     proj_suffix = upload_obj.get_local_filename()
@@ -72,6 +73,37 @@ def get_hypermutated_path(upload_obj):
     hyper_file = 'hypermutated_{}.txt'.format(upload_obj.get_local_filename())
     dir_path = get_project_folder(upload_obj)
     return os.path.join(dir_path, hyper_file)
+
+
+def get_target_dir(upload_obj):
+    """Target plot directory. SEE ALSO get_target_path."""
+    dir_path = get_project_folder(upload_obj)
+    svg_dir = os.path.join(dir_path, 'pathways_svg')
+    return svg_dir
+
+
+def get_target_path(upload_obj, path_id, compressed=False):
+    """Target plot path. Set compressed to True for svgz extension."""
+    svg_dir = get_target_dir(upload_obj)
+    ext = 'svg' if not compressed else 'svgz'
+    svg_path = os.path.join(svg_dir, '{}.{}'.format(path_id, ext))
+    return svg_path
+
+
+def get_matrix_dir(upload_obj):
+    """Target plot directory. SEE ALSO get_target_path."""
+    dir_path = get_project_folder(upload_obj)
+    svg_dir = os.path.join(dir_path, 'matrix_svg')
+    return svg_dir
+
+
+def get_matrix_path(upload_obj, path_id, compressed=False):
+    """Target plot path. Set compressed to True for svgz extension."""
+    svg_dir = get_matrix_dir(upload_obj)
+    ext = 'svg' if not compressed else 'svgz'
+    svg_path = os.path.join(svg_dir, '{}.{}'.format(path_id, ext))
+    return svg_path
+
 
 
 def get_unused_gene_path(upload_obj):

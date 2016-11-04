@@ -161,6 +161,6 @@ def upload():
         else success_msg
 
     # RUN ANALYSIS:
-    run_analysis(proj_folder, file_path, user_upload.file_id)
+    run_analysis(user_upload.file_id)
 
     return rv, 201, {'Location': user_upload.get_url()}

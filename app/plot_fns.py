@@ -12,7 +12,6 @@ import misc
 from get_effective_pathways import load_pathway_list_from_file
 
 
-
 def get_scatter_dict(upload_obj):
     """Create dictionary required for scatter view."""
     detail_path = naming_rules.get_detailed_path(upload_obj)
@@ -88,13 +87,13 @@ def get_scatter_dict(upload_obj):
         'resources': resources
         }
 
+
 def get_tree_data(upload_obj):
     # load ordered dictionary of path_ids : pathway_display_name
     names_path = naming_rules.get_tree_score_paths(upload_obj)[1]
-    names_ordered_path = names_path + '.reorder'
     # tree_path = naming_rules.get_apache_path(tree_path)
     names_odict = OrderedDict()  # ordered dictionary of path_id: name
-    with open(names_ordered_path, 'rU') as f:
+    with open(names_path, 'rU') as f:
         for line in f:
             vals = line.strip('\n').split('\t')
             if len(vals) != 2:

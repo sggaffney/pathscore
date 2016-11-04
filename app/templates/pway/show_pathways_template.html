@@ -256,7 +256,7 @@
 			$imageContainer.append(show_text);
 		}
 		for(var pi=0; pi<use_pways_page.length; pi++){
-            plot_div = create_plot_div(use_pways_page[pi], {{ n_pathways }}, {{ user_id }}, projId);
+            plot_div = create_plot_div(use_pways_page[pi], {{ n_pathways }}, {{ user_id }}, projId, matrix_width);
 			$imageContainer.append(plot_div);
 				// 'height=1024px width=1024px
 				//'height=' + (use_pways_page[pi].geneSet.length*25+80) +
@@ -269,24 +269,6 @@
 		$(".svg_matrix").click(expandMatrixImage);
 
 	}
-
-	function expandMatrixImage(event){
-		var $im = $(event.target);
-		var $statusDiv = $im.parent().children()[0];
-		var im_status = jQuery.parseJSON($statusDiv.textContent);
-		var n_genes = im_status.n_genes;
-		var expanded = im_status.expanded;
-		if(!expanded)
-			$im.css('height',25*n_genes + 80);
-		else
-			$im.css('height','inherit');
-		im_status.expanded = !im_status.expanded;
-		$statusDiv.textContent = JSON.stringify(im_status);
-
-	}
-
-
-
 </script>
 
 {% endblock %}

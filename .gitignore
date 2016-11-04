@@ -10,3 +10,5 @@ melanoma*.txt
 notes
 *.m~
 *.ipynb
+build
+dist

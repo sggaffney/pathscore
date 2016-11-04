@@ -97,3 +97,31 @@
     {% block page_content %}{% endblock %}
 </div>
 {% endblock %}
+
+{% block scripts %}
+{{super()}}
+
+
+<script>
+    function matrix_width(n_patients){
+        var box_px = {{ config['MATRIX_BOX_PX'] }};
+        var hpad = {{ config['MATRIX_HPAD_PX'] }};
+        return box_px * n_patients + hpad + 10;
+    }
+    function expandMatrixImage(event){
+		var $im = $(event.target);
+		var $statusDiv = $im.parent().children()[0];
+		var im_status = jQuery.parseJSON($statusDiv.textContent);
+		var n_patients = im_status.n_patients;
+		var expanded = im_status.expanded;
+		if(!expanded) {
+			var width = matrix_width(n_patients);
+			$im.css('max-width', width);
+		} else
+			$im.css('max-width', '100%');
+		im_status.expanded = !im_status.expanded;
+		$statusDiv.textContent = JSON.stringify(im_status);
+	}
+</script>
+
+{% endblock %}

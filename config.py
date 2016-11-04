@@ -38,12 +38,16 @@ class Config:
     DATA_ROOT = os.environ.get('DATA_ROOT')
     TEMP_FOLDER = os.environ.get('TEMP_FOLDER')
     LOG_PATH = os.environ.get('LOG_PATH')
-    MATLAB_PATH = os.environ.get('MATLAB_PATH')
+
+    MATRIX_BOX_PX = os.environ.get('MATRIX_BOX_PX', 25)
+    MATRIX_HPAD_PX = os.environ.get('MATRIX_HPAD_PX', 220)
+    MATRIX_TXT_SIZE = os.environ.get('MATRIX_TXT_SIZE', 10)
 
     DB_CNF = os.environ.get('MYSQLDB_CNF')
     DB_HOST = os.environ.get('MYSQLDB_HOST')
     # recycle connection before mysql default 8hr wait timeout
     SQLALCHEMY_POOL_RECYCLE = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', 3600))
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     SERVER_NAME = os.environ.get('SERVER_NAME')
 

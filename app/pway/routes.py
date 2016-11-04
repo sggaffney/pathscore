@@ -475,7 +475,7 @@ def upload():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
 
     bmr_titles = [(-1, 'Default')]
-    if not current_user.is_anonymous():
+    if not current_user.is_anonymous:
         bmr_titles += [(i.bmr_id, i.title) for i in CustomBMR.query.filter_by(
             user_id=current_user.id).all()]
 
@@ -510,7 +510,7 @@ def upload():
               'success')
         # run analysis asynchronously
         # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
-        run_analysis(proj_folder, file_path, user_upload.file_id)
+        run_analysis(user_upload.file_id)
         return redirect(url_for('.index'))
 
     # MESSAGES FOR INITIAL UPLOAD PAGE ACCESS OR FAILED UPLOAD

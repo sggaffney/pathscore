@@ -26,10 +26,12 @@ from .db_lookups import lookup_path_sizes, lookup_background_size, \
     get_gene_combs_hit, get_gene_counts, get_pway_lenstats_dict, \
     fetch_path_info_global, count_patients, lookup_hypermutated_patients, \
     get_annotation_dict
+import plot
 import misc
 import naming_rules
 
 ref_info = None
+
 
 class RefInfo():
     """Holds initial pathway sizes and info dictionaries. Created at launch."""
@@ -61,7 +63,7 @@ class MatlabFailureException(Exception):
 
 # @async
 @celery.task
-def run_analysis_async(proj_dir, data_path, upload_id):
+def run_analysis_async(upload_id):
     """Asynchronous run of pathway analysis."""
     db.session.remove()  # guarantee new db session for this thread
     user_upload = UserFile.query.get(upload_id)
@@ -71,6 +73,9 @@ def run_analysis_async(proj_dir, data_path, upload_id):
     # global dbvars
     # with app.app_context():
     table = None
+    table_name = None
+    proj_dir = naming_rules.get_project_folder(user_upload)
+    data_path = os.path.join(proj_dir, user_upload.get_local_filename())
     unused_gene_path = naming_rules.get_unused_gene_path(user_upload)
     rejected_gene_path = naming_rules.get_rejected_gene_path(user_upload)
     try:
@@ -89,7 +94,7 @@ def run_analysis_async(proj_dir, data_path, upload_id):
         user_upload.n_patients = table.n_patients
         db.session.add(user_upload)
         db.session.commit()
-        run(proj_dir, table_name, user_upload)
+        run(user_upload)
         user_upload.run_complete = True
     except MatlabFailureException as e:
         user_email = user_upload.uploader.email
@@ -111,26 +116,27 @@ def run_analysis_async(proj_dir, data_path, upload_id):
                 current_app.logger.info("Project {} failed for user {}.".format(
                     user_upload.file_id, user_upload.uploader.email))
             else:
-                current_app.logger.info("Project {} completed for user {}.".format(
-                    user_upload.file_id, user_upload.uploader.email))
+                current_app.logger.info(
+                    "Project {} completed for user {}."
+                    .format(user_upload.file_id, user_upload.uploader.email))
             if table:
                 drop_table(table_name)
             db.session.add(user_upload)
             db.session.commit()
             emails.run_finished_notification(upload_id)
         except StaleDataError as e:
-            current_app.logger.info("Early termination of stale project: {}".format(
-                e.message))
+            current_app.logger.info(
+                "Early termination of stale project: {}".format(e.message))
         finally:
             db.session.remove()
 
 
-def run_analysis(proj_dir, data_path, upload_id):
+def run_analysis(upload_id):
     # user_upload.run_accepted = True
     # db.session.add(user_upload)
     # db.session.commit()
     # app_obj = current_app._get_current_object()
-    run_analysis_async.delay(proj_dir, data_path, upload_id)
+    run_analysis_async.delay(upload_id)
 
 
 def drop_table(table_name):
@@ -279,55 +285,6 @@ class MutationTable:
                 out.write('\t'.join([str(i) for i in row]) + '\n')
 
 
-class GeneMatrix:
-    """Holds patient-gene matrix info for a single pathway.
-    Write matrix to file with call to export_matrix."""
-
-    def __init__(self, genepatients_dict, annot_dict=None):
-        """Add gene-patientList pairs into dictionary, and optional annot_dict."""
-        self.genePatientDict = genepatients_dict
-        self.annot_dict = annot_dict
-
-    def export_matrix(self, outfile, exclusive_genes):
-        """Writes tab-separated matrix file for patient/gene
-        pairs in pathway."""
-        # sort genes alphabetically then by exclusive-status then patient counts
-        genesOrdered = [gene for gene in self.genePatientDict]
-        genesOrdered.sort()  # sort alphabetically
-        genesOrdered.sort(key=lambda gene: gene in exclusive_genes,
-                          reverse=True)
-        genesOrdered.sort(key=lambda gene: len(self.genePatientDict[gene]),
-                          reverse=True)
-        # get set of patients and count genes hit for each patient
-        patient_set = set.union(
-            *[set(i) for i in self.genePatientDict.values()])
-        patient_counts = dict(
-            zip(list(patient_set), [0] * len(patient_set)))
-        for patient in patient_set:
-            for gene in genesOrdered:
-                if patient in self.genePatientDict[gene]:
-                    patient_counts[patient] += 1
-        patient_list = list(patient_set)
-        patient_list.sort()  # sort alphabetically
-        patient_list.sort(key=lambda patient: patient_counts[patient],
-                          reverse=True)
-        outfile.write("\t".join(['GENE'] + patient_list) + '\n')
-        for gene in genesOrdered:
-            if gene in exclusive_genes:
-                outfile.write('*')
-            outfile.write(gene)
-            for patient in patient_list:
-                if patient in self.genePatientDict[gene]:
-                    if self.annot_dict and (gene, patient) in self.annot_dict:
-                        annot = self.annot_dict[(gene, patient)]
-                        outfile.write('\t{}'.format(annot))
-                    else:
-                        outfile.write('\t1')
-                else:
-                    outfile.write('\t0')
-            outfile.write('\n')
-
-
 class PathwaySummaryBasic():
     """Holds pathway information."""
     def __init__(self, pathway_number):
@@ -356,7 +313,6 @@ class PathwaySummary(PathwaySummaryBasic):
         self.gene_coverage = OrderedDict()
         self.exclusive_genes = list()
         self.cooccurring_genes = list()
-        self.geneMatrix = None
         self.runtime = None  # only set up by file reader
         self.ll_actual = None
         self.ll_effective = None
@@ -365,7 +321,7 @@ class PathwaySummary(PathwaySummaryBasic):
         self.ne_high = None
 
     def set_up_from_file(self, pval, psize, peffect, ll_actual, ll_effective, d,
-                         ne_low, ne_high, n_cov, pc_cov, runtime):
+                         ne_low, ne_high, n_cov, runtime):
         """Manually specify pathway summary properties (after running init)."""
         self.p_value = pval
         self.n_actual = psize
@@ -376,7 +332,7 @@ class PathwaySummary(PathwaySummaryBasic):
         self.ne_low = ne_low
         self.ne_high = ne_high
         self.n_cov = n_cov
-        self.pc_cov = pc_cov
+        # self.pc_cov = pc_cov
         self.runtime = runtime
         # # fetch gene_coverage, exclusive_genes, cooccurring genes
         # self._populate_exclusive_cooccurring()
@@ -562,8 +518,9 @@ class LCalculator():
 
         if CI_high is None:  # ne is below genome size, so find maximum
             try:
-                CI_high = np.ceil(brentq(self._get_pway_likelihood_CI, self.ne, self.G - self.pway.n_actual))
-            except ValueError: # if signs don't change, G is within CI
+                CI_high = np.ceil(brentq(self._get_pway_likelihood_CI, self.ne,
+                                         self.G - self.pway.n_actual))
+            except ValueError:  # if signs don't change, G is within CI
                 CI_high = self.G
         return CI_low, CI_high
 
@@ -643,7 +600,7 @@ class LCalculator():
             return ne, final_ll
 
         result = minimize_scalar(self._get_pway_likelihood_neg, method='Brent',
-                                     bounds=[1, self.G])
+                                 bounds=[1, self.G])
         # res2 = minimize_scalar(self._get_pway_likelihood_neg, method='Bounded',
         #                        bounds=[1, 17000000])
         try_integers = [np.floor(result.x), np.ceil(result.x)]
@@ -690,11 +647,11 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
         pc_mutated = 100 * float(n_mutated) / len(lcalc.is_mutated_array)
         with open(outfile_name, 'a', bufsize) as out:
             out_str = '{}\t{:.3e}\t{}\t{}\t{:.3g}\t{:.3g}\t{:.3g}\t{}\t{}' \
-                      '\t{:g}\t{:.1f}\t{:.2f}\n'
+                      '\t{:g}\t{:.2f}\n'
             out.write(out_str.format(path_id, lcalc.pvalue, lcalc.pway.n_actual,
                                      lcalc.ne, lcalc.likelihood, lcalc.ne_ll,
                                      lcalc.D, lcalc.ne_low, lcalc.ne_high,
-                                     n_mutated, pc_mutated, runtime))
+                                     n_mutated, runtime))
 
 
 class PathwayListAssembler(GenericPathwayFileProcessor):
@@ -728,8 +685,7 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                 ne_low = int(row[7])
                 ne_high = int(row[8])
                 n_cov = int(row[9])
-                pc_cov = float(row[10])
-                runtime = float(row[11])
+                runtime = float(row[-1])
                 # set up pathway object
                 pway = PathwaySummary(path_id, self.proj_abbrvs,
                                       patient_ids=self.filter_patient_ids,
@@ -737,18 +693,13 @@ class PathwayListAssembler(GenericPathwayFileProcessor):
                                       ignore_genes=self.ignore_genes)
                 pway.set_up_from_file(pval, psize, peffect, ll_actual,
                                       ll_effective, D, ne_low, ne_high,
-                                      n_cov, pc_cov, runtime)
+                                      n_cov, runtime)
                 all_pathways.append(pway)
         # sort pathways by p-value FIRST
         all_pathways.sort(key=lambda pw: pw.D, reverse=True)
         # NEXT sort pathways by effect_size_lowCI : actual_size
         all_pathways.sort(key=lambda p:
                           self._get_size_ratio(p.n_effective, p.n_actual), reverse=True)
-
-        # # for pway in allPathways[0:max_lookup_rows+1]:
-        # for pway in allPathways:
-        # if pway.p_value < 0.1:
-        # pway.update_exclusive_cooccurring_coverage()
         return all_pathways
 
     @staticmethod
@@ -766,13 +717,18 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
     pathway names, pvalues and gene info."""
 
     name_postfix = '_detail.txt'
+
     def __init__(self, dir_path, file_id, pway_object_list,
-                 name_suffix=None, path_genelists_dict=dict(),
-                 path_genepatients_dict=dict(), n_patients=None,
+                 name_suffix=None, path_genelists_dict=None,
+                 path_genepatients_dict=None, n_patients=None,
                  annot_dict=None):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
+        if path_genelists_dict is None:
+            path_genelists_dict = dict()
+        if path_genepatients_dict is None:
+            path_genepatients_dict = dict()
         self.allPathways = pway_object_list
         self.nameDict = ref_info.path_name_dict
         self.outfile_name = self.root_name + self.name_postfix
@@ -810,13 +766,6 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                         self.path_genelists_dict[pway.path_id],
                         self.n_patients,
                         self.path_genepatients_dict[pway.path_id])
-                    if pway.gene_coverage:  # if genes are hit...
-                        if pway.n_effective > pway.n_actual:
-                            pway.geneMatrix = GeneMatrix(
-                                self.path_genepatients_dict[pway.path_id],
-                                annot_dict=self.annot_dict
-                            )
-                            self.write_matrix_files(pway)
                 path_name = self.nameDict[pway.path_id]
                 coverage_string = self.dict_to_struct(pway.gene_coverage)
                 pway.exclusive_genes.sort(key=lambda gene:
@@ -854,16 +803,7 @@ class PathwayDetailedFileWriter(GenericPathwayFileProcessor):
                                             ngenes_mut=n_genes_mutated,
                                             ngenes_total=n_genes_total,
                                             n_cov=pway.n_cov,
-                                            pc_cov=pway.pc_cov))
-
-    def write_matrix_files(self, pway):
-        """Write text file containing presence matrix for patient-gene pair."""
-        matrix_path = os.path.join(self.dir_path, self.matrix_folder)
-        if not os.path.exists(matrix_path):
-            os.mkdir(matrix_path)
-        matrix_filename = os.path.join(matrix_path, 'matrix_' + str(pway.path_id) + '.txt')
-        with open(matrix_filename, 'w') as outfile:
-            pway.geneMatrix.export_matrix(outfile, pway.exclusive_genes)
+                                            pc_cov=float(pway.n_cov) / self.n_patients * 100))
 
 
 class PathwaySummaryParsed(PathwaySummaryBasic):
@@ -878,7 +818,9 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         self.description = ref_info.path_info_dict[pathway_number]['desc']
         self.contrib = ref_info.path_info_dict[pathway_number]['contrib']
         self.gene_set = set()
-        self.gene_pc = dict()
+        self.gene_coverage = OrderedDict()
+        # self.gene_pc = dict()
+        self.gene_coverage = OrderedDict()
         self.n_genes_mutated = None
         self.n_genes_total = None
         self.lengths_tuple = tuple()  # set externally
@@ -906,7 +848,7 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
             gene_set_str = "','".join(self.gene_set)
             outstr = outstr + "['" + gene_set_str + "']}"
         else:
-            outstr = outstr + "[]}"
+            outstr += "[]}"
         return outstr
 
     @property
@@ -929,7 +871,7 @@ def get_patient_list(path_id, patient_size_dict, path_patient_dict):
     return patient_list
 
 
-def run(dir_path, table_name, user_upload):
+def run(user_upload):
     """ EXAMPLE ARGUMENTS
     dir_path = /Users/sgg/Downloads/uploads/1/41/
     table_name = mutations_41
@@ -937,7 +879,7 @@ def run(dir_path, table_name, user_upload):
     user_upload is upload object (file_id, user_id, filename, ...etc)
     """
     alg = user_upload.algorithm  # 'gene_count', 'gene_length', 'bmr_length'
-    bmr_table = None
+    bmr_table, bmr = None, None
     if user_upload.bmr:
         bmr = user_upload.bmr
         bmr.load_final(user_upload.file_id)
@@ -953,45 +895,37 @@ def run(dir_path, table_name, user_upload):
         if alg == 'gene_count':
             genome_size = ref_info.background_count_full
         elif alg == 'gene_length':
-                genome_size = ref_info.background_len_full
+            genome_size = ref_info.background_len_full
         elif alg == 'bmr_length':
-                genome_size = ref_info.background_bmrlen_full
+            genome_size = ref_info.background_bmrlen_full
         else:
             raise Exception("Invalid algorithm selection ({})".format(alg))
     # self.update_state(state='PROGRESS', meta={'status': 'Calculating L'})
-    detail_path, matrix_folder = generate_initial_text_output(
-        dir_path, table_name, user_upload, genome_size, alg=alg,
-        bmr_table=bmr_table)
+    vals = generate_initial_text_output(user_upload, genome_size=genome_size,
+                                        alg=alg, bmr_table=bmr_table)
+    detail_path, hypermutated, annot_dict, path_genepatients_dict = vals
     # matrix_folder is typically 'matrix_txt'
     # self.update_state(state='PROGRESS', meta={'status': 'Plotting'})
     if user_upload.bmr:
         bmr.remove_table(user_upload.file_id)
-    generate_plot_files(user_upload, detail_path, table_name, dir_path,
-                        matrix_folder, genome_size)
+
+    generate_plot_files(user_upload, detail_path=detail_path,
+                        genome_size=genome_size, hypermutated=hypermutated,
+                        path_genepatients_dict=path_genepatients_dict)
 
 
-def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
+def generate_initial_text_output(user_upload, genome_size=None,
                                  alg='gene_count', bmr_table=None):
     # max_mutations
     file_id = user_upload.file_id
+    table_name = user_upload.get_table_name()
+    dir_path = naming_rules.get_project_folder(user_upload)
     table_list = [table_name]  # code can iterate through list of tables
     # max_mutations = user_upload.n_cutoff or 500  # default max is 500
     ignore = user_upload.ignore_genes
     ignore_genes = str(ignore).split(',') if ignore else []
 
     proj_suffix = user_upload.get_local_filename()
-    # # get patient list. maybe empty list.
-    patient_list = []
-    # if args.patients_file:
-    #     for line in args.patients_file:
-    #         temp_line = line.strip('\n')
-    #         if temp_line.isdigit():
-    #             patient_list.append(int(temp_line))  # integer if possible
-    #         else:
-    #             patient_list.append(temp_line)  # strings for tcga projects
-    #     print("Loaded {} patients.".format(len(patient_list)))
-    # else:
-    #     print('No patients file provided. Using all patients.')
 
     # get genes of interest, if any
     if user_upload.required_genes:
@@ -1027,16 +961,16 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
     if alg == 'gene_count':
         path_size_dict = lookup_path_sizes(ignore_genes) if ignore_genes else \
             ref_info.path_size_dict_full
-    elif alg in ['gene_length', 'bmr_length']:
+    else:  # if alg in ['gene_length', 'bmr_length']:
         if ignore_genes:
             path_size_dict = lookup_path_lengths(ignore_genes, alg=alg,
                                                  bmr_table=bmr_table)
         else:
             path_size_dict = ref_info.path_len_dict_full if alg == 'gene_length' else \
                 ref_info.path_bmr_dict_full
-    if alg in 'gene_count':
+    if alg in ['gene_count']:
         patient_size_dict = lookup_patient_counts(table_name, ignore_genes)
-    elif alg in ['gene_length', 'bmr_length']:
+    else:  #if alg in ['gene_length', 'bmr_length']:
         patient_size_dict = lookup_patient_lengths(table_name, ignore_genes)
 
     hypermutated = lookup_hypermutated_patients(table_name)
@@ -1066,7 +1000,8 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
         # Write results to 'basic' file
         basic_writer.write_pvalue_file(lcalc, runtime)
 
-    df_p['pathway'] = df_p.index.map(lambda x: ref_info.path_name_dict.get(x, '?'))
+    df_p['pathway'] = df_p.index.map(
+            lambda x: ref_info.path_name_dict.get(x, '?'))
     df_p = df_p.set_index('pathway')
     df_p.to_csv(naming_rules.get_pval_path(user_upload), sep='\t',
                 index=True, na_rep='nan')
@@ -1084,58 +1019,69 @@ def generate_initial_text_output(dir_path, table_name, user_upload, genome_size,
         annot_dict = get_annotation_dict(table_name)
     else:
         annot_dict = None
-    n_patients = len(patient_size_dict)
+    n_patients = user_upload.n_patients
 
     # Rank pathways, gather extra stats and write to final file
-    final_writer = PathwayDetailedFileWriter(dir_path, file_id, pway_list,
-                                             name_suffix=proj_suffix,
-                                             path_genelists_dict=path_genelists_dict,
-                                             path_genepatients_dict=path_genepatients_dict,
-                                             n_patients=n_patients, annot_dict=annot_dict)
+    final_writer = PathwayDetailedFileWriter(
+            dir_path, file_id, pway_list, name_suffix=proj_suffix,
+            path_genelists_dict=path_genelists_dict,
+            path_genepatients_dict=path_genepatients_dict,
+            n_patients=n_patients, annot_dict=annot_dict)
     final_writer.write_detailed_file()
-
-    # generate_files(dir_path, final_writer.outfile_name, user_upload)
-
     detail_path = final_writer.outfile_name
-    # descriptive_name = user_upload.get_local_filename()
-    matrix_folder = final_writer.matrix_folder
-    return detail_path, matrix_folder
+    return detail_path, hypermutated, annot_dict, path_genepatients_dict
 
 
-def generate_plot_files(user_upload, detail_path, table_name, dir_path,
-                        matrix_folder, genome_size):
-    allPathways = load_pathway_list_from_file(detail_path)
-
+def generate_plot_files(user_upload, detail_path=None, genome_size=None,
+                        hypermutated=None, annot_dict=None,
+                        path_genepatients_dict=None):
+    """Create tree, target and matrix plots, plus readable results file."""
+    all_pathways = load_pathway_list_from_file(detail_path)
+    table_name = user_upload.get_table_name()
+    dir_path = naming_rules.get_project_folder(user_upload)
     scores_path, names_path, tree_svg_path = naming_rules.\
         get_tree_score_paths(user_upload)
-    save_dissimilarity_files(allPathways, scores_path, names_path, min_len=50)
-
+    scores, names = prep_dendrogram(all_pathways, min_len=50)
+    name_indices = plot.plot_dendrogram(scores, out_svg=tree_svg_path)
+    # Write pathway names to text file
+    names = [names[i] for i in name_indices]
+    with open(names_path, 'w') as out:
+        for id_name in names:
+            out.write('{}\t{}\n'.format(*id_name))
     # LOOKUP MUTATED GENE LENGTHS
     if user_upload.ignore_genes:
         ignore_genes = str(user_upload.ignore_genes).split(',')
     else:
         ignore_genes = []
     pathway_lengths = get_pway_lenstats_dict(table_name, ignore_genes)
-    for p in allPathways:
+    for p in all_pathways:
         p.lengths_tuple = pathway_lengths[int(p.path_id)]
-
     js_out_path = naming_rules.get_js_path(user_upload)
-    make_js_file(allPathways, js_out_path)
+    make_js_file(all_pathways, js_out_path)
     save_project_params_txt(user_upload)  # params file
-    readable_path = os.path.join(dir_path,
-                                 user_upload.get_local_filename() + "_summary.txt")
-    make_readable_file(allPathways, readable_path)
-    # html_name = create_html(detail_path, out_dir, project_str, descriptive_name,
-    #                         skipfew)
-
+    readable_path = os.path.join(dir_path, user_upload.get_local_filename()
+                                 + "_summary.txt")
+    n_results = make_readable_file(all_pathways, readable_path)
     # ONLY CREATE SVGS IF MATRIX TXT PATH EXISTS (i.e. pathways have mutations)
-    if os.path.exists(os.path.join(dir_path, matrix_folder)):
-        hyper_path = naming_rules.get_hypermutated_path(user_upload)
-        create_pway_plots(str(detail_path), scores_path, names_path,
-                          tree_svg_path, genome_size, hyper_path)
-        misc.zip_svgs(dir_path)
-    # create_svgs(str(detail_path))
-    # create_matrix_svgs(str(detail_path))
+    if not n_results:
+        return
+    # Max effective size, with ceiling at genome size
+    max_effective = max([i.n_effective for i in all_pathways])
+    max_effective = min(genome_size, max_effective)
+    # PLOT MATRIX AND TARGET PLOTS
+    target_dir = naming_rules.get_target_dir(user_upload)
+    matrix_dir = naming_rules.get_matrix_dir(user_upload)
+    for folder in [target_dir, matrix_dir]:
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+    for pway in all_pathways:
+        if pway.gene_coverage and pway.n_effective > pway.n_actual:
+            genepatients = path_genepatients_dict[int(pway.path_id)]
+            plot_pathway(pway, hypermutated=hypermutated,
+                         annot_dict=annot_dict, max_effective=max_effective,
+                         user_upload=user_upload,
+                         genepatients_dict=genepatients)
+    misc.zip_svgs(dir_path)
 
 
 def load_pathway_list_from_file(results_path):
@@ -1143,7 +1089,6 @@ def load_pathway_list_from_file(results_path):
     Used for making js file and user readable output."""
     allPathways = list()  # will hold pathway objects
     ignoreList = ['CANCER', 'GLIOMA', 'MELANOMA', 'LEUKEMIA', 'CARCINOMA']
-    # project_id = raw_input("Project id? ")  # <TODO:sgg> change to input in python3
     # 'pathways_pvalues_{}_pretty.txt'.format(project_id)
     with open(results_path, 'r') as file:
         for line in file:
@@ -1167,12 +1112,16 @@ def load_pathway_list_from_file(results_path):
             pway.D = float(vals[7])
             pway.ne_low = int(vals[8])
             pway.ne_high = int(vals[9])
-            gene_set = set.union(set(eval(vals[11])), set(eval(vals[12])))
+            pway.exclusive = set(eval(vals[11]))
+            pway.cooccurring = set(eval(vals[12]))
+            gene_set = set.union(pway.exclusive, pway.cooccurring)
             pway.gene_set = gene_set
             pc_str = vals[13]  # e.g. struct('ACADS',2.44,'ACADVL',2.44)
-            pc_str = "{" + pc_str.lstrip('struct(').rstrip(')')\
-                .replace("',", "':") + "}"  # e.g. {'ACADS':2.44,'ACADVL':2.44}
-            pway.gene_pc = eval(pc_str)
+            pc_list = list(eval(pc_str.lstrip('struct')))
+            pway.gene_coverage = OrderedDict(zip(pc_list[0::2], pc_list[1::2]))
+            # pc_str = "{" + pc_str.lstrip('struct(').rstrip(')')\
+            #     .replace("',", "':") + "}"  # eg {'ACADS':2.44,'ACADVL':2.44}
+            # pway.gene_pc = eval(pc_str)
             pway.n_genes_mutated = int(vals[14])
             if len(vals) > 15:
                 pway.n_genes_total = int(vals[15])
@@ -1182,23 +1131,27 @@ def load_pathway_list_from_file(results_path):
     return allPathways
 
 
-def save_dissimilarity_files(pway_list_full, scores_path, names_path, min_len=50):
+def prep_dendrogram(pway_list, min_len=50):
     """Reads gene_sets from all pathways, calculating a matrix of dissimilarity
-    scores. Saves scores and path_id+names in text files at specified paths."""
-    pway_list = [p for p in pway_list_full if p.gene_set]
+    scores.
+    Return:
+        scores: numpy 2x2 symmetric matrix of dissimilarities
+        names (list): (path_id, 'nice' name) tuples."""
+    pway_list = [p for p in pway_list if p.gene_set]
     effect_sizes = [float(p.n_effective)/p.n_actual for p in pway_list]
     effect_sizes = misc.get_at_least_n(effect_sizes, min_len)  # top ~50 effects
     n_pways = len(effect_sizes)
     gene_set_list = [p.gene_set for p in pway_list][:n_pways]
     scores = misc.get_distance_matrix(gene_set_list)
-    # SAVE SCORES SQUARE MATRIX IN TEXT FILE. (savetxt from numpy)
-    np.savetxt(scores_path, scores, delimiter='\t')
+    #     # SAVE SCORES SQUARE MATRIX IN TEXT FILE. (savetxt from numpy)
+    #     np.savetxt(scores_path, scores, delimiter='\t')
     # SAVE NAMES IN TEXT FILE.
     names = [(p.path_id, p.nice_name) for p in pway_list if p.gene_set]
     names = names[:n_pways]  # trim down to length n_pways
-    with open(names_path, 'w') as out:
-        for n in names:
-            out.write(n[0] + '\t' + n[1] + '\n')
+    # with open(names_path, 'w') as out:
+    #     for n in names:
+    #         out.write(n[0] + '\t' + n[1] + '\n')
+    return scores, names
 
 
 def make_js_file(allPathways, out_path):
@@ -1217,16 +1170,18 @@ def make_js_file(allPathways, out_path):
 
 def make_readable_file(allPathways, out_path):
     """Create file suitable for archiving for user."""
-    header_str = "pathway_name, pathway_id, url, p_value, n_effective, n_actual, " \
-                 "n_patients, pc_patients, n_genes_mutated, n_genes_total, " \
-                 "genes_mutated_pc, gene_len_min_kbp, shortest_gene(s), " \
-                 "gene_len_max_kbp, longest_gene(s), " \
+    header_str = "pathway_name, pathway_id, url, p_value, n_effective, " \
+                 "n_actual, n_patients, pc_patients, n_genes_mutated, " \
+                 "n_genes_total, genes_mutated_pc, gene_len_min_kbp, " \
+                 "shortest_gene(s), gene_len_max_kbp, longest_gene(s), " \
                  "gene_len_avg_kbp, gene_len_variance"
     header_line = '\t'.join(header_str.split(', ')) + '\n'
+    n_results = 0
     with open(out_path, 'w') as out:
         out.write(header_line)
         for pway in allPathways:
             if pway.gene_set:
+                n_results += 1
                 line_vals = list()
                 line_vals.append(pway.nice_name)
                 line_vals.append(pway.path_id)
@@ -1238,33 +1193,46 @@ def make_readable_file(allPathways, out_path):
                 line_vals.append(pway.pc_cov)
                 line_vals.append(pway.n_genes_mutated)
                 line_vals.append(pway.n_genes_total)
-                line_vals.append(json.dumps(pway.gene_pc))
+                line_vals.append(json.dumps(pway.gene_coverage))
                 line_vals.extend(list(pway.lengths_tuple))
                 out.write('\t'.join([str(v) for v in line_vals]) + '\n')
+    return n_results
 
 
-def create_pway_plots(txt_path, scores_path, names_path, tree_path, genome_size,
-                      hyper_path):
-    """Run matlab script that builds matrix and target svgs."""
-    # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
-
-    # worker = matlab.engine.start_matlab()
-    plot_fn = "pway_plots({txtpath!r}, {scores!r}, {names!r}, {tree!r}, {gsize}, {hyper_path!r});".\
-        format(txtpath=txt_path, scores=scores_path, names=names_path,
-               tree=tree_path, gsize=int(genome_size), hyper_path=hyper_path)
-
-    cmd = [current_app.config['MATLAB_PATH'], '-nosplash', '-nodesktop', '-r',
-           plot_fn + ' exit;']
-
-    with open(os.devnull, "r") as fnullin:
-        with open(os.devnull, "w") as fnullout:
-            proc = subprocess.Popen(cmd, stdin=fnullin,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-            (output, error) = proc.communicate()
-            if error:
-                current_app.logger.error("Matlab proc returncode: {}.".format(proc.returncode))
-                current_app.logger.error("Matlab stderr: {}.".format(error))
-                current_app.logger.error("Matlab stdout: {}.".format(output))
-            if proc.returncode:
-                raise MatlabFailureException('pway plot error: ' + error)
+def plot_pathway(pway, hypermutated=None, annot_dict=None, max_effective=None,
+                 user_upload=None, genepatients_dict=None):
+    """Create target and matrix plot for pathway."""
+    print("Generating plots for pathway {}".format(pway.path_id))
+    if not pway.gene_coverage:
+        return
+    if not pway.n_genes_total:
+        pway.n_genes_total = ref_info.path_size_dict_full[int(pway.path_id)]
+    if hypermutated is None:
+        hypermutated = []
+    if annot_dict is None:
+        annot_dict = {}
+    # OUT PATHS
+    target_path = naming_rules.get_target_path(user_upload, pway.path_id,
+                                               compressed=False)
+    matrix_path = naming_rules.get_matrix_path(user_upload, pway.path_id,
+                                               compressed=False)
+    # PLOT TARGET FOR THIS PATHWAY
+    ax = plot.plot_target(pway.n_actual, pway.n_effective, n_max=max_effective,
+                          pc_dict=pway.gene_coverage,
+                          n_pway_genes=pway.n_genes_total,
+                          exclusive_genes=pway.exclusive,
+                          n_all_patients=user_upload.n_patients)
+    hfig = ax.get_figure()
+    hfig.savefig(target_path, bbox_inches='tight', pad_inches=0.1)
+    plot.plt.close(hfig)
+    # PLOT MATRIX
+    box_px = current_app.config['MATRIX_BOX_PX']
+    hpad = current_app.config['MATRIX_HPAD_PX']
+    fontsize = current_app.config['MATRIX_TXT_SIZE']
+    gm = plot.GeneMatrix(genepatients_dict, annot_dict, pway.exclusive,
+                         n_all_patients=user_upload.n_patients,
+                         hypermutated=hypermutated)
+    hfig, ax = gm.plot_matrix(fontsize=fontsize, max_label=hpad, box_px=box_px,
+                              show_limits=False)
+    hfig.savefig(matrix_path)
+    plot.plt.close(hfig)

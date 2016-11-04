@@ -1,11 +1,11 @@
 import os
 from flask import Flask, request, url_for, current_app
 from flask_sqlalchemy import SQLAlchemy
-from flask_security import Security, SQLAlchemyUserDatastore  # for email verif.
+from flask_security import Security, SQLAlchemyUserDatastore
+from flask_security.signals import user_registered
 from flask_login import LoginManager
 from flask_bootstrap import Bootstrap
 from flask_mail import Mail
-from flask_security.signals import user_registered
 from celery import Celery
 from config import config, Config
 import logging
@@ -96,10 +96,10 @@ def create_app(config_name):
 
     user_datastore = SQLAlchemyUserDatastore(db, User, Role)
     Security(app, user_datastore)
-             # login_form='auth.login', confirm_register_form=None,
-             # register_form=None, forgot_password_form=None,
-             # reset_password_form=None, change_password_form=None,
-             # send_confirmation_form=None, passwordless_login_form=None)
+    # login_form='auth.login', confirm_register_form=None,
+    # register_form=None, forgot_password_form=None,
+    # reset_password_form=None, change_password_form=None,
+    # send_confirmation_form=None, passwordless_login_form=None)
 
     # # Create a user to test with
     # @app.before_first_request

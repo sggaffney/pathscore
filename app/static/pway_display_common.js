@@ -1,16 +1,14 @@
 /**
  * Created by sgg on 2015-09-18.
  */
-function create_plot_div(pway_obj, n_pathways, user_id, projId, matrix_dir, n_genes, opt_header){
-    matrix_dir = matrix_dir || "matrix_svg";
-    n_genes = n_genes || pway_obj.geneSet.length;
+function create_plot_div(pway_obj, n_pathways, user_id, projId, width_fn, opt_header){
+    n_genes = pway_obj.geneSet.length;
+    n_patients = pway_obj.n_cov;
     opt_header = opt_header || "";
     var driver_text = get_driver_str(pway_obj);
-	var max_height = 25 * n_genes + 80;
-    if(pway_obj['pc_cov'])
-        var pc_str = pway_obj['pc_cov'] + '% patients, ';
-    else
-        var pc_str = '';
+	// var max_height = 25 * n_genes + 80;
+    var matrix_width = width_fn(n_patients);  // 20 * n_patients + 160;
+    var pc_str = pway_obj['pc_cov'] ? pway_obj['pc_cov'] + '% patients, ' : '';
     var pval = pway_obj['pval'];
 	var pq_str = null;
 	if(pval == '0.000e+00')
@@ -28,13 +26,13 @@ function create_plot_div(pway_obj, n_pathways, user_id, projId, matrix_dir, n_ge
 		'<span class="keyword-text">avg</span>=' + pway_obj['lengths'][4] + 'kbp; ' +
 		'<span class="keyword-text">var</span>=' + pway_obj['lengths'][5] + driver_text + '</code>'
 		+'<div class="svg_target ui-widget-content">' +
-		'<img src="static/data/' + user_id + '/' + projId + '/pathways_svg/' + pway_obj['id'] + '.svgz" ' +
-		'alt="' + pway_obj['id'] + '.svgz" ></img>'
+		'<img class="img-responsive center-block" src="static/data/' + user_id + '/' + projId + '/pathways_svg/' + pway_obj['id'] + '.svgz" ' +
+		'alt="' + pway_obj['id'] + '.svgz"></img>'
 		+'</div>'
 		+'<div class="svg_matrix ui-widget-content"><div class="pway_size" style="display:none">'
-		+ JSON.stringify({"n_genes":pway_obj.geneSet.length, "expanded":false}) + '</div>' +
-		'<img src="static/data/' + user_id + '/' + projId + '/' + matrix_dir + '/' + pway_obj['id'] + '.svgz" ' +
-		'px alt="' + pway_obj['id'] + '.svgz" style="max-height:' + max_height + 'px;"></img>' //
+		+ JSON.stringify({"n_genes":pway_obj.geneSet.length, "n_patients":pway_obj.n_cov, "expanded":false}) + '</div>' +
+		'<img src="static/data/' + user_id + '/' + projId + '/matrix_svg/' + pway_obj['id'] + '.svgz" ' +
+		'alt="' + pway_obj['id'] + '.svgz" style="width: ' + matrix_width + 'px; max-width: 100%"></img>' //
 		+'</div></div>';
 	return div_str;
 }
