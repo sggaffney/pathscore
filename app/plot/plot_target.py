@@ -46,7 +46,7 @@ def plot_target(n_actual=None, n_effective=None, n_max=None, pc_dict=None,
     # RADIUS
     offset = 0.0025  # to hide inner wedge border
     r_max = r_effective + seg_width - offset
-    r_text = r_max + offset + 0.001 * hfig.get_figwidth()  # + 0.02  # for gene names
+    r_text = r_max + offset + 0.001 * hfig.get_figwidth()
     
     # THETA
     angles = pc_list * angle_per_pc

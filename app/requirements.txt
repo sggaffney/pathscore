@@ -16,7 +16,7 @@ pandas
 matplotlib
 celery
 redis
-bokeh
+bokeh==0.9.0
 flask_httpauth
 matplotlib
 datetime
