@@ -1202,7 +1202,7 @@ def make_readable_file(allPathways, out_path):
 def plot_pathway(pway, hypermutated=None, annot_dict=None, max_effective=None,
                  user_upload=None, genepatients_dict=None):
     """Create target and matrix plot for pathway."""
-    print("Generating plots for pathway {}".format(pway.path_id))
+    # print("Generating plots for pathway {}".format(pway.path_id))
     if not pway.gene_coverage:
         return
     if not pway.n_genes_total:
