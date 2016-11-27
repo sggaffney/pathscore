@@ -94,9 +94,9 @@
     </div>
     {% endfor %}
 
-    {% block page_content %}{% endblock %}
+    {% block page_content %}{% endblock page_content%}
 </div>
-{% endblock %}
+{% endblock content%}
 
 {% block scripts %}
 {{super()}}

@@ -142,8 +142,9 @@ def run_analysis(upload_id):
 def drop_table(table_name):
     cmd = """drop table {};""".format(table_name)
     try:
-        db.session.execute(cmd)
+        r = db.session.execute(cmd)
         db.session.commit()
+        r.close()
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(str(e))

@@ -1,10 +1,11 @@
 from flask import render_template, flash, redirect, url_for, abort,\
-    request, current_app, send_file, send_from_directory, g
+    request, current_app, send_file, send_from_directory, g, jsonify
 from flask_login import login_required, current_user, login_user
 from werkzeug.utils import secure_filename
 import os
 import signal
 from collections import OrderedDict
+import pandas as pd
 import numpy as np
 from bokeh.plotting import figure, ColumnDataSource, hplot
 from bokeh.resources import Resources
@@ -89,6 +90,89 @@ def scatter():
     return render_template('pway/scatter.html', current_proj=current_proj,
                            projects=upload_list, user_id=current_user.id,
                            include_genes=include, **scatter_dict)
+
+
+@pway.route('/mds')
+@login_required
+@no_ssl
+def mds():
+    # if proj among arguments, show this tree first.
+    try:
+        show_proj = int(request.args.get('proj', None))
+    except (TypeError, ValueError):
+        show_proj = None
+    metric = request.args.get('metric', 'jaccard')
+    alg = request.args.get('alg', 'NMDS')
+    include = request.args.get('include', None)
+    # list of projects (and proj_names) used to create dropdown project selector
+
+    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
+        filter_by(run_complete=True).filter_by(has_mds=True).\
+        order_by(UserFile.file_id).all()
+    if not upload_list:
+        flash("No project results to show yet.", "warning")
+        return redirect(url_for('.index'))
+    # Use specified project from args | highest file_id as CURRENT PROJECT
+    current_proj = upload_list[-1]  # override if valid proj specified
+    if show_proj:
+        current_temp = [u for u in upload_list
+                        if u.file_id == show_proj]
+        # if not among user's finished projects, use highest file_id
+        if len(current_temp) == 1:
+            current_proj = current_temp[0]
+        else:
+            current_proj = upload_list[-1]
+
+    scatter_dict = plot_fns.get_mds_dict(current_proj, metric=metric,
+                                         mds_alg=alg)
+
+    return render_template('pway/mds.html', current_proj=current_proj,
+                           projects=upload_list, user_id=current_user.id,
+                           include_genes=include, **scatter_dict)
+
+
+@pway.route('/patient_overlap', methods=['POST'])
+@login_required
+@no_ssl
+def patient_overlap():
+    # try:
+    # return jsonify('hi')
+    current_app.logger.info(request.form)
+    proj_id = request.form['proj']
+    current_app.logger.info(proj_id)
+    path_a = int(request.form['path_a'])
+    path_b = int(request.form['path_b'])
+
+    current_app.logger.info(path_a)
+    current_app.logger.info(path_b)
+
+    upload_obj = UserFile.query.get(proj_id)  # type: UserFile
+
+    df = plot_fns.MDSPlotter(upload_obj).df
+
+    a_bool = df.loc[path_a]
+    b_bool = df.loc[path_b]
+    n_a_uniq = (a_bool & ~b_bool).sum()
+    n_b_uniq = (~a_bool & b_bool).sum()
+    n_both = (a_bool & b_bool).sum()
+    n_either = (a_bool | b_bool).sum()
+    n_patients = upload_obj.n_patients
+    n_neither = n_patients - n_either
+
+    # d_out = pd.DataFrame(
+    #     {'vals': [n_a_uniq, n_b_uniq, n_both, n_either, n_neither]},
+    #     index=['n_a_uniq', 'n_b_uniq', 'n_both', 'n_either', 'n_neither'])
+    #
+    # html_str = d_out.to_html(classes=['table .col-lg-4'], header=False)
+
+    out_dict = {'n_a_uniq': n_a_uniq,
+                'n_b_uniq': n_b_uniq,
+                'n_both': n_both,
+                'n_either': n_either,
+                'n_patients': n_patients,
+                'n_neither': n_neither}
+
+    return jsonify(out_dict)
 
 
 @pway.route('/compare')

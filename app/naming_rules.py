@@ -2,6 +2,9 @@ from flask import current_app
 import os
 
 
+mds_dir = 'npy_pts'
+
+
 def get_user_folder(user_id):
     data_root = current_app.config['DATA_ROOT']
     return os.path.join(data_root, str(user_id))
@@ -104,6 +107,21 @@ def get_matrix_path(upload_obj, path_id, compressed=False):
     svg_path = os.path.join(svg_dir, '{}.{}'.format(path_id, ext))
     return svg_path
 
+
+def get_mds_df_path(upload_obj):
+    """Target plot path. Set compressed to True for svgz extension."""
+    dir_path = get_project_folder(upload_obj)
+    proj_suffix = upload_obj.get_local_filename()
+    out_name = "{}_mds.tsv".format(proj_suffix)
+    df_path = os.path.join(dir_path, mds_dir, out_name)
+    return df_path
+
+
+def get_mds_pts_dir(upload_obj):
+    """Target plot path. Set compressed to True for svgz extension."""
+    dir_path = get_project_folder(upload_obj)
+    pts_path = os.path.join(dir_path, 'npy_pts')
+    return pts_path
 
 
 def get_unused_gene_path(upload_obj):

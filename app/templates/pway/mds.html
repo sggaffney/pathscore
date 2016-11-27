@@ -1,0 +1,163 @@
+{% extends "pway/scatter_base.html" %}
+
+{% block title %}MDS{% endblock title%}
+
+{% block bokeh_form %}
+<div class="row" style="padding-bottom:10px;">
+<form class="form-inline" id="metricForm"  method="get" action="/mds">
+  <div class="form-group">
+	  <label for="metricChoice" class="control-label no-gutter" id="metricLabel">Metric</label>
+	  <!--<input type="text" class="form-control" id="metricChoice" placeholder="e.g. TP53,BRAF">-->
+      {% set metrics = ['jaccard', 'odds_inv', 'dice', 'hamming',
+        'rogerstanimoto', 'sokalsneath', 'yule'] %}
+
+      <select class="form-control" id="metricChoice" name="metric">
+          {% for current_metric in metrics %}
+      			{% if current_metric == metric %}
+      				<option value="{{ current_metric }}" selected="selected">
+      			{% else %}
+      				<option value="{{ current_metric }}">
+      			{% endif %}
+      				{{ current_metric }}
+      				</option>
+      		{% endfor %}
+      </select>
+  </div>
+  <div class="form-group">
+	  <label for="algChoice" class="control-label no-gutter" id="algLabel">Algorithm</label>
+	  <!--<input type="text" class="form-control" id="algChoice" placeholder="e.g. TP53,BRAF">-->
+      {% set algs = ['MDS', 'NMDS'] %}
+      <select class="form-control" id="algChoice" name="alg">
+            {% for current_alg in algs %}
+                    {% if current_alg == alg %}
+                        <option value="{{ current_alg }}" selected="selected">
+                    {% else %}
+                        <option value="{{ current_alg }}">
+                    {% endif %}
+                        {{ current_alg }}
+                        </option>
+                {% endfor %}
+        </select>
+  </div>
+  <button type="submit" class="btn btn-default">Update</button>
+</form>
+</div>
+{% endblock bokeh_form %}
+
+
+{% block extra_plot %}
+<div id="#overlap" class="row">
+    <div class="col-sm-4"><button class="btn btn-default" id="overlapButton"
+                                  type="button">Compare two pathways</button>
+    </div>
+    <div id="overlap_text" class="col-sm-8 col-md-12">
+        <!--class="col-sm-6"-->
+    </div>
+</div>
+{% endblock extra_plot %}
+
+
+{% block scripts %}
+{{super()}}
+
+{# ajax call to /patient_overlap #}
+<script>
+    $(function() {
+        $overlap_text = $('#overlap_text');
+        $('#overlapButton').click(compute_overlaps);
+        compared_prv = [];
+    });
+
+    function compute_overlaps(){
+
+        var inds_selected = getSelectedIndices();
+        if(inds_selected.length != 2){
+            $overlap_text.html('<p>Select exactly two pathways for comparison.</p>');
+            return
+        }
+        if(!selected_changed(inds_selected, compared_prv)){
+            console.log('Requested same pathways for comparison.');
+            return;
+        }
+        compared_prv = inds_selected;
+
+        var pway_ids = [];
+        var use_js_inds = [];
+		for(var i=0; i<inds_selected.length; i++){
+			if(js_inds[inds_selected[i]]>-1){  //
+                use_js_inds.push(js_inds[inds_selected[i]]);
+            }
+		}
+        use_js_inds.sort(function(a,b){return a - b;}); //order by effect size
+        $.each(use_js_inds, function(i, js_index){
+            var p = pwayList[js_index];
+            pway_ids.push(p.id)
+        });
+
+
+        $overlap_text.text("");
+        $.post('/patient_overlap', {
+            'proj': projId,
+            'path_a': pway_ids[0],
+            'path_b': pway_ids[1]
+        }).done(function(obj) {
+
+//                out_dict = {'n_a_uniq': n_a_uniq,
+//                'n_b_uniq': n_b_uniq,
+//                'n_both': n_both,
+//                'n_either': n_either,
+//                'n_patients': n_patients,
+//                'n_neither': n_neither}
+
+            $overlap_text.html(
+                '<table class="table table-hover" style="margin-top: 10px;">' +
+                '  <tbody>' +
+                '<tr><td></td><th>Patient count</th></tr>' +
+                '    <tr>' +
+                '      <th>A only</th>' +
+                '      <td>' + obj.n_a_uniq + '</td>' +
+                '    </tr>' +
+                '    <tr>' +
+                '      <th>B only</th>' +
+                '      <td>' + obj.n_b_uniq + '</td>' +
+                '    </tr>' +
+                '    <tr>' +
+                '      <th>A ∩ B</th>' +
+                '      <td>' + obj.n_both + '</td>' +
+                '    </tr>' +
+                '    <tr>' +
+                '      <th>A ∪ B</th>' +
+                '      <td>' + obj.n_either + '</td>' +
+                '    </tr>' +
+                '    <tr>' +
+                '      <th>Neither</th>' +
+                '      <td>' + obj.n_neither + '</td>' +
+                '    </tr>' +
+                '  </tbody>' +
+                '</table>')
+
+
+
+        }).fail(function() {
+            $overlap_text.text("Error: Could not contact server.");
+        });
+
+//        $.post('/translate', {
+//            text: $(sourceId).text(),
+//            sourceLang: sourceLang,
+//            destLang: destLang
+//        }).done(function(translated) {
+//            $(destId).text(translated['text'])
+//            $(loadingId).hide();
+//            $(destId).show();
+//        }).fail(function() {
+//            $(destId).text(" _('Error: Could not contact server.') ");
+//            $(loadingId).hide();
+//            $(destId).show();
+//        });
+
+
+        console.log("Fetch " + inds_selected)
+    }
+</script>
+{% endblock scripts %}

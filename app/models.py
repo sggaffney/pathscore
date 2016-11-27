@@ -133,6 +133,7 @@ class UserFile(db.Model):
     n_loaded = db.Column(db.Integer)
     bmr_id = db.Column(db.Integer, db.ForeignKey('bmr.bmr_id'))
     has_annot = db.Column(db.Boolean)
+    has_mds = db.Column(db.Boolean)
 
     uploader = db.relationship('User', backref='uploads')
     bmr = db.relationship("CustomBMR", back_populates="projects")

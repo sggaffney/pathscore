@@ -21,3 +21,4 @@ flask_httpauth
 matplotlib
 datetime
 celery
+sklearn

@@ -9,7 +9,7 @@ if os.path.exists('.env'):
 
 from app import create_app
 from flask_script import Manager
-from app import db
+from app import db, mds
 from app.models import User, Role, UserFile
 from app.naming_rules import get_project_folder
 from flask_migrate import Migrate, MigrateCommand
@@ -64,14 +64,19 @@ def delete_proj(proj_str):
                 proj_folder = get_project_folder(upload)
                 shutil.rmtree(proj_folder)
             except OSError as e:
-                print e
+                print(e)
             db.session.delete(upload)
             print("Project {} deleted successfully.".format(proj))
         else:
-            print "Project {} not found.".format(proj)
+            print("Project {} not found.".format(proj))
     db.session.commit()
+
+
+@manager.option('-p', '--proj', dest='proj_id', default=None)
+def build_mds(proj_id):
+    """Create MDS dataframe and points files."""
+    mds.build_proj_mds(proj_id)
 
 
 if __name__ == '__main__':
     manager.run()
-
