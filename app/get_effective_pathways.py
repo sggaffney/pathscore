@@ -912,6 +912,7 @@ def run(user_upload):
 
     generate_plot_files(user_upload, detail_path=detail_path,
                         genome_size=genome_size, hypermutated=hypermutated,
+                        annot_dict=annot_dict,
                         path_genepatients_dict=path_genepatients_dict)
 
 
