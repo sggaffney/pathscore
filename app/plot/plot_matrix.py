@@ -134,7 +134,7 @@ class MatrixPlotter(object):
                 gene_labels.append(format_str.format(
                     gene=gene, pc=float(p_counts[gene]) / n_all_patients * 100))
             self.gene_labels = gene_labels
-            n_mutated = sum(matrix_df.any(axis=0))
+            n_mutated = sum(self.m_status.any(axis=0))  # n mutated patients
             pc_patients = n_mutated / float(n_all_patients) * 100
             patient_str = 'patient' if self.n_patients == 1 else 'patients'
             self.title = "{n} {patients} ({pc:.1f}%)".format(n=n_mutated,
