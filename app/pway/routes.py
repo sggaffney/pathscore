@@ -7,15 +7,14 @@ import signal
 from collections import OrderedDict
 import pandas as pd
 import numpy as np
-from bokeh.plotting import figure, ColumnDataSource, hplot
-from bokeh.resources import Resources
+from bokeh.plotting import figure, ColumnDataSource
+from bokeh.layouts import widgetbox, row, layout
 from bokeh.embed import components
 from bokeh.models.tools import HoverTool
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.models.markers import Circle
-from bokeh.models.widgets import TextInput
-from bokeh.models import Callback
-from bokeh.io import vform
+from bokeh.models.widgets import TextInput, Toggle
+from bokeh.models.callbacks import CustomJS
 
 from . import pway  # FileTester, TempFile
 from ..uploads import MutationFile, BmrFile
@@ -186,7 +185,6 @@ def compare():
     except (TypeError, ValueError):
         proj_a = proj_b = None
     include = request.args.get('include', None)
-    resources = Resources(mode="cdn")
     show_logged = False
 
     # list of projects (and proj_names) used to create dropdown project selector
@@ -260,13 +258,14 @@ def compare():
             effects2 = [float(i.n_effective) / i.n_actual for i in use_paths2]
             xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
             ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
-        q1 = [float(i.p_value)*g.n_pathways for i in use_paths1]
-        q2 = [float(i.p_value)*g.n_pathways for i in use_paths2]
+        q1 = [min(1, float(i.p_value)*g.n_pathways) for i in use_paths1]
+        q2 = [min(1, float(i.p_value)*g.n_pathways) for i in use_paths2]
         pnames = [misc.strip_contributors(i.nice_name) for i in use_paths1]
-        source = ColumnDataSource(data={'effects1': effects1,
-                                        'effects2': effects2,
-                                        'q1': q1, 'q2': q2,
-                                        'pname': pnames})
+        data_dict = {'effects1': effects1, 'effects2': effects2, 'q1': q1,
+                     'q2': q2, 'pname': pnames}
+        source = ColumnDataSource(data=data_dict)
+        source_full = ColumnDataSource(data=data_dict)
+        source.name, source_full.name = 'data_visible', 'data_full'
         # SET UP FIGURE
         minx = min(effects1)
         minx *= 1 - minx/abs(minx)*0.2
@@ -302,32 +301,38 @@ def compare():
                      line_color="firebrick", line_alpha=0.5)
         hover = plot.select(dict(type=HoverTool))
         hover.tooltips = OrderedDict([
-            ("name", "@pname")
+            ("name", "@pname"),
+            ("P*", ("(@q1, @q2)"))
         ])
         renderers = [i for i in plot.renderers
-                     if type(i) == GlyphRenderer and type(i._glyph) == Circle]
+                     if type(i) == GlyphRenderer and type(i.glyph) == Circle]
         hover[0].renderers.extend(renderers)
 
-        # ADD TEXT INPUT OR SLIDER
-        callback = Callback(args=dict(source=source), code="""
+        # ADD Q FILTERING CALLBACK
+        callback = CustomJS(args=dict(source=source, full=source_full), code="""
             // get old selection indices, if any
-            var model = getDataModel();
-            prv_selected = model.attributes.selected['1d'].indices;
-            prv_select_full = []
+            var prv_selected = source.selected['1d'].indices;
+            var prv_select_full = []
             for(var i=0; i<prv_selected.length; i++){
                 prv_select_full.push(scatter_array[prv_selected[i]])
             }
-            new_selected = []
+            var new_selected = []
 
-            var data = source.get('data');
-            var q_val = q_widget.get('value');
-
+            var q_val = cb_obj.value;
+            if(q_val == '')
+                q_val = 1
+            var fullset = full.data;
             var n_total = fullset['effects1'].length;
-            var e1_use = data['effects1'];
-            var e2_use = data['effects2'];
-            var n_use = data['pname'];
+
+            var e1_use = source.data['effects1'];
+            var e2_use = source.data['effects2'];
+            var q1_use = source.data['q1'];
+            var q2_use = source.data['q2'];
+            var n_use = source.data['pname'];
             e1_use.length = 0;
             e2_use.length = 0;
+            q1_use.length = 0;
+            q2_use.length = 0;
             n_use.length = 0;
             scatter_array = []
             var j = -1;  // new glyph indices
@@ -338,6 +343,8 @@ def compare():
                     j++;
                     e1_use.push(fullset['effects1'][i]);
                     e2_use.push(fullset['effects2'][i]);
+                    q1_use.push(this_q1);
+                    q2_use.push(this_q2);
                     n_use.push(fullset['pname'][i]);
                     scatter_array.push(i)
                     if($.inArray(i, prv_select_full) > -1){
@@ -345,18 +352,14 @@ def compare():
                     }
                 }
             }
+            source.selected['1d'].indices = new_selected;
             source.trigger('change');
-            model.attributes.selected['1d'].indices = new_selected;
-            model.trigger('change');
             updateIfSelectionChange_afterWait();
             """)
-        text_input = TextInput(value='',
-                               title="P* cutoff:",
-                               callback=callback)
-        callback.args["q_widget"] = text_input
-        callback.args["fullset"] = source.clone().data
-        layout = hplot(plot, vform(text_input))
-        script, div = components(layout, resources)
+        text_input = TextInput(value='', title="P* cutoff:")
+        text_input.js_on_change('value', callback)
+        plot_objs = row(plot, widgetbox(text_input))
+        script, div = plot_fns.get_bokeh_components(plot_objs)
 
         proj_dir_a = naming_rules.get_project_folder(current_proj_a)
         proj_dir_b = naming_rules.get_project_folder(current_proj_b)
@@ -380,7 +383,7 @@ def compare():
                            projects=upload_list,
                            user_id=current_user.id, bokeh_script=script,
                            bokeh_div=div, include_genes=include,
-                           resources=resources)
+                           resources=plot_fns.resources)
 
 
 @pway.route('/tree')
@@ -449,6 +452,7 @@ def get_filtered():
     if proj_id is None or filter_type not in ('ignored', 'rejected'):
         abort(404)
     proj_id = int(proj_id)
+    upload_obj = None
     try:
         upload_obj = UserFile.query.filter_by(user_id=current_user.id).\
             filter_by(file_id=proj_id).all()[0]

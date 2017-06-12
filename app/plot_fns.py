@@ -7,7 +7,7 @@ import numpy as np
 import bokeh
 import bokeh.plotting as bpl  # figure, ColumnDataSource, show, output_notebook
 from bokeh.models.tools import HoverTool
-from bokeh.resources import Resources
+from bokeh.resources import Resources, CDN
 from bokeh.embed import components
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.models.markers import Circle
@@ -19,12 +19,12 @@ from get_effective_pathways import load_pathway_list_from_file
 tools = ("hover,tap,resize,previewsave,pan,wheel_zoom,"
          "box_zoom,box_select,reset,crosshair")  # poly_select,lasso_select
 plot_config = dict(plot_height=400, plot_width=600, logo=None, tools=tools,
-                   title_text_font_size='10pt', toolbar_location='right',
+                   toolbar_location='right',
                    min_border=0, outline_line_width=0)
 scatter_config = dict(name='scattered', line_alpha=0.9, alpha=0.7)
 
 
-resources = Resources(mode="cdn")
+resources = CDN  # Resources(mode="cdn")
 
 
 def get_bokeh_components(plot_obj):

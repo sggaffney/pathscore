@@ -131,9 +131,22 @@
 
     });
 
+    function getDataModel(){
+		for (var idx in Bokeh.index){
+			if (Bokeh.index.hasOwnProperty(idx)){
+				var idx_models = Bokeh.index[idx].model.document._all_models;
+				for (var model in idx_models){
+					if (idx_models.hasOwnProperty(model) && idx_models[model].attributes.hasOwnProperty("selected"))
+						return idx_models[model];
+				}
+			}
+		}
+    }
+
 
     function getSelectedIndices(){
-        var indices = Bokeh.ColumnDataSource.Collection.models[0].attributes.selected['1d'].indices.slice();
+        var model = getDataModel();
+        var indices = model.attributes.selected['1d'].indices.slice();
         indices.sort(function(a,b){return a - b;});
         return indices
     }
@@ -234,8 +247,9 @@
             }
         });
 //        Bokeh.ColumnDataSource.Collection.models[0].set('selected', showPlotIds);
-        Bokeh.ColumnDataSource.Collection.models[0].attributes.selected['1d'].indices = showPlotIds;
-        Bokeh.ColumnDataSource.Collection.models[0].trigger('change');
+        var model = getDataModel();
+        model.attributes.selected['1d'].indices = showPlotIds;
+        model.trigger('change');
         updateIfSelectionChange_afterWait()
     }
 </script>

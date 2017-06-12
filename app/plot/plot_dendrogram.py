@@ -8,7 +8,6 @@ def plot_dendrogram(m, out_svg='test_dendrogram.svg'):
     Dendrogram plot, using distance matrix, calculating 'average' linkage.
     Args:
         m (np.array): Square distance matrix.
-        names (list): (path_id, name) tuples. order matches matrix.
         out_svg (str): Path for dendrogram
     Returns:
         leaf_indices (list of ints): reordering after clustering

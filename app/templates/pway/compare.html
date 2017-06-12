@@ -55,7 +55,7 @@
  {{ bokeh_div|safe }}
 </div>
 <!--<button id="selectButton" class="btn btn-default">Selection info</button>-->
-
+<div class="row">
 <form class="form col-sm-6 col-md-4 col-lg-5" id="geneForm">
   <div class="form-group">
 	  <label for="userGenes" class="control-label col-sm-12 no-gutter" id="userGenesLabel">Gene list:</label>
@@ -66,6 +66,7 @@
 	  </div>
   </div>
 </form>
+</div>
 
 {% if has_cnv %}
 <div>
@@ -87,9 +88,13 @@
 {% if current_projs[0] %}
 
  <link rel="stylesheet" href="{{ resources.css_files[0] }}" type="text/css" />
- <script type="text/javascript" src="{{ resources.js_files[0] }}"></script>
+{{ bokeh_script|safe }}
+<script type="text/javascript" src="{{ resources.js_files[0] }}"></script>
+<link
+    href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.0.min.css"
+    rel="stylesheet" type="text/css">
+<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.5.min.js"></script>
  <script src="/static/pway_display_common.js"></script>
- {{ bokeh_script|safe }}
 <script>
     $(function() {
 		{# current_projs, inds_use_a, inds_use_b, js_name_a, js_name_b #}
@@ -105,19 +110,19 @@
         $("#geneForm").submit(function(e){return false;});
 
 		$plot = $('.bk-plot');
-		$qform = $('.bk-widget-form');
+//		$qform = $('.bk-widget-form');
 		$gform = $('#geneForm');
 		$plotdiv = $('.plotdiv');
 		$plotdiv.append($gform);
-		$qform.css('padding', '0px 15px 0px 15px');
-		$qform.addClass('col-sm-6 col-md-4 col-lg-5');
+//		$qform.css('padding', '0px 15px 0px 15px');
+//		$qform.addClass('col-sm-6 col-md-4 col-lg-5');
 		$plot.addClass('col-md-8 col-lg-7');
 		$bokehContainer.addClass('clearfix');
 		$('.bk-widget-form input').attr('placeholder', 'e.g. 0.1');
 
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
-		var inds_use_a = {{inds_use[0]}};
-		var inds_use_b = {{inds_use[1]}};
+		var inds_use_a = {{ inds_use[0] }};
+		var inds_use_b = {{ inds_use[1] }};
 
 		selected_prv = [];
 		scatter_array = []; // current indices into original glyphs
@@ -168,17 +173,18 @@
 
 	});
 
-    function getDataModel(){
-        var models = Bokeh.ColumnDataSource.Collection.models;
-		var model = null;
-		for(var i=0; i<models.length; i++){
-			if(models[i].attributes.column_names.length > 2){
-				model = models[i];
-				break;
+	function getDataModel(model_name='data_visible'){
+		for (var idx in Bokeh.index){
+			if (Bokeh.index.hasOwnProperty(idx)){
+				var idx_models = Bokeh.index[idx].model.document._all_models;
+				for (var model in idx_models){
+					if (idx_models.hasOwnProperty(model)
+							&& idx_models[model].name == model_name)
+						return idx_models[model];
+				}
 			}
 		}
-        return model;
-    }
+	}
 
     function getSelectedIndices(){
         // GET JS INDICES CORRESPONDING TO SELECTION
