@@ -33,6 +33,18 @@ def get_bokeh_components(plot_obj):
     return script, div
 
 
+def get_span(location=0.5, dim='width', **style_kws):
+    """Plot span element.
+    Args:
+        location: axis location value (e.g. float or categorical)
+        dim (str): 'width' or 'height'
+    """
+    style = dict(line_width=2, line_color="blue", line_dash=[6, 6])
+    if style_kws:
+        style.update(style_kws)
+    return bokeh.models.Span(location=location, dimension=dim, **style)
+
+
 def get_scatter_dict(upload_obj):
     """Create dictionary required for scatter view."""
     detail_path = naming_rules.get_detailed_path(upload_obj)

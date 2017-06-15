@@ -102,6 +102,14 @@ def strip_contributors(string_in):
     return string_in
 
 
+def get_nice_name(name_str):
+    name_str = strip_contributors(name_str)
+    name_str = name_str.replace('_', ' ')
+    name_str = name_str.replace('TEL PATHWAY', 'TELOMERASE PATHWAY')
+    name_str = name_str.replace('RNA PATHWAY', 'PKR SIGNALING PATHWAY')
+    return name_str
+
+
 def get_wait_time_string(wait_time):
     days = wait_time.days
     hours = wait_time.seconds/60/60

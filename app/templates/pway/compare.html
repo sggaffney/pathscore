@@ -55,18 +55,6 @@
  {{ bokeh_div|safe }}
 </div>
 <!--<button id="selectButton" class="btn btn-default">Selection info</button>-->
-<div class="row">
-<form class="form col-sm-6 col-md-4 col-lg-5" id="geneForm">
-  <div class="form-group">
-	  <label for="userGenes" class="control-label col-sm-12 no-gutter" id="userGenesLabel">Gene list:</label>
-	  <input type="text" class="form-control" id="userGenes" placeholder="e.g. TP53,BRAF">
-	  <div>
-		  <button class="btn btn-default" id="includeButton" type="button">Include</button>
-		  <button class="btn btn-default" id="excludeButton" type="button">Exclude</button>
-	  </div>
-  </div>
-</form>
-</div>
 
 {% if has_cnv %}
 <div>
@@ -93,8 +81,8 @@
 <link
     href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.0.min.css"
     rel="stylesheet" type="text/css">
-<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.5.min.js"></script>
- <script src="/static/pway_display_common.js"></script>
+<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.6.min.js"></script>
+<script src="/static/pway_display_common.js"></script>
 <script>
     $(function() {
 		{# current_projs, inds_use_a, inds_use_b, js_name_a, js_name_b #}
@@ -107,18 +95,18 @@
         $includeButton = $('#includeButton');
         $excludeButton = $('#excludeButton');
         var initial_include = '{{ include_genes }}';
-        $("#geneForm").submit(function(e){return false;});
+//        $("#geneForm").submit(function(e){return false;});
 
 		$plot = $('.bk-plot');
 //		$qform = $('.bk-widget-form');
-		$gform = $('#geneForm');
+//		$gform = $('#geneForm');
 		$plotdiv = $('.plotdiv');
-		$plotdiv.append($gform);
+//		$plotdiv.append($gform);
 //		$qform.css('padding', '0px 15px 0px 15px');
 //		$qform.addClass('col-sm-6 col-md-4 col-lg-5');
 		$plot.addClass('col-md-8 col-lg-7');
 		$bokehContainer.addClass('clearfix');
-		$('.bk-widget-form input').attr('placeholder', 'e.g. 0.1');
+//		$('.bk-widget-form input').attr('placeholder', 'e.g. 0.1');
 
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
 		var inds_use_a = {{ inds_use[0] }};
@@ -282,12 +270,7 @@ function selected_changed(array1, array2) {
     return false;
 }
 
-    function selectPathwaysByGenes(event){
-        var showIfIncluded = event.data;
-        var geneText = $('#userGenes').val();
-        if (geneText === ""){
-            return;
-        }
+    function selectPathwaysByGenes(geneText, showIfIncluded){
         var geneList = geneText.split(',');
         var showPlotIds = [];
 

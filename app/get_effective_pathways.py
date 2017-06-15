@@ -828,11 +828,7 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
 
     @property
     def nice_name(self):
-        name_str = misc.strip_contributors(self.name)
-        name_str = name_str.replace('_', ' ')
-        name_str = name_str.replace('TEL PATHWAY', 'TELOMERASE PATHWAY')
-        name_str = name_str.replace('RNA PATHWAY', 'PKR SIGNALING PATHWAY')
-        return name_str
+        return misc.get_nice_name(self.name)
 
     def as_string_js(self):
         """Return string for javascript."""

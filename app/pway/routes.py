@@ -7,13 +7,12 @@ import signal
 from collections import OrderedDict
 import pandas as pd
 import numpy as np
+import bokeh
 from bokeh.plotting import figure, ColumnDataSource
-from bokeh.layouts import widgetbox, row, layout
-from bokeh.embed import components
+from bokeh.layouts import widgetbox, gridplot, Spacer
+from bokeh.models import Range1d
 from bokeh.models.tools import HoverTool
-from bokeh.models.renderers import GlyphRenderer
-from bokeh.models.markers import Circle
-from bokeh.models.widgets import TextInput, Toggle
+from bokeh.models.widgets import TextInput, RadioGroup
 from bokeh.models.callbacks import CustomJS
 
 from . import pway  # FileTester, TempFile
@@ -22,12 +21,21 @@ from ..errors import ValidationError
 from .forms import UploadForm, BmrForm
 from ..models import UserFile, create_anonymous_user, initialize_project, \
     CustomBMR, BmrProcessor
-from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
+from ..get_effective_pathways import run_analysis, load_pathway_list_from_file, \
+    ref_info
 from ..admin import zip_project
 from .. import naming_rules
 from .. import misc, db
 from ..decorators import no_ssl, limit_user_uploads
 from .. import plot_fns
+
+
+DIM_COMP_SM = 60  # comparison peripheral plot small dimension (pixels)
+DIM_COMP_H = 400  # comparison major plot width (pixels)
+DIM_COMP_W = 550  # comparison major plot height (pixels)
+
+SCATTER_KW = dict(size=10, color="red", alpha=0.1, line_color="firebrick",
+                  line_alpha=0.5)
 
 
 @pway.route('/')
@@ -185,7 +193,6 @@ def compare():
     except (TypeError, ValueError):
         proj_a = proj_b = None
     include = request.args.get('include', None)
-    show_logged = False
 
     # list of projects (and proj_names) used to create dropdown project selector
     upload_list = UserFile.query.filter_by(user_id=current_user.id).\
@@ -209,104 +216,137 @@ def compare():
             current_proj_b = upload_list[-1]
         detail_path1 = naming_rules.get_detailed_path(current_proj_a)
         detail_path2 = naming_rules.get_detailed_path(current_proj_b)
-
         js_name1 = naming_rules.get_js_name(current_proj_a)
         js_name2 = naming_rules.get_js_name(current_proj_b)
+        xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
+        ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
 
         # load pathways with 1+ mutation in 1+ patients,
         # ignoring ones with 'cancer' etc in name
         all_paths1 = load_pathway_list_from_file(detail_path1)
         all_paths2 = load_pathway_list_from_file(detail_path2)
-        # all_paths1 = [i for i in all_paths1 if i.gene_set]
-        # all_paths2 = [i for i in all_paths2 if i.gene_set]
 
-        sig_pids1 = [i.path_id for i in all_paths1 if i.gene_set]  # sig path ids in proj1
-        sig_pids2 = [i.path_id for i in all_paths2 if i.gene_set]  # sig path ids in proj2
-        all_pids1 = [i.path_id for i in all_paths1]  # all path ids in proj1
-        all_pids2 = [i.path_id for i in all_paths2]  # all path ids in proj1
-        use_pids1 = set.intersection(set(sig_pids1), set(all_pids2))
-        use_pids2 = set.intersection(set(sig_pids2), set(all_pids1))
-        good_paths = set.union(set(use_pids1), set(use_pids2))  # sig pids contained in both projects
+        # IDs with p<0.05 and +ve effect
+        sig_pids1 = [i.path_id for i in all_paths1 if i.gene_set]
+        sig_pids2 = [i.path_id for i in all_paths2 if i.gene_set]
+        sig_only2 = [i for i in sig_pids2 if i not in set(sig_pids1)]
+        all_sig_ids = sig_pids1 + sig_only2  # ORDERED by proj1 effect size
+        all_sig_set = set(all_sig_ids)
 
-        # get use_paths 1&2: pathway objects in proj1 order
-        use_paths1 = [i for i in all_paths1 if i.path_id in good_paths]  # sig paths (either proj) in proj1
-        use_path_ids = [i.path_id for i in use_paths1]  # sig path ids (either proj) ordered by proj1 index
-        use_paths2 = list()
-        for pid in use_path_ids:
-            use_paths2.extend([i for i in all_paths2 if i.path_id == pid])  # paths from proj2
+        # BUILD DATAFRAME WITH ALL PATHWAYS IN all_sig_ids, proj1 object order.
+        pway_names = [misc.get_nice_name(ref_info.path_name_dict[int(i)])
+                      for i in all_sig_ids]  # order important
+        columns = ['path_id', 'pname', 'ind1', 'ind2', 'e1', 'e2', 'e1_only',
+                   'e2_only', 'q1', 'q2']
+        df = pd.DataFrame(index=all_sig_ids, data={'pname': pway_names},
+                          columns=columns)
+        for path_group, evar, qvar, ind, sigs in \
+                [(all_paths1, 'e1', 'q1', 'ind1', sig_pids1),
+                 (all_paths2, 'e2', 'q2', 'ind2', sig_pids2)]:
+            for path in path_group:
+                path_id = path.path_id
+                if path_id not in all_sig_set:
+                    continue
+                df.loc[path_id, evar] = get_effect(path)
+                df.loc[path_id, qvar] = get_q(path)
+                temp_ind = sigs.index(path_id) if path_id in sigs else -1
+                df.loc[path_id, ind] = temp_ind
+        df.ind1.fillna(-1, inplace=True)
+        df.ind2.fillna(-1, inplace=True)
+        df.e1_only = df.where(df.e2.isnull())['e1']
+        df.e2_only = df.where(df.e1.isnull())['e2']
 
-        # save indices of chosen pathways -- these are the indices in js file
-        inds1 = list()
-        inds2 = list()  # [0, 1, 4, 11, -1, 7, 10, 5, 6, 319, ...]
-        for i in use_path_ids:
-            try:
-                inds1.append(sig_pids1.index(i))
-            except ValueError:
-                inds1.append(-1)
-            try:
-                inds2.append(sig_pids2.index(i))
-            except ValueError:
-                inds2.append(-1)
+        inds1 = list(df.ind1)
+        inds2 = list(df.ind2)
 
-        if show_logged:
-            effects1 = [np.log10(float(i.n_effective) / i.n_actual) for i in use_paths1]
-            effects2 = [np.log10(float(i.n_effective) / i.n_actual) for i in use_paths2]
-            xlabel = "Log10 effect size ({})".format(current_proj_a.proj_suffix)
-            ylabel = "Log10 effect size ({})".format(current_proj_b.proj_suffix)
-        else:
-            effects1 = [float(i.n_effective) / i.n_actual for i in use_paths1]
-            effects2 = [float(i.n_effective) / i.n_actual for i in use_paths2]
-            xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
-            ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
-        q1 = [min(1, float(i.p_value)*g.n_pathways) for i in use_paths1]
-        q2 = [min(1, float(i.p_value)*g.n_pathways) for i in use_paths2]
-        pnames = [misc.strip_contributors(i.nice_name) for i in use_paths1]
-        data_dict = {'effects1': effects1, 'effects2': effects2, 'q1': q1,
-                     'q2': q2, 'pname': pnames}
-        source = ColumnDataSource(data=data_dict)
-        source_full = ColumnDataSource(data=data_dict)
+        source = ColumnDataSource(data=df)
+        source_full = ColumnDataSource(data=df)
         source.name, source_full.name = 'data_visible', 'data_full'
         # SET UP FIGURE
-        minx = min(effects1)
-        minx *= 1 - minx/abs(minx)*0.2
-        miny = min(effects2)
-        miny *= 1 - miny/abs(miny)*0.2
-        maxx = max(effects1)*1.2
-        maxy = max(effects2)*1.2
-        tools = "crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
-                "box_select,hover"  # poly_select,lasso_select, previewsave
-        if show_logged:
-            plot = figure(tools=tools, plot_height=400, plot_width=600,
-                          title=None, logo=None, toolbar_location="above",
-                          x_axis_label=xlabel,
-                          y_axis_label=ylabel,
-                          x_range=[0, maxx], y_range=[0, maxy])
-        else:
-            plot = figure(tools=tools, plot_height=400, plot_width=600,
-                          title=None, logo=None, toolbar_location="above",
-                          x_axis_label=xlabel, y_axis_label=ylabel,
-                          x_range=[minx, maxx], y_range=[miny, maxy],
-                          x_axis_type="log", y_axis_type="log")
-        plot.min_border_top = 15
-        plot.min_border_right = 15
+        minx = df.e1.min()
+        minx *= 1 - minx / abs(minx) * 0.2
+        miny = df.e2.min()
+        miny *= 1 - miny/abs(miny) * 0.2
+        maxx = df.e1.max() * 1.2
+        maxy = df.e2.max() * 1.2
+        TOOLS = "lasso_select,box_select,hover,crosshair,pan,wheel_zoom,"\
+                "box_zoom,reset,tap,help" # poly_select,lasso_select, previewsave
 
-        plot.xaxis.axis_label_text_font_size = "12pt"
-        plot.yaxis.axis_label_text_font_size = "12pt"
-        plot.line([1, 1], [miny, maxy], line_width=2, color="blue", alpha=1, line_dash=[6, 6])
-        plot.line([minx, maxx], [1, 1], line_width=2, color="blue", alpha=1, line_dash=[6, 6])
+        # SUPLOTS
+        p = figure(plot_width=DIM_COMP_W, plot_height=DIM_COMP_H, tools=TOOLS,
+                   title=None, logo=None, toolbar_location="above",
+                   x_range=Range1d(minx, maxx), y_range=Range1d(miny, maxy),
+                   x_axis_type="log", y_axis_type="log"
+                   )
+        pb = figure(plot_width=DIM_COMP_SM, plot_height=DIM_COMP_H, tools=TOOLS,
+                    y_range=p.y_range, x_axis_type="log", y_axis_type="log")
+        pa = figure(plot_width=DIM_COMP_W, plot_height=DIM_COMP_SM, tools=TOOLS,
+                    x_range=p.x_range, x_axis_type="log", y_axis_type="log")
+        pp = figure(plot_width=DIM_COMP_SM, plot_height=DIM_COMP_SM,
+                    tools=TOOLS, outline_line_color=None)
 
-        # radius=radii, fill_color=colors, fill_alpha=0.6, line_color=None
-        plot.scatter("effects1", "effects2", source=source, size=10,
-                     color="red", alpha=0.1, marker="circle",
-                     line_color="firebrick", line_alpha=0.5)
-        hover = plot.select(dict(type=HoverTool))
-        hover.tooltips = OrderedDict([
-            ("name", "@pname"),
-            ("P*", ("(@q1, @q2)"))
-        ])
-        renderers = [i for i in plot.renderers
-                     if type(i) == GlyphRenderer and type(i.glyph) == Circle]
-        hover[0].renderers.extend(renderers)
+        # SPANS
+        p.add_layout(plot_fns.get_span(1, 'height'))
+        p.add_layout(plot_fns.get_span(1, 'width'))
+        pa.add_layout(plot_fns.get_span(1, 'height'))
+        pb.add_layout(plot_fns.get_span(1, 'width'))
+
+        # STYLE
+        for ax in [p, pa, pb]:
+            ax.grid.visible = False
+            ax.outline_line_width = 2
+            ax.background_fill_color = 'whitesmoke'
+        for ax in [pa, pb]:
+            ax.xaxis.visible = False
+            ax.yaxis.visible = False
+
+        pa.title.text = xlabel
+        pb.title.text = ylabel
+        pa.title_location, pa.title.align = 'below', 'center'
+        pb.title_location, pb.title.align = 'left', 'center'
+
+        # WIDGETS
+        q_input = TextInput(value='', title="P* cutoff",
+                            placeholder='e.g. 0.05')
+        gene_input = TextInput(value='', title="Gene list",
+                               placeholder='e.g. TP53,BRAF')
+        radio_include = RadioGroup(labels=["Include", "Exclude"], active=0)
+        widgets = widgetbox(q_input, gene_input, radio_include, width=200,
+                            css_classes=['widgets_sg'])
+
+        grid = gridplot([[pb, p, widgets],
+                         [Spacer(width=DIM_COMP_SM), pa, Spacer()]],
+                        sizing_mode='fixed')
+
+        cb_inclusion = CustomJS(args=dict(genes=gene_input), code="""
+            var gene_str = genes.value
+            if (!gene_str)
+                return;
+            var include = cb_obj.active == 0 ? true : false
+            selectPathwaysByGenes(gene_str, include);
+            """)
+        cb_genes = CustomJS(args=dict(radio=radio_include), code="""
+            var gene_str = cb_obj.value
+            if (!gene_str)
+                return;
+            var include = radio.active == 0 ? true : false
+            selectPathwaysByGenes(gene_str, include);
+            """)
+        radio_include.js_on_change('active', cb_inclusion)
+        gene_input.js_on_change('value', cb_genes)
+
+        # SCATTER
+        p.circle("e1", "e2", source=source, **SCATTER_KW)
+        pa.circle('e1_only', 1, source=source, **SCATTER_KW)
+        pb.circle(1, 'e2_only', source=source, **SCATTER_KW)
+
+        # HOVER
+        for hover in grid.select(dict(type=HoverTool)):
+            hover.tooltips = OrderedDict([
+                ("name", "@pname"),
+                ("effects", "(@e1, @e2)"),
+                ("P*", ("(@q1, @q2)"))
+            ])
 
         # ADD Q FILTERING CALLBACK
         callback = CustomJS(args=dict(source=source, full=source_full), code="""
@@ -317,35 +357,27 @@ def compare():
                 prv_select_full.push(scatter_array[prv_selected[i]])
             }
             var new_selected = []
-
             var q_val = cb_obj.value;
             if(q_val == '')
                 q_val = 1
             var fullset = full.data;
-            var n_total = fullset['effects1'].length;
-
-            var e1_use = source.data['effects1'];
-            var e2_use = source.data['effects2'];
-            var q1_use = source.data['q1'];
-            var q2_use = source.data['q2'];
-            var n_use = source.data['pname'];
-            e1_use.length = 0;
-            e2_use.length = 0;
-            q1_use.length = 0;
-            q2_use.length = 0;
-            n_use.length = 0;
-            scatter_array = []
+            var n_total = fullset['e1'].length;
+            // Convert float64arrays to array
+            var col_names = %s ;
+            col_names.forEach(function(col_name){
+                source.data[col_name] = [].slice.call(source.data[col_name])
+                source.data[col_name].length = 0
+            })
+            scatter_array.length = 0;
             var j = -1;  // new glyph indices
             for (i = 0; i < n_total; i++) {
                 this_q1 = fullset['q1'][i];
                 this_q2 = fullset['q2'][i];
                 if(this_q1 <= q_val || this_q2 <= q_val){
-                    j++;
-                    e1_use.push(fullset['effects1'][i]);
-                    e2_use.push(fullset['effects2'][i]);
-                    q1_use.push(this_q1);
-                    q2_use.push(this_q2);
-                    n_use.push(fullset['pname'][i]);
+                    j++; // preserve previous selection if still visible
+                    col_names.forEach(function(col){
+                        source.data[col].push(fullset[col][i]);
+                    })
                     scatter_array.push(i)
                     if($.inArray(i, prv_select_full) > -1){
                         new_selected.push(j);
@@ -355,11 +387,10 @@ def compare():
             source.selected['1d'].indices = new_selected;
             source.trigger('change');
             updateIfSelectionChange_afterWait();
-            """)
-        text_input = TextInput(value='', title="P* cutoff:")
-        text_input.js_on_change('value', callback)
-        plot_objs = row(plot, widgetbox(text_input))
-        script, div = plot_fns.get_bokeh_components(plot_objs)
+            """ % columns)
+
+        q_input.js_on_change('value', callback)
+        script, div = plot_fns.get_bokeh_components(grid)
 
         proj_dir_a = naming_rules.get_project_folder(current_proj_a)
         proj_dir_b = naming_rules.get_project_folder(current_proj_b)
@@ -384,6 +415,31 @@ def compare():
                            user_id=current_user.id, bokeh_script=script,
                            bokeh_div=div, include_genes=include,
                            resources=plot_fns.resources)
+
+
+def get_effect_at_index(path_list, index):
+    if index < 0:
+        return pd.np.nan
+    else:
+        temp_path = path_list[index]
+        return get_effect(temp_path)
+
+
+def get_effect(pway_obj):
+    return float(pway_obj.n_effective) / pway_obj.n_actual
+
+
+def get_q_at_index(path_list, index):
+    if index < 0:
+        return pd.np.nan
+    else:
+        temp_path = path_list[index]
+        return min(1, float(temp_path.p_value) * g.n_pathways)
+
+
+def get_q(pway_obj):
+    return min(1, float(pway_obj.p_value) * g.n_pathways)
+
 
 
 @pway.route('/tree')
