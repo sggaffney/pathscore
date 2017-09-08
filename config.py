@@ -43,6 +43,8 @@ class Config:
     MATRIX_HPAD_PX = os.environ.get('MATRIX_HPAD_PX', 220)
     MATRIX_TXT_SIZE = os.environ.get('MATRIX_TXT_SIZE', 10)
 
+    SVGO_PATH = os.environ.get('SVGO_PATH', '/usr/local/bin/svgo')
+
     DB_CNF = os.environ.get('MYSQLDB_CNF')
     DB_HOST = os.environ.get('MYSQLDB_HOST')
     # recycle connection before mysql default 8hr wait timeout

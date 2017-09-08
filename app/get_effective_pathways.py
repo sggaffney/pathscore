@@ -159,11 +159,17 @@ def save_project_params_txt(upload_obj):
     with open(out_path, 'w') as out:
         out.write('User data:\n')
         for field in user_fields:
-            out.write("{}: {}\n".format(field, getattr(upload_obj, field)))
+            attr = getattr(upload_obj, field)
+            if type(attr) == unicode:
+                attr = attr.encode('utf8')
+            out.write("{}: {}\n".format(field, attr))
         out.write('\n\n')
         out.write('Data attributes:\n')
         for field in data_fields:
-            out.write("{}: {}\n".format(field, getattr(upload_obj, field)))
+            attr = getattr(upload_obj, field)
+            if type(attr) == unicode:
+                attr = attr.encode('utf8')
+            out.write("{}: {}\n".format(field, attr))
 
 
 class NonSingleResult(Exception):
@@ -1079,7 +1085,7 @@ def generate_plot_files(user_upload, detail_path=None, genome_size=None,
                          annot_dict=annot_dict, max_effective=max_effective,
                          user_upload=user_upload,
                          genepatients_dict=genepatients)
-    misc.zip_svgs(dir_path)
+    misc.zip_svgs(dir_path, svgo_path=current_app.config['SVGO_PATH'])
 
 
 def load_pathway_list_from_file(results_path):

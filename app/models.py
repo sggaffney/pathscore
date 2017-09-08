@@ -15,6 +15,8 @@ from errors import ValidationError
 from misc import GeneListTester, generate_random_str
 
 
+KEEP_CHARACTERS = (' ', '.', '_', '-')
+
 # Define models
 roles_users = db.Table('roles_users',
                        db.Column('user_id', db.Integer(),
@@ -139,14 +141,27 @@ class UserFile(db.Model):
     bmr = db.relationship("CustomBMR", back_populates="projects")
 
     def get_local_filename(self):
-        keepcharacters = (' ', '.', '_')
         safe_suffix = None
         if self.proj_suffix:
             safe_suffix = "".join(c for c in self.proj_suffix if c.isalnum()
-                                  or c in keepcharacters)\
+                                  or c in KEEP_CHARACTERS)\
                 .rstrip().replace(' ', '_')
         if safe_suffix:
             safe_suffix = unidecode(safe_suffix)  # returns ascii str
+            # safe_suffix = ud.normalize("NFC", safe_suffix)
+            use_title = safe_suffix  # str(safe_suffix)
+        else:
+            use_title = self.filename
+        return '_'.join([str(self.file_id), use_title])
+
+    def get_fancy_filename(self):
+        safe_suffix = None
+        if self.proj_suffix:
+            safe_suffix = "".join(c for c in self.proj_suffix if c.isalnum()
+                                  or c in KEEP_CHARACTERS)\
+                .rstrip().replace(' ', '_')
+        if safe_suffix:
+            # safe_suffix = unidecode(safe_suffix)  # returns ascii str
             # safe_suffix = ud.normalize("NFC", safe_suffix)
             use_title = safe_suffix  # str(safe_suffix)
         else:
@@ -380,9 +395,8 @@ class CustomBMR(db.Model):
     def get_filename(self, kind='final'):
         """Custom BMR filename. Kind in {'final', 'ignored', 'rejected'}."""
         assert kind in {'final', 'orig', 'ignored', 'rejected'}, "Inappropriate kind."
-        keepcharacters = (' ','.', '_')
         safe_title = "".join(c for c in self.title if c.isalnum()
-                              or c in keepcharacters) \
+                              or c in KEEP_CHARACTERS) \
             .rstrip().replace(' ', '_')
 
         safe_title = unidecode(safe_title)  # returns ascii str

@@ -29,7 +29,7 @@
 					{% else %}
 						<option value="{{ proj.file_id }}">
 					{% endif %}
-						{{ proj.get_local_filename() }}
+						{{ proj.get_fancy_filename() }}
 						</option>
 				{% endfor %}
 				</select>
