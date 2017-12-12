@@ -175,6 +175,7 @@
 			$imageContainer.text("Top " + use_pways.length + " pathways shown below.");
 		}
 		//now have up to max pathways in list. fill img tag src.
+		root_url = typeof root_url != "undefined" ? root_url : "";
 		for(var pi=0; pi<use_pways.length; pi++){
 			$imageContainer.append(
 				'<div class="panel panel-primary">' +

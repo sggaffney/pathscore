@@ -30,7 +30,7 @@ def make_js_file(results_path, out_path):
             pway.gene_set = gene_set
             allPathways.append(pway)
     with open(out_path, 'w') as out:  # 'pathways_pvalues_{}.js'
-        out.write("root_url = '{}';\n".format(pway.root_url))
+        # out.write("root_url = '{}';\n".format(pway.root_url))
         out.write("pwayList = [\n")
         for ind, pway in enumerate(allPathways):
             if pway.gene_set:

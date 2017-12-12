@@ -820,8 +820,8 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         # above adds path_id, n_actual, n_effective, p_value
         pathway_number = int(pathway_number)  # ensure int
         self.name = None
-        self.root_url = "http://www.broadinstitute.org/gsea/msigdb/cards/"
-        self.url = ref_info.path_info_dict[pathway_number]['url'].split(self.root_url)[1]
+        # self.root_url = "http://www.broadinstitute.org/gsea/msigdb/cards/"
+        self.url = ref_info.path_info_dict[pathway_number]['url']
         self.description = ref_info.path_info_dict[pathway_number]['desc']
         self.contrib = ref_info.path_info_dict[pathway_number]['contrib']
         self.gene_set = set()
@@ -856,7 +856,8 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
 
     @property
     def full_url(self):
-        return self.root_url + self.url
+        # return self.root_url + self.url
+        return self.url
 
 
 def get_patient_list(path_id, patient_size_dict, path_patient_dict):
@@ -1161,7 +1162,7 @@ def prep_dendrogram(pway_list, min_len=50):
 def make_js_file(allPathways, out_path):
     # BUILD JS FILE
     with open(out_path, 'w') as out:  # 'pathways_pvalues_{}.js'
-        out.write("root_url = '{}';\n".format(allPathways[0].root_url))
+        # out.write("root_url = '{}';\n".format(allPathways[0].root_url))
         out.write("pwayList = [\n")
         for ind, pway in enumerate(allPathways):
             if pway.gene_set:
