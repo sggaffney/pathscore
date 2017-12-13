@@ -157,7 +157,7 @@ class UserFile(db.Model):
     def get_fancy_filename(self):
         safe_suffix = None
         if self.proj_suffix:
-            safe_suffix = "".join(c for c in self.proj_suffix if c.isalnum()
+            safe_suffix = u"".join(c for c in self.proj_suffix if c.isalnum()
                                   or c in KEEP_CHARACTERS)\
                 .rstrip().replace(' ', '_')
         if safe_suffix:

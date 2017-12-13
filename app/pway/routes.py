@@ -218,8 +218,8 @@ def compare():
         detail_path2 = naming_rules.get_detailed_path(current_proj_b)
         js_name1 = naming_rules.get_js_name(current_proj_a)
         js_name2 = naming_rules.get_js_name(current_proj_b)
-        xlabel = "Effect size ({})".format(current_proj_a.proj_suffix)
-        ylabel = "Effect size ({})".format(current_proj_b.proj_suffix)
+        xlabel = u"Effect size ({})".format(current_proj_a.get_fancy_filename())
+        ylabel = u"Effect size ({})".format(current_proj_b.get_fancy_filename())
 
         # load pathways with 1+ mutation in 1+ patients,
         # ignoring ones with 'cancer' etc in name

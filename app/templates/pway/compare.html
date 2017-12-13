@@ -26,7 +26,7 @@
 					{% else %}
 						<option value="{{ proj.file_id }}">
 					{% endif %}
-						{{ proj.get_local_filename() }}
+						{{ proj.get_fancy_filename() }}
 						</option>
 				{% endfor %}
 				</select>
@@ -39,7 +39,7 @@
 					{% else %}
 						<option value="{{ proj.file_id }}">
 					{% endif %}
-						{{ proj.get_local_filename() }}
+						{{ proj.get_fancy_filename() }}
 						</option>
 				{% endfor %}
 				</select>
@@ -303,9 +303,7 @@ function selected_changed(array1, array2) {
         model.trigger('change');
         updateIfSelectionChange_afterWait()
     }
-
-
-
+	$('.bk-root div:first').css('margin', 'auto');
 </script>
 
 {% endif %}

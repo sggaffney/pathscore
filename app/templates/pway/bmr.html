@@ -20,7 +20,7 @@ You have {{ bmr_df.shape[0] }} custom BMR files.
     </tr>
     {% for ind, row in bmr_df.iterrows() %}
         <tr>
-        {% for header, val in row.iterkv() %}
+        {% for header, val in row.iteritems() %}
             {% if (ind, header) in url_dict %}
                 <td><a href="{{ url_dict[(ind, header)] }}">{{ val if val is not none else '' }}</a></td>
             {% else %}
