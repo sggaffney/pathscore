@@ -580,7 +580,8 @@ def bmr():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
 
     # load previous bmr objects for table display
-    bmr_list = CustomBMR.query.filter_by(user_id=current_user.id).all()
+    bmr_list = CustomBMR.query.filter_by(user_id=current_user.id,
+                                         is_valid=True).all()
     headers = ['bmr_id', 'title', 'tissue', 'n_loaded', 'n_rejected',
                'n_ignored', 'description']
     header_map = {'n_rejected': 'rejected', 'n_loaded': 'loaded',
@@ -599,7 +600,8 @@ def bmr():
             bmr_file = BmrFile(form.bmr_file.data)
         except ValidationError as e:
             flash(str(e), 'danger')
-            return render_template('pway/bmr.html', form=form)
+            return render_template('pway/bmr.html', form=form, bmr_df=bmr_df,
+                                   url_dict=url_dict)
         # CREATE CustomBMR object FROM FORM
         bmr = CustomBMR(user_id=current_user.id)
         form.to_model(bmr)
@@ -607,8 +609,14 @@ def bmr():
         BmrProcessor(bmr).initial_process()
         db.session.add(bmr)
         db.session.commit()
-        flash('File accepted and validated.', 'success')
-        return redirect(url_for('.index'))
+        if bmr.n_loaded:
+            flash('File accepted and validated.', 'success')
+            return redirect(url_for('.index'))
+        else:
+            flash("No matches to pathway genes. Please try another file.",
+                  'danger')
+            return render_template('pway/bmr.html', form=form, bmr_df=bmr_df,
+                                   url_dict=url_dict)
     return render_template('pway/bmr.html', form=form, bmr_df=bmr_df,
                            url_dict=url_dict)
 
@@ -621,7 +629,7 @@ def upload():
     bmr_titles = [(-1, 'Default')]
     if not current_user.is_anonymous:
         bmr_titles += [(i.bmr_id, i.title) for i in CustomBMR.query.filter_by(
-            user_id=current_user.id).all()]
+            user_id=current_user.id, is_valid=True).all()]
 
     form = UploadForm()
     form.bmr.choices = bmr_titles

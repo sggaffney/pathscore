@@ -121,6 +121,10 @@ def run_analysis_async(upload_id):
                     .format(user_upload.file_id, user_upload.uploader.email))
             if table:
                 drop_table(table_name)
+            if user_upload.bmr:
+                bmr = user_upload.bmr
+                bmr_table = bmr.get_proj_table_name(user_upload.file_id)
+                drop_table(bmr_table)
             db.session.add(user_upload)
             db.session.commit()
             emails.run_finished_notification(upload_id)
@@ -140,11 +144,16 @@ def run_analysis(upload_id):
 
 
 def drop_table(table_name):
-    cmd = """drop table {};""".format(table_name)
+    cmd1 = "show tables like {!r}".format(table_name)
+    cmd2 = """drop table {};""".format(table_name)
     try:
-        r = db.session.execute(cmd)
-        db.session.commit()
+        r = db.session.execute(cmd1)
+        nrows = r.rowcount
         r.close()
+        if nrows:
+            r = db.session.execute(cmd2)
+            r.close()
+            db.session.commit()
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(str(e))
