@@ -5,6 +5,7 @@ function create_plot_div(pway_obj, n_pathways, user_id, projId, width_fn, opt_he
     n_genes = pway_obj.geneSet.length;
     n_patients = pway_obj.n_cov;
     opt_header = opt_header || "";
+    var root_url = typeof root_url != "undefined" ? root_url : "";
     var driver_text = get_driver_str(pway_obj);
 	// var max_height = 25 * n_genes + 80;
     var matrix_width = width_fn(n_patients);  // 20 * n_patients + 160;
