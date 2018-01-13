@@ -21,8 +21,7 @@ from ..errors import ValidationError
 from .forms import UploadForm, BmrForm
 from ..models import UserFile, create_anonymous_user, initialize_project, \
     CustomBMR, BmrProcessor
-from ..get_effective_pathways import run_analysis, load_pathway_list_from_file, \
-    ref_info
+from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
 from ..admin import zip_project
 from .. import naming_rules
 from .. import misc, db
@@ -227,25 +226,26 @@ def compare():
         all_paths2 = load_pathway_list_from_file(detail_path2)
 
         # IDs with p<0.05 and +ve effect
-        sig_pids1 = [i.path_id for i in all_paths1 if i.gene_set]
-        sig_pids2 = [i.path_id for i in all_paths2 if i.gene_set]
-        sig_only2 = [i for i in sig_pids2 if i not in set(sig_pids1)]
-        all_sig_ids = sig_pids1 + sig_only2  # ORDERED by proj1 effect size
-        all_sig_set = set(all_sig_ids)
+        sig_p = OrderedDict(
+            [(i.path_id, i.nice_name) for i in all_paths1 if i.gene_set])
+        sig_pids1 = [i for i in sig_p]
+        sig_p2 = OrderedDict(
+            [(i.path_id, i.nice_name) for i in all_paths2 if i.gene_set])
+        sig_pids2 = [i for i in sig_p2]
+        sig_p.update(sig_p2)  # ORDERED by proj1 effect size
 
-        # BUILD DATAFRAME WITH ALL PATHWAYS IN all_sig_ids, proj1 object order.
-        pway_names = [misc.get_nice_name(ref_info.path_name_dict[int(i)])
-                      for i in all_sig_ids]  # order important
+        # BUILD DATAFRAME WITH ALL sig PATHWAYS, proj1 object order.
+        pway_names = sig_p.values()  # order important
         columns = ['path_id', 'pname', 'ind1', 'ind2', 'e1', 'e2', 'e1_only',
                    'e2_only', 'q1', 'q2']
-        df = pd.DataFrame(index=all_sig_ids, data={'pname': pway_names},
+        df = pd.DataFrame(index=sig_p.keys(), data={'pname': pway_names},
                           columns=columns)
         for path_group, evar, qvar, ind, sigs in \
                 [(all_paths1, 'e1', 'q1', 'ind1', sig_pids1),
                  (all_paths2, 'e2', 'q2', 'ind2', sig_pids2)]:
             for path in path_group:
                 path_id = path.path_id
-                if path_id not in all_sig_set:
+                if path_id not in sig_p:
                     continue
                 df.loc[path_id, evar] = get_effect(path)
                 df.loc[path_id, qvar] = get_q(path)
