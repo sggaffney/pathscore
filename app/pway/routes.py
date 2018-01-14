@@ -571,8 +571,9 @@ def results():
     if show_proj is None and len(upload_list):
         show_proj = upload_list[-1].file_id
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
+    user_dict = {int(i.file_id): int(i.user_id) for i in upload_list}
     return render_template('pway/show_pathways_template.html',
-                           projects=upload_list, user_id=current_user.id,
+                           projects=upload_list, user_dict=user_dict,
                            show_proj=show_proj, proj_names=proj_names,
                            include_genes=include)
 
