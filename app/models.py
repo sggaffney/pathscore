@@ -136,6 +136,7 @@ class UserFile(db.Model):
     bmr_id = db.Column(db.Integer, db.ForeignKey('bmr.bmr_id'))
     has_annot = db.Column(db.Boolean)
     has_mds = db.Column(db.Boolean)
+    is_demo = db.Column(db.Boolean)
 
     uploader = db.relationship('User', backref='uploads')
     bmr = db.relationship("CustomBMR", back_populates="projects")
@@ -209,11 +210,12 @@ class UserFile(db.Model):
     def get_url(self):
         return url_for('api.get_project', file_id=self.file_id, _external=True)
 
-    def get_related_urls(self):
+    def get_related_urls(self, as_demo=False):
         url_dict = OrderedDict()
         if self.run_complete:
             url_dict['status'] = 'Project complete.'
-            url_dict['flat_url'] = url_for('pway.results', proj=self.file_id,
+            results_pointer = 'demo.results' if as_demo else 'pway.results'
+            url_dict['flat_url'] = url_for(results_pointer, proj=self.file_id,
                                            _external=True)
             url_dict['scatter_url'] = url_for('pway.scatter', proj=self.file_id,
                                               _external=True)

@@ -111,6 +111,8 @@
 		projIds = [$projSelectionA.val(), $projSelectionB.val()];  // global for project id
 		var inds_use_a = {{ inds_use[0] }};
 		var inds_use_b = {{ inds_use[1] }};
+		userIds = [{{ current_projs[0].user_id }},
+		           {{ current_projs[1].user_id }}];
 
 		selected_prv = [];
 		scatter_array = []; // current indices into original glyphs
@@ -118,13 +120,13 @@
 			scatter_array.push(i);
 		}
 
-		$.getScript( "static/data/{{ user_id }}/{{current_projs[0].file_id}}/{{js_name_a}}", function( data, textStatus, jqxhr ) {
+		$.getScript( "/static/data/{{current_projs[0].user_id}}/{{current_projs[0].file_id}}/{{js_name_a}}", function( data, textStatus, jqxhr ) {
 			console.log( "Loaded project A." );
 			pwayList_a = [];
 			for(var i=0; i<inds_use_a.length; i++){
 				pwayList_a[pwayList_a.length] = pwayList[inds_use_a[i]]; // reduce to common pways
 			}
-			$.getScript( "static/data/{{ user_id }}/{{current_projs[1].file_id}}/{{js_name_b}}", function( data, textStatus, jqxhr ) {
+			$.getScript( "/static/data/{{current_projs[1].user_id}}/{{current_projs[1].file_id}}/{{js_name_b}}", function( data, textStatus, jqxhr ) {
 				console.log( "Loaded project B." );
 				// pwayList loaded
 				pwayList_b = [];
@@ -225,7 +227,7 @@
                 else{
                     var n_genes = use_pways[pi].n_cnv;
                 }
-				plot_div = create_plot_div(use_pways[pi], {{ n_pathways }}, {{ user_id }}, projIds[proj_ind], matrix_width, proj_names[proj_ind]);
+				plot_div = create_plot_div(use_pways[pi], {{ n_pathways }}, userIds[proj_ind], projIds[proj_ind], matrix_width, proj_names[proj_ind]);
 				$imageContainer.append(plot_div);
 				// 'height=1024px width=1024px
 				//'height=' + (use_pways[pi].geneSet.length*25+80) +

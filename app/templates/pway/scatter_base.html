@@ -71,7 +71,7 @@
 {{ bokeh_script|safe }}
 
 {% if is_archive is undefined or is_archive == False %}
-    {% set js_path = "static/data/" ~ user_id ~ "/" ~ current_proj.file_id ~ "/" ~ js_name %}
+    {% set js_path = "/static/data/" ~ user_id ~ "/" ~ current_proj.file_id ~ "/" ~ js_name %}
 {% else %}
 	{% set js_path = js_name %}
 {% endif %}
@@ -101,6 +101,7 @@
         pwayList = []; //updated by loaded script
         js_inds = {{ js_inds }};
         plot_inds = {{ plot_inds }};
+        is_archive = {% if is_archive %}true{% else %}false{% endif %};
 
 		selected_prv = [];
 
@@ -183,7 +184,7 @@
                 var n_genes = use_pways[pi].n_cnv;
             }
 
-            plot_div = create_plot_div(use_pways[pi], {{ n_pathways }},{{ user_id }}, projId, matrix_width);
+            plot_div = create_plot_div(use_pways[pi], {{ n_pathways }},{{ user_id }}, projId, matrix_width, null, is_archive);
             $imageContainer.append(plot_div);
 		}
         $(".svg_matrix").click(expandMatrixImage);

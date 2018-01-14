@@ -79,6 +79,9 @@ def create_app(config_name):
     from .pway import pway as pway_blueprint
     app.register_blueprint(pway_blueprint)
 
+    from .demo import demo as demo_blueprint
+    app.register_blueprint(demo_blueprint, url_prefix='/demo')
+
     from .auth import auth as auth_blueprint
     app.register_blueprint(auth_blueprint)
 

@@ -1,9 +1,9 @@
 /**
  * Created by sgg on 2015-09-18.
  */
-function create_plot_div(pway_obj, n_pathways, user_id, projId, width_fn, opt_header){
-    n_genes = pway_obj.geneSet.length;
-    n_patients = pway_obj.n_cov;
+function create_plot_div(pway_obj, n_pathways, user_id, projId, width_fn, opt_header, is_archive){
+    var n_genes = pway_obj.geneSet.length;
+    var n_patients = pway_obj.n_cov;
     opt_header = opt_header || "";
     var root_url = typeof root_url != "undefined" ? root_url : "";
     var driver_text = get_driver_str(pway_obj);
@@ -12,6 +12,7 @@ function create_plot_div(pway_obj, n_pathways, user_id, projId, width_fn, opt_he
     var pc_str = pway_obj['pc_cov'] ? pway_obj['pc_cov'] + '% patients, ' : '';
     var pval = pway_obj['pval'];
 	var pq_str = null;
+    var path_prefix = is_archive ? '' : '/static/data/' + user_id + '/' + projId;
 	if(pval == '0.000e+00')
 		pq_str = '<em>P</em><1e-16, <em>Q</em><' + Number(1e-16 * n_pathways).toPrecision(1);
 	else {
@@ -27,12 +28,12 @@ function create_plot_div(pway_obj, n_pathways, user_id, projId, width_fn, opt_he
 		'<span class="keyword-text">avg</span>=' + pway_obj['lengths'][4] + 'kbp; ' +
 		'<span class="keyword-text">var</span>=' + pway_obj['lengths'][5] + driver_text + '</code>'
 		+'<div class="svg_target ui-widget-content">' +
-		'<img class="img-responsive center-block" src="static/data/' + user_id + '/' + projId + '/pathways_svg/' + pway_obj['id'] + '.svgz" ' +
+		'<img class="img-responsive center-block" src="' + path_prefix + '/pathways_svg/' + pway_obj['id'] + '.svgz" ' +
 		'alt="' + pway_obj['id'] + '.svgz"></img>'
 		+'</div>'
 		+'<div class="svg_matrix ui-widget-content"><div class="pway_size" style="display:none">'
 		+ JSON.stringify({"n_genes":pway_obj.geneSet.length, "n_patients":pway_obj.n_cov, "expanded":false}) + '</div>' +
-		'<img src="static/data/' + user_id + '/' + projId + '/matrix_svg/' + pway_obj['id'] + '.svgz" ' +
+		'<img src="' + path_prefix + '/matrix_svg/' + pway_obj['id'] + '.svgz" ' +
 		'alt="' + pway_obj['id'] + '.svgz" style="width: ' + matrix_width + 'px; max-width: 100%"></img>' //
 		+'</div></div>';
 	return div_str;

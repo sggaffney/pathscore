@@ -8,7 +8,7 @@
 {% block page_content %}
 
 {% if is_archive is undefined or is_archive == False %}
-	{% set tree_path = "static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ "_tree.svgz" %} 
+	{% set tree_path = "/static/data/" ~ user_id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ "_tree.svgz" %} 
 {% else %}
 	{% set tree_path = proj_names[current_proj.file_id|int] ~ "_tree.svgz" %}
 {% endif %}
@@ -65,7 +65,7 @@
 
 {% if is_archive is undefined or is_archive == False %}
 	{% set is_archive = False %}
-	{% set js_path = "static/data/" ~ current_user.id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ ".js" %} 
+	{% set js_path = "/static/data/" ~ user_id ~ "/" ~ current_proj.file_id ~ "/" ~ proj_names[current_proj.file_id|int] ~ ".js" %} 
 {% else %}
 	{% set js_path = proj_names[current_proj.file_id|int] ~ ".js" %}
 {% endif %}
@@ -77,6 +77,7 @@
         $("#resizable-tree").resizable({handles: "s"});
         $imageContainer = $('#imageContainer');
         $treebuttons = $('.tree-button');
+        is_archive = {% if is_archive %}true{% else %}false{% endif %};
 
         //pway_dict = {};  //set by get_pway_dict when projId set/refreshed
         //initialView = true;
@@ -113,7 +114,7 @@
             }
             var pid = this.dataset.pid;
             var projId = {{ current_proj.file_id }};
-            plot_div = create_plot_div(pway_dict[pid], {{ n_pathways }}, {{ user_id }}, projId, matrix_width);
+            plot_div = create_plot_div(pway_dict[pid], {{ n_pathways }}, {{ user_id }}, projId, matrix_width, null, is_archive);
             $imageContainer.append(plot_div);
             $(".svg_matrix").click(expandMatrixImage);
         });

@@ -47,7 +47,9 @@
                 <p class="text-danger">{{ error }}</p>
             {% endfor %}
             <p class="help-block">Tab-separated plain text file, with headers:
-                hugo_symbol, entrez_id, patient_id, and (optionally) annot</p>
+                hugo_symbol, entrez_id, patient_id, and (optionally) annot.</p>
+            <p class="help-block">Remember to remove silent variants and other
+                mutations that are unlikely to have functional impact.</p>
             <p class="help-block"><a href="{{ url_for('pway.demo_file') }}">Download example file</a></p>
             </div>
 

@@ -5,11 +5,26 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
 {% endblock %}
 
+{% if is_demo %} 
+    {% set archive_url = 'demo.archive' %} 
+{% else %} 
+    {% set archive_url = 'pway.archive' %} 
+{% endif %}
+
 {% block page_content %}
 <div class="page-header">
-    <h1>Status</h1>
+    <h1>{% if is_demo %}Demo Projects{% else %}Status{% endif %}</h1>
 </div>
 {% if projects %}
+{% if is_demo %}
+<p>The lung cancer projects below use <a href="https://www.synapse.org/#!Synapse:syn1729383/version/2" target="_blank">mutation data</a>
+    from The Cancer Genome Atlas.</p>
+<ul>
+    <li>LUSC = Lung squamous cell carcinoma</li>
+    <li>LUAD = Lung adenocarcinoma</li>
+</ul>
+{% endif %}
+
 <div class="table-responsive">
 <table class="table table-hover vmiddle_sgg">
     <tr>
@@ -22,11 +37,11 @@
         <th>Unused</th>
         <th>Rejected</th>
         <th>Status</th>
-        <th>Expires</th>
+        {% if not is_demo %}<th>Expires</th>{% endif %}
         <th>Zip</th>
     </tr>
     {% for proj in projects %}
-        {% set url_dict = proj.get_related_urls() %}
+        {% set url_dict = proj.get_related_urls(as_demo=is_demo) %}
         {% if proj.run_complete %}
             <tr class="success">
             <td><a href="{{ url_dict['flat_url'] }}">{{ proj.get_fancy_filename() }}</a></td>
@@ -55,15 +70,17 @@
 
             <!--<td>{{ proj.required_genes }} </td>-->
         <td>{{ proj.get_status() }}</td>
-        {% if current_user.get_expiry_date() %}
-            <td>{{ momentjs(current_user.get_expiry_date()).fromNow() }}</td>
-        {% else %}
-            <td>Never</td>
+        {% if not is_demo %}
+            {% if current_user.get_expiry_date() %}
+                <td>{{ momentjs(current_user.get_expiry_date()).fromNow() }}</td>
+            {% else %}
+                <td>Never</td>
+            {% endif %}
         {% endif %}
         {% if proj.run_complete %}
             <td>
                 <!--<a href="{{ url_for('pway.archive', proj=proj.file_id) }}">-->
-            <form method="get" action="{{ url_for('pway.archive', proj=proj.file_id) }}">
+            <form method="get" action="{{ url_for(archive_url, proj=proj.file_id) }}">
                 <input type="hidden" name="proj" value="{{ proj.file_id }}">
                 <button class="btn btn-default" aria-label="Download Archive">
                     <span class="glyphicon glyphicon-download" aria-hidden="true"></span>
@@ -79,7 +96,12 @@
 </div>
 
 {% else %}
+    {% if is_demo %}
+No demo projects to show yet. Please check back later.
+    {% else %}
 No projects to show. Please upload a file on the <a href="{{url_for('pway.upload')}}">Upload</a> page.
+    {% endif %}
+
 {% endif %}
 
 {% endblock %}

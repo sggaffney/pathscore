@@ -1,6 +1,6 @@
 from flask import render_template, flash, redirect, url_for, abort,\
     request, current_app, send_file, send_from_directory, g, jsonify
-from flask_login import login_required, current_user, login_user
+from flask_login import current_user, login_user  # login_required
 from werkzeug.utils import secure_filename
 import os
 import signal
@@ -15,10 +15,10 @@ from bokeh.models.tools import HoverTool
 from bokeh.models.widgets import TextInput, RadioGroup
 from bokeh.models.callbacks import CustomJS
 
-from . import pway  # FileTester, TempFile
+from . import demo  # FileTester, TempFile
+from .helpers import get_all_demos, get_single_demo
 from ..uploads import MutationFile, BmrFile
 from ..errors import ValidationError
-from .forms import UploadForm, BmrForm
 from ..models import UserFile, create_anonymous_user, initialize_project, \
     CustomBMR, BmrProcessor
 from ..get_effective_pathways import run_analysis, load_pathway_list_from_file
@@ -37,33 +37,15 @@ SCATTER_KW = dict(size=10, color="red", alpha=0.1, line_color="firebrick",
                   line_alpha=0.5)
 
 
-@pway.route('/')
-@login_required
-def index():
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).all()
-    return render_template('pway/index2.html', projects=upload_list)
-
-
-# @pway.route('/demo')
+@demo.route('/')
 # @login_required
-# def demo():
-#     return render_template('pway/show_pathways_demo.html')
+def index():
+    upload_list = get_all_demos()
+    return render_template('pway/index2.html', projects=upload_list, is_demo=True)
 
 
-@pway.route('/restart')
-@login_required
-def reset():
-    role_names = [r.name for r in current_user.roles]
-    if 'vip' not in role_names:
-        abort(404)
-    if request.environ['mod_wsgi.process_group'] != '':
-        os.kill(os.getpid(), signal.SIGINT)
-        flash("Restarted.", "info")
-        return redirect(url_for('.index'))
-
-
-@pway.route('/scatter')
-@login_required
+@demo.route('/scatter')
+# @login_required
 @no_ssl
 def scatter():
     # if proj among arguments, show this tree first.
@@ -73,8 +55,7 @@ def scatter():
         show_proj = None
     include = request.args.get('include', None)
     # list of projects (and proj_names) used to create dropdown project selector
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).order_by(UserFile.file_id).all()
+    upload_list = get_all_demos()
 
     if upload_list:
         # Use specified project from args or highest file_id as CURRENT PROJECT
@@ -90,16 +71,16 @@ def scatter():
         scatter_dict = plot_fns.get_scatter_dict(current_proj)
         # includes js_name, js_inds, plot_inds, has_cnv, script, div
     else:  # no projects yet!
-        flash("No project results to show yet.", "warning")
+        flash("No demo results to show yet.", "warning")
         return redirect(url_for('.index'))
 
     return render_template('pway/scatter.html', current_proj=current_proj,
-                           projects=upload_list, user_id=current_user.id,
+                           projects=upload_list, user_id=current_proj.user_id,
                            include_genes=include, **scatter_dict)
 
 
-@pway.route('/mds')
-@login_required
+@demo.route('/mds')
+# @login_required
 @no_ssl
 def mds():
     # if proj among arguments, show this tree first.
@@ -112,9 +93,7 @@ def mds():
     include = request.args.get('include', None)
     # list of projects (and proj_names) used to create dropdown project selector
 
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).filter_by(has_mds=True).\
-        order_by(UserFile.file_id).all()
+    upload_list = get_all_demos(mds_only=True)
     if not upload_list:
         flash("No project results to show yet.", "warning")
         return redirect(url_for('.index'))
@@ -133,56 +112,13 @@ def mds():
                                          mds_alg=alg)
 
     return render_template('pway/mds.html', current_proj=current_proj,
-                           projects=upload_list, user_id=current_user.id,
+                           projects=upload_list, user_id=current_proj.user_id,
                            include_genes=include, **scatter_dict)
 
 
-@pway.route('/patient_overlap', methods=['POST'])
-@login_required
-@no_ssl
-def patient_overlap():
-    # try:
-    # return jsonify('hi')
-    current_app.logger.info(request.form)
-    proj_id = request.form['proj']
-    current_app.logger.info(proj_id)
-    path_a = int(request.form['path_a'])
-    path_b = int(request.form['path_b'])
 
-    current_app.logger.info(path_a)
-    current_app.logger.info(path_b)
-
-    upload_obj = UserFile.query.get(proj_id)  # type: UserFile
-
-    df = plot_fns.MDSPlotter(upload_obj).df
-
-    a_bool = df.loc[path_a]
-    b_bool = df.loc[path_b]
-    n_a_uniq = (a_bool & ~b_bool).sum()
-    n_b_uniq = (~a_bool & b_bool).sum()
-    n_both = (a_bool & b_bool).sum()
-    n_either = (a_bool | b_bool).sum()
-    n_patients = upload_obj.n_patients
-    n_neither = n_patients - n_either
-
-    # d_out = pd.DataFrame(
-    #     {'vals': [n_a_uniq, n_b_uniq, n_both, n_either, n_neither]},
-    #     index=['n_a_uniq', 'n_b_uniq', 'n_both', 'n_either', 'n_neither'])
-    #
-    # html_str = d_out.to_html(classes=['table .col-lg-4'], header=False)
-
-    out_dict = {'n_a_uniq': n_a_uniq,
-                'n_b_uniq': n_b_uniq,
-                'n_both': n_both,
-                'n_either': n_either,
-                'n_patients': n_patients,
-                'n_neither': n_neither}
-
-    return jsonify(out_dict)
-
-
-@pway.route('/compare')
-@login_required
+@demo.route('/compare')
+# @login_required
 @no_ssl
 def compare():
     # if proj among arguments, show this tree first.
@@ -194,8 +130,7 @@ def compare():
     include = request.args.get('include', None)
 
     # list of projects (and proj_names) used to create dropdown project selector
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).order_by(UserFile.file_id).all()
+    upload_list = get_all_demos(mds_only=False)
 
     if len(upload_list) > 1:
         # Use specified project from args or highest file_id as CURRENT PROJECT
@@ -213,6 +148,7 @@ def compare():
         else:
             current_proj_a = upload_list[-2]
             current_proj_b = upload_list[-1]
+        user_ids = [current_proj_a.user_id, current_proj_b.user_id]
         detail_path1 = naming_rules.get_detailed_path(current_proj_a)
         detail_path2 = naming_rules.get_detailed_path(current_proj_b)
         js_name1 = naming_rules.get_js_name(current_proj_a)
@@ -442,8 +378,8 @@ def get_q(pway_obj):
 
 
 
-@pway.route('/tree')
-@login_required
+@demo.route('/tree')
+# @login_required
 def tree():
     # if proj among arguments, show this tree first.
     try:
@@ -451,8 +387,7 @@ def tree():
     except (TypeError, ValueError):
         show_proj = None
     # list of projects (and proj_names) used to create dropdown project selector
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).order_by(UserFile.file_id).all()
+    upload_list = get_all_demos()
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
     if upload_list:
         # Use specified project from args or highest file_id as CURRENT PROJECT
@@ -469,216 +404,38 @@ def tree():
         flash("No project results to show yet.", "warning")
         return redirect(url_for('.index'))
     return render_template('pway/tree.html', current_proj=current_proj,
-                           projects=upload_list, user_id=current_user.id,
+                           projects=upload_list, user_id=current_proj.user_id,
                            proj_names=proj_names, names_odict=names_odict)
 
 
-@pway.route('/faq')
-def faq():
-    return render_template('pway/faq.html')
-
-
-@pway.route('/archive/<int:proj>')
-@login_required
+@demo.route('/archive/<int:proj>')
+# @login_required
 def archive(proj):
-    upload_obj = UserFile.query.\
-        filter_by(user_id=current_user.id, file_id=proj).\
-        first_or_404()
+    upload_obj = get_single_demo(proj=proj)
     zip_path = zip_project(upload_obj)
     filename = os.path.basename(zip_path)
     return send_file(zip_path, mimetype='application/zip',
                      as_attachment=True, attachment_filename=filename)
 
 
-@pway.route('/demofile')
-def demo_file():
-    # return render_template('pway/show_pathways_template.html')
-    return send_from_directory(current_app.config['DATA_ROOT'],
-                               'skcm_ns_500.txt', as_attachment=True)
-
-
-@pway.route('/filtered')
-def get_filtered():
-    """Get filtered genes. Params are proj and filter_type (ignored/rejected)"""
-    try:
-        proj_id = int(request.args.get('proj', None))
-    except (TypeError, ValueError):
-        proj_id = None
-    filter_type = request.args.get('type', None)  # ignored or rejected
-    if proj_id is None or filter_type not in ('ignored', 'rejected'):
-        abort(404)
-    proj_id = int(proj_id)
-    upload_obj = None
-    try:
-        if current_user.is_authenticated:
-            temp_filter = (UserFile.user_id == current_user.user_id) | (UserFile.is_demo == 1)
-        else:
-            temp_filter = (UserFile.is_demo == 1)
-        upload_obj = UserFile.query.filter(temp_filter).\
-            filter_by(file_id=proj_id).all()[0]
-    except IndexError:
-        abort(404)
-    except AttributeError:  # catches current_user is anonymous
-        abort(403)
-    if filter_type == 'ignored':
-        file_path = naming_rules.get_unused_gene_path(upload_obj)
-    else:
-        file_path = naming_rules.get_rejected_gene_path(upload_obj)
-    try:
-        return send_file(file_path, as_attachment=True)
-    except IOError:
-        abort(404)
-
-
-@pway.route('/fetchbmr/<int:bmr_id>/<kind>')
-def fetch_bmr(bmr_id=None, kind=None):
-    """Get filtered genes. Params: proj and kind (final/orig/ignored/rejected)"""
-    # try:
-    #     bmr_id = int(request.args.get('id', None))
-    # except (TypeError, ValueError):
-    #     bmr_id = None
-    # kind = request.args.get('type', None)  # ignored or rejected
-    if bmr_id is None or kind not in ('final', 'orig', 'ignored', 'rejected'):
-        abort(404)
-    try:
-        bmr = CustomBMR.query.filter_by(user_id=current_user.id).\
-            filter_by(bmr_id=bmr_id).all()[0]  # type: CustomBMR
-    except IndexError:
-        abort(404)
-    except AttributeError:  # catches current_user is anonymous
-        abort(403)
-    bmr = bmr  # type: CustomBMR
-    file_path = bmr.get_path(kind=kind)
-    try:
-        return send_file(file_path, as_attachment=True)
-    except IOError:
-        abort(404)
-
-
-@pway.route('/results')
-@login_required
+@demo.route('/results')
+# @login_required
 def results():
     try:
         show_proj = int(request.args.get('proj', None))
     except (TypeError, ValueError):
         show_proj = None
     include = request.args.get('include', None)
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).all()
+    upload_list = get_all_demos()
+    user_ids = [u.user_id for u in upload_list]
     if not upload_list:
         flash("No project results to show yet.", "warning")
         return redirect(url_for('.index'))
     if show_proj is None and len(upload_list):
         show_proj = upload_list[-1].file_id
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
+    user_dict = {int(i.file_id): int(i.user_id) for i in upload_list}
     return render_template('pway/show_pathways_template.html',
-                           projects=upload_list, user_id=current_user.id,
+                           projects=upload_list, user_dict=user_dict,
                            show_proj=show_proj, proj_names=proj_names,
-                           include_genes=include)
-
-
-
-@pway.route('/bmr', methods=('GET', 'POST'))
-@login_required
-def bmr():
-    """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
-
-    # load previous bmr objects for table display
-    bmr_list = CustomBMR.query.filter_by(user_id=current_user.id,
-                                         is_valid=True).all()
-    headers = ['bmr_id', 'title', 'tissue', 'n_loaded', 'n_rejected',
-               'n_ignored', 'description']
-    header_map = {'n_rejected': 'rejected', 'n_loaded': 'loaded',
-                  'n_ignored': 'ignored'}
-    bmr_df = misc.objects_to_dataframe(bmr_list, headers, index_col='bmr_id',
-                                       header_map=header_map, dtype=object)
-    url_dict = dict()
-    kind_map = dict(rejected='rejected', ignored='ignored', loaded='final')
-    for bmr_id in bmr_df.index:
-        for header in kind_map:
-            url_dict[(bmr_id, header)] = url_for(
-                'pway.fetch_bmr', bmr_id=bmr_id, kind=kind_map[header])
-    form = BmrForm()
-    if form.validate_on_submit():
-        try:
-            bmr_file = BmrFile(form.bmr_file.data)
-        except ValidationError as e:
-            flash(str(e), 'danger')
-            return render_template('pway/bmr.html', form=form, bmr_df=bmr_df,
-                                   url_dict=url_dict)
-        # CREATE CustomBMR object FROM FORM
-        bmr = CustomBMR(user_id=current_user.id)
-        form.to_model(bmr)
-        bmr.init_from_upload(bmr_file)  # copies file to user folder
-        BmrProcessor(bmr).initial_process()
-        db.session.add(bmr)
-        db.session.commit()
-        if bmr.n_loaded:
-            flash('File accepted and validated.', 'success')
-            return redirect(url_for('.index'))
-        else:
-            flash("No matches to pathway genes. Please try another file.",
-                  'danger')
-            return render_template('pway/bmr.html', form=form, bmr_df=bmr_df,
-                                   url_dict=url_dict)
-    return render_template('pway/bmr.html', form=form, bmr_df=bmr_df,
-                           url_dict=url_dict)
-
-
-@pway.route('/upload', methods=('GET', 'POST'))
-@limit_user_uploads
-def upload():
-    """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
-
-    bmr_titles = [(-1, 'Default')]
-    if not current_user.is_anonymous:
-        bmr_titles += [(i.bmr_id, i.title) for i in CustomBMR.query.filter_by(
-            user_id=current_user.id, is_valid=True).all()]
-
-    form = UploadForm()
-    form.bmr.choices = bmr_titles
-    if form.validate_on_submit():
-        try:
-            mut_file = MutationFile(form.mut_file.data)
-        except ValidationError as e:
-            flash(str(e), 'danger')
-            return render_template('pway/upload.html', form=form)
-
-        # CREATE NEW USER IF UNAUTHENTICATED (HERE, FILE IS VALID)
-        if not current_user.is_authenticated:
-            # create guest user
-            temp_user, temp_pswd = create_anonymous_user()
-            flash('Your temporary username is {} and password is {}. '.format(
-                temp_user.email, temp_pswd) + 'This account will be deleted in '
-                '{} days.'.format(current_app.config['ANONYMOUS_MAX_AGE_DAYS']),
-                'info')
-            login_user(temp_user, force=True, remember=True)
-
-        # CREATE USERFILE FROM FORM
-        mut_filename = secure_filename(form.mut_file.data.filename)
-        user_upload = UserFile(filename=mut_filename, user_id=current_user.id)
-        form.to_model(user_upload)
-        # CREATE PROJECT FOLDER, TWEAK USERFILE, MOVE MUTATIONS
-        out = initialize_project(user_upload=user_upload, mut_file=mut_file)
-        user_upload, proj_folder, file_path = out
-
-        flash('File accepted and validated. Analysis in progress.',
-              'success')
-        # run analysis asynchronously
-        # http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xi-email-support
-        run_analysis(user_upload.file_id)
-        return redirect(url_for('.index'))
-
-    # MESSAGES FOR INITIAL UPLOAD PAGE ACCESS OR FAILED UPLOAD
-    if current_user.is_authenticated:
-        message = "You've run {} projects in the last week. ".format(g.n_week)
-        message += "Your weekly limit is {}.".format(g.n_week_max)
-        if g.incomplete:
-            message += "\nYou have {} jobs still running."\
-                .format(len(g.incomplete))
-        flash(message, "info")
-    else:
-        flash("You can upload here as a new guest user, but with severe "
-              "usage limits and no email alerts. Consider registering instead.",
-              "danger")
-    return render_template('pway/upload.html', form=form)
+                           include_genes=include, is_demo=True)
