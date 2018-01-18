@@ -9,7 +9,7 @@ from matplotlib.collections import PatchCollection
 
 from utils import get_target_bbox
 
-max_diameter_units = 1
+N_CUTOFF = 1000000  # max effective pathway size before downscaling.
 
 
 def plot_target(n_actual=None, n_effective=None, n_max=None, pc_dict=None, 
@@ -17,22 +17,20 @@ def plot_target(n_actual=None, n_effective=None, n_max=None, pc_dict=None,
                 ax=None, cmap_name='hot_r'):
     """Plot wedges, given radius of inner ring and gene coverages."""
     if ax is None:
-        hfig, ax = plt.subplots(figsize=(4.5, 4.5), 
+        hfig, ax = plt.subplots(figsize=(5.5, 5.5),
                                 subplot_kw=dict(xlim=(0, 1), ylim=(0, 1),
                                                 position=(0, 0, 1, 1)))
     else:
         hfig = ax.get_figure()
-    # import pdb; pdb.set_trace()
     seg_width = 0.01 * hfig.get_figwidth()
-    delta = 1.5  # angle separation between segments
     rot_scale = float(20)
     rot_max = float(55)
     border_width = float(2)  # pt. for wedge border.
     fontsize = 8
 
     n_effective = min(n_effective, n_max)
-    r_actual = get_target_radius(n_actual, n_max)
-    r_effective = get_target_radius(n_effective, n_max)
+    r_actual, r_effective = get_target_radii(n_actual, n_effective, n_max,
+                                             n_cutoff=N_CUTOFF)
 
     gene_tuples = sorted(list(pc_dict.items()), key=(lambda v: v[1]),
                          reverse=True)
@@ -40,6 +38,10 @@ def plot_target(n_actual=None, n_effective=None, n_max=None, pc_dict=None,
     gene_list = [i[0] for i in gene_tuples]
     pc_list = np.array([i[1] for i in gene_tuples])
     n_mutated = len(pc_list)  # 1 'gap' for each mutated gene
+
+    delta = 1.5  # default angle separation between segments
+    k = 2  # arbitrary scalar greater than 1. delta inversely proportional to k.
+    delta = min(delta, 360 / (k * n_mutated))  # ensure gaps don't sum>360.
     angle_per_pc = (360 - n_mutated * float(delta)) / pc_list.sum()
     pway_pc = float(n_mutated) / n_pway_genes * 100
 
@@ -134,12 +136,25 @@ def plot_target(n_actual=None, n_effective=None, n_max=None, pc_dict=None,
     return ax
     
 
-def get_target_radius(n_genes, n_max):  # max_diameter_units=0.8):
-    """Convert gene set size to radius, using max effective size.
+def get_target_radii(n_actual, n_effective, n_max,
+                     n_cutoff=None):
+    """Convert pathway sizes size to radii, using smaller of two cutoffs.
 
-    Assumes target is plotted in 1 unit by 1 unit area."""
-    radius = 0.5 * max_diameter_units * np.sqrt(float(n_genes) / n_max)
-    return radius
+    Cutoffs are n_max (largest observed effective size or genome size)
+    and n_cutoff (largest absolute effective size before rescaling happens). Radii are
+    scaled down to stop growing at smaller cutoff, keeping areas in proportion.
+
+    Assumes target is plotted in 1 unit by 1 unit area, and n_effective > n_actual."""
+    n_limit = min(n_max, n_cutoff)
+    if n_effective > n_limit:
+        r_effective = 0.5
+        # area_scale_factor = float(n_limit) / n_effective  # downscaling; < 1.
+        r_scale_factor = np.sqrt(float(n_actual) / n_effective)
+        r_actual = r_effective * r_scale_factor
+    else:
+        r_effective = 0.5 * np.sqrt(float(n_effective) / n_limit)
+        r_actual = 0.5 * np.sqrt(float(n_actual) / n_limit)
+    return r_actual, r_effective
 
 
 def get_text_hv(theta_text):
