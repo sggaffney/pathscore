@@ -130,6 +130,7 @@ class UserFile(db.Model):
     ignore_genes = db.Column(db.Text())
     proj_suffix = db.Column(db.String(255))
     n_patients = db.Column(db.Integer)
+    n_patients_crop = db.Column(db.Integer)
     n_rejected = db.Column(db.Integer)
     n_ignored = db.Column(db.Integer)
     n_loaded = db.Column(db.Integer)

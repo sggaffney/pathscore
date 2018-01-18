@@ -92,6 +92,7 @@ def run_analysis_async(upload_id):
             raise TableLoadException("Failed to load table {!r}."
                                      .format(table_name))
         user_upload.n_patients = table.n_patients
+        user_upload.n_patients_crop = table.n_patients_crop
         db.session.add(user_upload)
         db.session.commit()
         run(user_upload)
@@ -208,6 +209,7 @@ class MutationTable:
         self.remove_genes_unrecognized(rejected_path)
         self.remove_genes_outwith_pathways(unused_path)
         self.n_loaded = self.n_initial - self.n_rejected - self.n_ignored
+        self.n_patients_crop = count_patients(self.table_name)
         if self.n_loaded:
             self.loaded = True
 
