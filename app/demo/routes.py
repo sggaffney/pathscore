@@ -41,6 +41,7 @@ SCATTER_KW = dict(size=10, color="red", alpha=0.1, line_color="firebrick",
 # @login_required
 def index():
     upload_list = get_all_demos()
+    upload_list = upload_list[::-1]
     return render_template('pway/index2.html', projects=upload_list, is_demo=True)
 
 
