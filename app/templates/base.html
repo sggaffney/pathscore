@@ -121,6 +121,18 @@
 {% block scripts %}
 {{super()}}
 
+{% if not config['DEBUG'] and not config['TESTING'] %}
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ config['ANALYTICS_ID'] }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{ config["ANALYTICS_ID"] }}');
+</script>
+{% else %}
+<!-- Analytics switched off in debug/testing mode. -->
+{% endif %}
 
 <script>
     function matrix_width(n_patients){

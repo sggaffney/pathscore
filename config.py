@@ -38,7 +38,7 @@ class Config:
     DATA_ROOT = os.environ.get('DATA_ROOT')
     TEMP_FOLDER = os.environ.get('TEMP_FOLDER')
     LOG_PATH = os.environ.get('LOG_PATH')
-
+    ANALYTICS_ID = os.environ.get('ANALYTICS_ID')
     MATRIX_BOX_PX = os.environ.get('MATRIX_BOX_PX', 25)
     MATRIX_HPAD_PX = os.environ.get('MATRIX_HPAD_PX', 220)
     MATRIX_TXT_SIZE = os.environ.get('MATRIX_TXT_SIZE', 10)
