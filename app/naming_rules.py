@@ -43,6 +43,13 @@ def get_pval_path(upload_obj):
     return os.path.join(dir_path, pval_name)
 
 
+def get_all_pways_path(upload_obj):
+    dir_path = get_project_folder(upload_obj)
+    root_name = upload_obj.get_local_filename()
+    base_name = root_name + '_all_pways.tsv'
+    return os.path.join(dir_path, base_name)
+
+
 def get_tree_score_paths(upload_obj):
     """Get path tuple (scores_path, scored_names) from upload object."""
     proj_suffix = upload_obj.get_local_filename()

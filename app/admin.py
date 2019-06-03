@@ -109,6 +109,37 @@ def save_local_html(upload_obj, page_type='flat'):
         out.write(output)
 
 
+def export_detail_path(upload_obj):
+    """Create human-readable version of detail file for archive."""
+    detail_path = naming_rules.get_detailed_path(upload_obj)
+    out_path = naming_rules.get_all_pways_path(upload_obj)
+    detail_cols = [
+        'pathway_id',
+        'pathway_name',
+        'n_actual',
+        'n_effective',
+        'p_value',
+        'll_actual',
+        'll_effective',
+        'D',
+        'ne_low',
+        'ne_high',
+        'runtime',
+        'exclusive',
+        'cooccurring',
+        'gene_coverage',
+        'n_genes_mutated',
+        'n_geness_total',
+        'n_cov',
+        'pc_cov',
+    ]
+    df = pd.read_table(detail_path, header=None)
+    n_cols = len(df.columns)
+    col_names = detail_cols[:n_cols]
+    df.columns = col_names
+    df.to_csv(out_path, sep='\t', index=False, header=True)
+
+
 def get_flat_results(upload_obj):
     proj_names = {int(upload_obj.file_id): upload_obj.get_local_filename()}
     return render_template('pway/show_pathways_template.html',
@@ -151,6 +182,9 @@ def zip_project(upload_obj):
     save_local_html(upload_obj, page_type='flat')
     save_local_html(upload_obj, page_type='scatter')
     save_local_html(upload_obj, page_type='tree')
+
+    # CREATE ALL_PWAYS FILE
+    export_detail_path(upload_obj)
 
     proj_name = upload_obj.get_local_filename()
     user_folder = get_user_folder(upload_obj.user_id)
