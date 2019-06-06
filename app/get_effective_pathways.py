@@ -60,7 +60,7 @@ class MatlabFailureException(Exception):
 
 
 # @async
-@celery.task
+# @celery.task
 def run_analysis_async(upload_id):
     """Asynchronous run of pathway analysis."""
     db.session.remove()  # guarantee new db session for this thread
@@ -137,7 +137,7 @@ def run_analysis(upload_id):
     # db.session.add(user_upload)
     # db.session.commit()
     # app_obj = current_app._get_current_object()
-    run_analysis_async.delay(upload_id)
+    run_analysis_async(upload_id)
 
 
 def drop_table(table_name):

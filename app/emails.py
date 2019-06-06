@@ -24,11 +24,11 @@ def run_finished_notification(upload_id):
         body_text=render_template('email/notify.txt', project=upload),
         body_html=render_template('email/notify.html', project=upload)
         )
-    run_finished_notification_async.delay(msg)
+    run_finished_notification_async(msg)
 
 
 # @async
-@celery.task
+# @celery.task
 def run_finished_notification_async(msg):
     with mail.connect() as conn:
         conn.send(msg)
