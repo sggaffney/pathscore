@@ -1,0 +1,31 @@
+name: pway
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=2.7
+  - pip
+  - Flask
+  - Flask-Login==0.3.2
+  - Flask-Bootstrap
+  - Flask-SQLAlchemy
+  - Flask-Security
+  - Flask-Script
+  - MySQL-Python
+  - Flask-Uploads
+  - Flask-Migrate
+  - numpy
+  - scipy
+  - Unidecode
+  - cython
+  - pandas
+  - matplotlib
+  - celery
+  - redis
+  - bokeh
+  - matplotlib
+  - scikit-learn
+  - pip:
+    - py-bcrypt
+    - flask_httpauth
+    - mod_wsgi
