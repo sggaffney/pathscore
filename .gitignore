@@ -12,3 +12,7 @@ notes
 *.ipynb
 build
 dist
+unused/
+notebooks/
+test_files/
+*.egg-info
