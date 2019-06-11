@@ -11,21 +11,22 @@ dependencies:
   - Flask-SQLAlchemy
   - Flask-Security
   - Flask-Script
-  - MySQL-Python
   - Flask-Uploads
   - Flask-Migrate
   - numpy
   - scipy
+  - pymysql
   - Unidecode
   - cython
   - pandas
   - matplotlib
-  - celery
-  - redis
-  - bokeh
+  - celery==3.1.25
+  - bokeh==0.12.6
   - matplotlib
   - scikit-learn
   - pip:
     - py-bcrypt
     - flask_httpauth
     - mod_wsgi
+    - python-dotenv
+    - redis==2.10.6
