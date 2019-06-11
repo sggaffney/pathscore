@@ -134,7 +134,6 @@ Use this to create a file called `.env` in the repository root directory.
 
 ```bash
 FLASK_CONFIG=development
-SITE_PACKAGES_DIR=/path/to/virtual/env/site-packages
 SECRET_KEY=some-secure-password
 MAIL_SERVER=smtp.example.com
 MAIL_SENDER=your-email@example.com
