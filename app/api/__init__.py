@@ -1,8 +1,9 @@
 from flask import Blueprint, g, url_for
-from errors import bad_request, not_found, not_allowed, too_many_requests
+
+from .errors import bad_request, not_found, not_allowed, too_many_requests
 from ..errors import ValidationError, LimitError
-from auth import auth, auth_optional
-from decorators import json, rate_limit
+from .auth import auth, auth_optional
+from .decorators import json, rate_limit
 
 
 api = Blueprint('api', __name__)

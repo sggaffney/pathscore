@@ -2,7 +2,8 @@ import os
 from datetime import datetime
 import hashlib
 from flask import current_app
-from errors import ValidationError
+
+from .errors import ValidationError
 
 
 class BasicFile(object):

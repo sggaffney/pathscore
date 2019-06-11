@@ -70,7 +70,7 @@ def get_distance_matrix(gene_sets):
     """Return symmetric matrix of dissimilarities from list of gene sets."""
     n_pways = len(gene_sets)
     scores = np.zeros([n_pways, n_pways])
-    for ind_pair in combinations_with_replacement(xrange(n_pways), 2):
+    for ind_pair in combinations_with_replacement(range(n_pways), 2):
         score = get_pway_dissimilarity(set(gene_sets[ind_pair[0]]),
                                        set(gene_sets[ind_pair[1]]))
         scores[ind_pair[0], ind_pair[1]] = score
@@ -135,7 +135,7 @@ def get_wait_time_string(wait_time):
 def generate_random_str(length=6):
     """ascii letters (upper+lower), numbers. http://stackoverflow.com/a/2257449"""
     charset = string.ascii_uppercase + string.digits + string.ascii_lowercase
-    char_list = [random.SystemRandom().choice(charset) for _ in xrange(length)]
+    char_list = [random.SystemRandom().choice(charset) for _ in range(length)]
     return ''.join(char_list)
 
 

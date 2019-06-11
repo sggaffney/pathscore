@@ -12,9 +12,9 @@ from bokeh.embed import components
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.models.markers import Circle
 
-import naming_rules
-import misc
-from get_effective_pathways import load_pathway_list_from_file
+from . import naming_rules
+from . import misc
+from .get_effective_pathways import load_pathway_list_from_file
 
 tools = ("hover,tap,previewsave,pan,wheel_zoom,"
          "box_zoom,box_select,reset,crosshair")  # poly_select,lasso_select

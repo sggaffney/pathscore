@@ -8,7 +8,7 @@ import matplotlib.patches as patches
 import matplotlib.collections as collections
 from matplotlib.transforms import Bbox
 
-from utils import get_target_bbox
+from .utils import get_target_bbox
 
 
 class GeneMatrix:

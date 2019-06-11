@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=2.7
+  - python=3
   - pip
   - Flask
   - Flask-Login==0.3.2

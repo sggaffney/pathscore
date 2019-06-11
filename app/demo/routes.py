@@ -172,7 +172,7 @@ def compare():
         sig_p.update(sig_p2)  # ORDERED by proj1 effect size
 
         # BUILD DATAFRAME WITH ALL sig PATHWAYS, proj1 object order.
-        pway_names = sig_p.values()  # order important
+        pway_names = list(sig_p.values())  # order important
         columns = ['path_id', 'pname', 'ind1', 'ind2', 'e1', 'e2', 'e1_only',
                    'e2_only', 'q1', 'q2']
         df = pd.DataFrame(index=sig_p.keys(), data={'pname': pway_names},

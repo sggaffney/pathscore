@@ -1,5 +1,3 @@
-import app
-import MySQLdb as mdb
 from collections import defaultdict, Counter
 from . import db
 
@@ -45,7 +43,7 @@ def lookup_background_size(ignore_genes=None, alg=None, bmr_table=None):
     result = db.session.execute(cmd)
     row_count = result.rowcount
     if row_count != 1:
-        print "Background size lookup failed."
+        print("Background size lookup failed.")
         return
     row = result.fetchone()
     background_size = int(row[0])
@@ -69,9 +67,9 @@ def lookup_path_sizes(ignore_genes=None):
     result = db.session.execute(cmd)
     row_count = result.rowcount
     if not row_count:
-        print "No pathways found."
+        print("No pathways found.")
         return size_dict
-    for row_no in xrange(row_count):
+    for row_no in range(row_count):
         row = result.fetchone()
         size_dict[row[0]] = row[1]
     return size_dict
@@ -100,9 +98,9 @@ def lookup_path_lengths(ignore_genes=None, alg=None, bmr_table=None):
     result = db.session.execute(cmd)
     row_count = result.rowcount
     if not row_count:
-        print "No pathways found."
+        print("No pathways found.")
         return len_dict
-    for i in xrange(row_count):
+    for i in range(row_count):
         row = result.fetchone()
         len_dict[row[0]] = row[1]
     return len_dict
@@ -124,9 +122,9 @@ def lookup_patient_counts(table_name, ignore_genes):
     result = db.session.execute(cmd)
     row_count = result.rowcount
     if not row_count:
-        print "No pathways found."
+        print("No pathways found.")
         return patient_size_dict
-    for row_no in xrange(row_count):
+    for row_no in range(row_count):
         row = result.fetchone()
         patient_size_dict[row[0]] = row[1]
 
@@ -171,7 +169,7 @@ def count_patients(table_name):
     result = db.session.execute(cmd)
     row_count = result.rowcount
     if not row_count == 1:
-        print "Non single result from patient count query."
+        print("Non single result from patient count query.")
         return patient_count
     row = result.fetchone()
     patient_count = row[0]
@@ -195,7 +193,7 @@ def build_path_patient_dict(table_name, ignore_genes):
     result = db.session.execute(cmd)
     row_count = result.rowcount
     if not row_count:
-        print "No patient-pathway pairs found."
+        print("No patient-pathway pairs found.")
         return path_patient_dict
     for row in result:
         path_id = row[0]

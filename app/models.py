@@ -10,9 +10,9 @@ from . import db, login_manager
 from unidecode import unidecode
 from flask_security.utils import encrypt_password, verify_password
 
-import naming_rules
-from errors import ValidationError
-from misc import GeneListTester, generate_random_str
+from . import naming_rules
+from .errors import ValidationError
+from .misc import GeneListTester, generate_random_str
 
 
 KEEP_CHARACTERS = (' ', '.', '_', '-')

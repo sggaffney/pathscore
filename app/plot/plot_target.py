@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.collections import PatchCollection
 
-from utils import get_target_bbox
+from .utils import get_target_bbox
 
 N_CUTOFF = 1000000  # max effective pathway size before downscaling.
 

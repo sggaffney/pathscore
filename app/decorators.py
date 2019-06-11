@@ -3,9 +3,10 @@ from functools import wraps
 from datetime import datetime, timedelta
 from flask import request, redirect, g
 from flask_login import current_user
-from models import UserFile
-from misc import get_wait_time_string
-from errors import LimitError
+
+from .models import UserFile
+from .misc import get_wait_time_string
+from .errors import LimitError
 
 
 def no_ssl(fn):

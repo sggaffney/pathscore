@@ -1,7 +1,6 @@
 """Runs pathway pipeline on CancerDB tables or TCGA tables."""
-
+import six
 from flask import current_app
-import MySQLdb as mdb
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -10,14 +9,13 @@ import timeit
 from collections import OrderedDict
 import json
 import os
-import subprocess
 import pyximport
 pyximport.install(setup_args={'include_dirs': np.get_include()})
 from sqlalchemy.orm.exc import StaleDataError
-from comb_functions import get_pway_likelihood_cython
 
+from .comb_functions import get_pway_likelihood_cython
 from . import db, celery
-import emails
+from . import emails
 from .models import UserFile
 import app
 from .db_lookups import lookup_path_sizes, lookup_background_size, \
@@ -26,9 +24,9 @@ from .db_lookups import lookup_path_sizes, lookup_background_size, \
     get_gene_combs_hit, get_gene_counts, get_pway_lenstats_dict, \
     fetch_path_info_global, count_patients, lookup_hypermutated_patients, \
     get_annotation_dict
-import plot
-import misc
-import naming_rules
+from . import plot
+from . import misc
+from . import naming_rules
 
 ref_info = None
 
@@ -105,8 +103,6 @@ def run_analysis_async(upload_id):
         user_email = user_upload.uploader.email
         current_app.logger.error("Table load failure in proj {} ({}): {}"
                                  .format(upload_id, user_email, e))
-    except mdb.Error:
-        pass  # already logged by db commands
     except Exception as e:  # catch all remaining errors
         current_app.logger.error("Failure in proj {} for user {}: {}.".format(
                 user_upload.file_id, user_upload.uploader.email, e))
@@ -170,14 +166,14 @@ def save_project_params_txt(upload_obj):
         out.write('User data:\n')
         for field in user_fields:
             attr = getattr(upload_obj, field)
-            if type(attr) == unicode:
+            if type(attr) in six.string_types:
                 attr = attr.encode('utf8')
             out.write("{}: {}\n".format(field, attr))
         out.write('\n\n')
         out.write('Data attributes:\n')
         for field in data_fields:
             attr = getattr(upload_obj, field)
-            if type(attr) == unicode:
+            if type(attr) in six.string_types:
                 attr = attr.encode('utf8')
             out.write("{}: {}\n".format(field, attr))
 
@@ -583,8 +579,8 @@ class LCalculator():
             ne = self.G
             return (ne, ult)
         # at this stage, there will be a max before Genome size
-        for pway_size in xrange(1, self.G):
-            # WAS xrange(1,self.G - self.max_mutations):
+        for pway_size in range(1, self.G):
+            # WAS range(1,self.G - self.max_mutations):
             this_ll = self._get_pway_likelihood(pway_size=pway_size)
             # profile.append(this_ll)
             # if mod(pway_size,100)==0:

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from models import UserFile, User, Role
+from .models import UserFile, User, Role
 from flask import current_app, render_template
 from . import db
 import os
@@ -7,8 +7,9 @@ import shutil
 from threading import Thread
 import time
 import zipfile
-import plot_fns
-from emails import run_finished_notification
+
+from . import plot_fns
+from .emails import run_finished_notification
 from app.get_effective_pathways import MutationTable, save_project_params_txt
 from app.naming_rules import get_user_folder, get_project_folder, \
     get_params_path

@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 from . import api
 from app import db
 from ..decorators import limit_user_uploads  # ssl_required
-from decorators import json, etag, collection
+from .decorators import json, etag, collection
 from ..errors import ValidationError
 from ..uploads import MutationFile, BmrFile
 from ..models import UserFile, create_anonymous_user, initialize_project, \
@@ -16,7 +16,7 @@ from ..models import UserFile, create_anonymous_user, initialize_project, \
 from ..admin import delete_project_folder
 from ..get_effective_pathways import run_analysis
 from ..admin import zip_project
-from auth import auth, auth_optional
+from .auth import auth, auth_optional
 
 
 @api.route('/', methods=['POST'])
