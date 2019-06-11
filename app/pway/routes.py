@@ -274,7 +274,7 @@ def compare():
 
         # SUPLOTS
         p = figure(plot_width=DIM_COMP_W, plot_height=DIM_COMP_H, tools=TOOLS,
-                   title=None, logo=None, toolbar_location="above",
+                   title=None, toolbar_location="above",
                    x_range=Range1d(minx, maxx), y_range=Range1d(miny, maxy),
                    x_axis_type="log", y_axis_type="log"
                    )

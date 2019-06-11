@@ -16,9 +16,9 @@ import naming_rules
 import misc
 from get_effective_pathways import load_pathway_list_from_file
 
-tools = ("hover,tap,resize,previewsave,pan,wheel_zoom,"
+tools = ("hover,tap,previewsave,pan,wheel_zoom,"
          "box_zoom,box_select,reset,crosshair")  # poly_select,lasso_select
-plot_config = dict(plot_height=400, plot_width=600, logo=None, tools=tools,
+plot_config = dict(plot_height=400, plot_width=600, tools=tools,
                    toolbar_location='right',
                    min_border=0, outline_line_width=0)
 scatter_config = dict(name='scattered', line_alpha=0.9, alpha=0.7)
@@ -70,9 +70,9 @@ def get_scatter_dict(upload_obj):
                                      'pvals': y,
                                      'D': d_vals,
                                      'pname': pnames})
-    # tools = "resize,crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
+    # tools = "crosshair,pan,wheel_zoom,box_zoom,reset,tap," \
     #         "box_select,hover"  # poly_select,lasso_select, previewsave
-    # plot_config = dict(plot_height=400, plot_width=600, logo=None,
+    # plot_config = dict(plot_height=400, plot_width=600,
     #                    tools=tools, title_text_font_size='14pt',
     #                    toolbar_location='right')
     plot1 = bpl.figure(title='Effect size vs p-value',
