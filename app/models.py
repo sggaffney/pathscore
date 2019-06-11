@@ -142,6 +142,8 @@ class UserFile(db.Model):
     uploader = db.relationship('User', backref='uploads')
     bmr = db.relationship("CustomBMR", back_populates="projects")
 
+    mysql_charset = 'utf8mb4'
+
     def get_local_filename(self):
         safe_suffix = None
         if self.proj_suffix:
