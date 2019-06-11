@@ -1,19 +1,19 @@
 #!/usr/bin/env python
-import os
-if os.path.exists('.env'):
-    print('Importing environment from .env...')
-    for line in open('.env'):
-        var = line.strip().split('=')
-        if len(var) == 2:
-            os.environ[var[0]] = var[1]
+from dotenv import load_dotenv
 
-from app import create_app
+print('Importing environment from .env...')
+load_dotenv()
+
+
+import os
+import shutil
+from flask_migrate import Migrate, MigrateCommand
 from flask_script import Manager
-from app import db, mds
+
+from app import create_app, db, mds
 from app.models import User, Role, UserFile
 from app.naming_rules import get_project_folder
-from flask_migrate import Migrate, MigrateCommand
-import shutil
+
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 migrate = Migrate(app, db)
