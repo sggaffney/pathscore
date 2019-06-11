@@ -224,15 +224,21 @@ class MutationTable:
           {annot_str} KEY `temp_patient_id` (`patient_id`) USING HASH,
           KEY `temp_patient_entrez` (`patient_id`,`entrez_id`) USING HASH);"""\
             .format(table_name, annot_str=annot_str)
-        load_str = u"""load data local infile '{}'
-            into table `{}` fields terminated by '\t'
-            lines terminated by '\n' ignore 1 lines;""".format(
-            data_path, table_name)
+        # load_str = u"""load data local infile '{}'
+        #     into table `{}` fields terminated by '\t'
+        #     lines terminated by '\n' ignore 1 lines;""".format(
+        #     data_path, table_name)
         cmd = u"select count(*) from `{}` m;".format(self.table_name)
-
         try:
+            # print(load_str)
             db.session.execute(create_str)
-            db.session.execute(load_str)
+            # LOAD USING PANDAS, FORMERLY: db.session.execute(load_str)
+            df = pd.read_table(data_path,
+                               dtype={'hugo_symbol': str,
+                                      'entrez_id': int,
+                                      'patient_id': str,
+                                      'annot': str})
+            df.to_sql(table_name, db.engine, if_exists='append', index=False)
             self.n_initial = db.session.execute(cmd).scalar()
             db.session.commit()
         except Exception as e:
