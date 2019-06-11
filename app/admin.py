@@ -7,8 +7,9 @@ import shutil
 from threading import Thread
 import time
 import zipfile
+import pandas as pd
 
-from . import plot_fns
+from . import plot_fns, naming_rules
 from .emails import run_finished_notification
 from app.get_effective_pathways import MutationTable, save_project_params_txt
 from app.naming_rules import get_user_folder, get_project_folder, \
