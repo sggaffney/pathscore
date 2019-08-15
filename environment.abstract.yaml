@@ -30,3 +30,4 @@ dependencies:
     - mod_wsgi
     - python-dotenv
     - redis==2.10.6
+    - flower
