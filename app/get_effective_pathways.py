@@ -234,6 +234,7 @@ class MutationTable:
                                       'entrez_id': int,
                                       'patient_id': str,
                                       'annot': str})
+            df['annot'] = df['annot'].fillna('')
             df.to_sql(table_name, db.engine, if_exists='append', index=False)
             self.n_initial = db.session.execute(cmd).scalar()
             db.session.commit()

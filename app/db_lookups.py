@@ -416,6 +416,6 @@ def get_annotation_dict(table_name):
         # shorten annotation if necessary
         if len(annot_list) > 1:
             c = Counter(annot_list)  # Counter({'a': 5, 's': 1})
-            annot = c.iterkeys().next() + '+'
+            annot = c.most_common()[0][0] + '+'
         annot_dict[(hugo, patient)] = annot
     return annot_dict
