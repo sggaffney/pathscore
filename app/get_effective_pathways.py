@@ -1247,11 +1247,11 @@ def plot_pathway(pway, hypermutated=None, annot_dict=None, max_effective=None,
     # PLOT MATRIX
     box_px = current_app.config['MATRIX_BOX_PX']
     hpad = current_app.config['MATRIX_HPAD_PX']
-    fontsize = current_app.config['MATRIX_TXT_SIZE']
+    label_fontsize = current_app.config['MATRIX_TXT_SIZE']
     gm = plot.GeneMatrix(genepatients_dict, annot_dict, pway.exclusive,
                          n_all_patients=user_upload.n_patients,
                          hypermutated=hypermutated)
-    hfig, ax = gm.plot_matrix(fontsize=fontsize, max_label=hpad, box_px=box_px,
-                              show_limits=False)
+    hfig, ax, _ = gm.plot_matrix(label_fontsize=label_fontsize, max_label=hpad,
+                                 box_px=box_px, show_limits=False)
     hfig.savefig(matrix_path)
     plot.plt.close(hfig)

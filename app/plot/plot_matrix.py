@@ -11,6 +11,10 @@ from matplotlib.transforms import Bbox
 from .utils import get_target_bbox
 
 
+ANNOT_DEFAULTS = dict(fontsize=16, fontweight='bold',
+                      fontname='Apple Symbols', color='w')
+
+
 class GeneMatrix:
     """Holds patient-gene matrix info for a single pathway.
     Write matrix to file with call to export_matrix."""
@@ -79,13 +83,24 @@ class GeneMatrix:
     #     pairs in pathway."""
     #     pass
 
-    def plot_matrix(self, fontsize=8, max_label=150, box_px=20, show_limits=False):
-        mp = MatrixPlotter(self.matrix, n_all_patients=self.n_all_patients, 
+    def plot_matrix(self, label_fontsize=8, max_label=150, box_px=20,
+                    show_limits=False, annot_kws=None):
+        # UPDATE annotation keywords with defaults
+        if type(annot_kws) is dict:
+            for kw in ANNOT_DEFAULTS:
+                if kw not in annot_kws:
+                    annot_kws[kw] = ANNOT_DEFAULTS[kw]
+        if annot_kws is None:
+            annot_kws = ANNOT_DEFAULTS.copy()
+
+        mp = MatrixPlotter(self.matrix, n_all_patients=self.n_all_patients,
                            exclusive_genes=self.exclusive_genes, 
                            hypermutated=self.hypermutated)
-        hfig, ax = mp.draw_matrix(fontsize=fontsize, max_label=max_label,
-                                  show_limits=show_limits, box_px=box_px)
-        return hfig, ax
+        hfig, ax, hanno = mp.draw_matrix(max_label=max_label,
+                                         show_limits=show_limits, box_px=box_px,
+                                         annot_kws=annot_kws,
+                                         label_fontsize=label_fontsize)
+        return hfig, ax, hanno
 
     def save_matrix(self, out_path=None, **plot_kwargs):
         # if not out_path:
@@ -94,7 +109,7 @@ class GeneMatrix:
         #         if self.maf_path else os.getcwd()
         #     fig_name = 'matrix_' + d.strftime('%Y-%m-%d_%H%M%S%f') + '.pdf'
         #     out_path = os.path.join(maf_dir, fig_name)
-        hfig, ax = self.plot_matrix(**plot_kwargs)
+        hfig, ax, _ = self.plot_matrix(**plot_kwargs)
         hfig.savefig(out_path)  # from app.plot.plot_dendrogram import plot_dendrogram
         return out_path
 
@@ -149,8 +164,11 @@ class MatrixPlotter(object):
             patient_labels.append(label)
         self.patient_labels = patient_labels
 
-    def draw_matrix(self, fontsize=10, max_label=100, box_px=30, show_limits=False):
+    def draw_matrix(self, max_label=100, box_px=30, show_limits=False,
+                    label_fontsize=10, annot_kws=None):
         """Generate matrix figure."""
+        if annot_kws is None:
+            annot_kws = ANNOT_DEFAULTS.copy()
         # figsize = [(self.ax_x['length'] + self.ax_x['padding']) / self.upi,
         #            (self.ax_y['length'] + self.ax_y['padding']) / self.upi]
 
@@ -187,6 +205,7 @@ class MatrixPlotter(object):
         m_reindex.columns = np.arange(0, self.n_patients)
         s = m_reindex.stack()
         mut_inds = s[s].index.values
+        annot_handles = []
         for g_ind, p_ind in mut_inds:
             gene = self.use_genes[g_ind]
             # patient = self.use_patients[p_ind]
@@ -196,8 +215,8 @@ class MatrixPlotter(object):
                 self._add_box(p_ind, g_ind, ax, color='blue')
             annot = self.matrix_df.iloc[g_ind, p_ind]
             if annot is not np.bool_(True) and annot is not True:
-                self._add_annot(p_ind, g_ind, ax, annot, fontsize=fontsize,
-                                fontweight='bold')
+                t = self._add_annot(p_ind, g_ind, ax, annot, annot_kws=annot_kws)
+                annot_handles.append(t)
         # WHITE LINE GRID
         self._add_grid(ax)
 
@@ -206,7 +225,7 @@ class MatrixPlotter(object):
         ax.axes.get_yaxis().set_visible(False)
         ax.tick_params(axis=u'both', which=u'both', length=0)
 
-        labels = self._add_ax_labels(fontsize=fontsize)
+        labels = self._add_ax_labels(fontsize=label_fontsize)
         obj_list.extend(labels)
 
         # ADJUST FIGURE
@@ -243,7 +262,7 @@ class MatrixPlotter(object):
         hfig.set_figwidth(fwidth_in)
         hfig.set_figheight(fheight_in)
         
-        return hfig, ax
+        return hfig, ax, annot_handles
 
     def _add_grid(self, ax):
         """Add white grid lines.
@@ -295,12 +314,11 @@ class MatrixPlotter(object):
         rect = patches.Rectangle((l, b), w, h, fc=color, ec='none')
         ax.add_patch(rect)
 
-    def _add_annot(self, x_i, y_i, ax, annot, fontsize=8, fontweight='bold', color='w'):
+    def _add_annot(self, x_i, y_i, ax, annot, annot_kws=None):
         """Add annotation string to mutation box using x,y index."""
         x = x_i * self.ax_x['boxlen'] + self.ax_x['boxlen']/2
         y = y_i * self.ax_y['boxlen'] + self.ax_y['boxlen']/2
-        t = ax.text(x, y, annot, ha='center', va='center',
-                    fontsize=fontsize, color=color, fontweight=fontweight)
+        t = ax.text(x, y, annot, ha='center', va='center', **annot_kws)
         return t
 
     def _add_ax_labels(self, fontsize=10):
