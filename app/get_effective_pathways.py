@@ -229,12 +229,9 @@ class MutationTable:
             # print(load_str)
             db.session.execute(create_str)
             # LOAD USING PANDAS, FORMERLY: db.session.execute(load_str)
-            df = pd.read_table(data_path,
-                               dtype={'hugo_symbol': str,
-                                      'entrez_id': int,
-                                      'patient_id': str,
-                                      'annot': str})
-            df['annot'] = df['annot'].fillna('')
+            df = pd.read_table(data_path, dtype=str)
+            if self.has_annot:
+                df['annot'] = df['annot'].fillna('')
             df.to_sql(table_name, db.engine, if_exists='append', index=False)
             self.n_initial = db.session.execute(cmd).scalar()
             db.session.commit()
