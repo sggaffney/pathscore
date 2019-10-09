@@ -1058,7 +1058,9 @@ def generate_plot_files(user_upload, detail_path=None, genome_size=None,
     scores_path, names_path, tree_svg_path = naming_rules.\
         get_tree_score_paths(user_upload)
     scores, names = prep_dendrogram(all_pathways, min_len=50)
-    name_indices = plot.plot_dendrogram(scores, out_svg=tree_svg_path)
+    name_indices = []
+    if names:  # check for pathways
+        name_indices = plot.plot_dendrogram(scores, out_svg=tree_svg_path)
     # Write pathway names to text file
     names = [names[i] for i in name_indices]
     with open(names_path, 'w') as out:

@@ -38,7 +38,7 @@
     <!--</div>-->
 <!--</div>-->
 
-
+{% if names_odict %}
 <div id="resizable-tree" class="ui-widget-content">
     <div class="tree-holder">
         <div class="dendrogram">
@@ -50,6 +50,9 @@
             {% endfor%}</div>
     </div>
 </div>
+{% else %}
+<div><p>No significantly mutated pathways found.</p></div>
+{% endif %}
 
 <div id="imageContainer" class="padded">
 </div>
