@@ -13,7 +13,7 @@ def get_target_bbox(obj_list, ax=None, hfig=None):
     renderer = hfig.canvas.get_renderer()
     bb_list = []
     for obj in obj_list:
-        bb_list.append(obj.get_window_extent(renderer=renderer).transformed(transf))
+        bb_list.append(obj.get_tightbbox(renderer=renderer).transformed(transf))
     extents = np.vstack([bb.extents for bb in bb_list])
     # print(extents)
 

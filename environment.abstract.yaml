@@ -31,3 +31,4 @@ dependencies:
     - python-dotenv
     - redis==2.10.6
     - flower
+    - email_validator
