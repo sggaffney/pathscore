@@ -5,9 +5,10 @@ import numpy as np
 # mpl.use('tkagg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.transforms import Bbox
 from matplotlib.collections import PatchCollection
 
-from .utils import get_target_bbox
+# from .utils import get_target_bbox
 
 N_CUTOFF = 1000000  # max effective pathway size before downscaling.
 
@@ -94,8 +95,8 @@ def plot_target(n_actual=None, n_effective=None, n_max=None, pc_dict=None,
     wcollection.set_array(np.array(pc_list))
     ax.add_collection(wcollection)
     ax.axis('off')
-    obj_list = list()  # will hold objects with bounding boxes to inspect
-    obj_list.append(wcollection)
+    # obj_list = list()  # will hold objects with bounding boxes to inspect
+    # obj_list.append(wcollection)
 
     # text: COVERAGES
     for ind, cov in enumerate(pc_list):
@@ -107,7 +108,7 @@ def plot_target(n_actual=None, n_effective=None, n_max=None, pc_dict=None,
         t = plt.text(textpos['X'][ind], textpos['Y'][ind], gene, 
                      ha=textpos['h'][ind], va=textpos['v'][ind],
                      fontsize=fontsize, rotation=textpos['rot'][ind])
-        obj_list.append(t)
+        # obj_list.append(t)
 
     # RED PIE
     plt.pie([pway_pc, 100 - pway_pc], colors=['red', '#FA6864'], startangle=90, 
@@ -127,11 +128,19 @@ def plot_target(n_actual=None, n_effective=None, n_max=None, pc_dict=None,
     ax.set_position([0, 0, 1, 1])
     ax.set_xlim([0, 1])
     ax.set_ylim([0, 1])
-    bbox = get_target_bbox(obj_list, ax=ax, hfig=hfig)
-    ax.set_xlim([bbox.xmin, bbox.xmax])
-    ax.set_ylim([bbox.ymin, bbox.ymax])
+    # bbox = get_target_bbox(obj_list, ax=ax, hfig=hfig)
+    bbox = ax.get_tightbbox(renderer=hfig.canvas.get_renderer())\
+        .transformed(ax.transData.inverted())
+    # ensure circle of radius r_max is included
+    xmin = min(bbox.xmin, 0.5 - r_max)
+    xmax = max(bbox.xmax, 0.5 + r_max)
+    ymin = min(bbox.ymin, 0.5 - r_max)
+    ymax = max(bbox.ymax, 0.5 + r_max)
+    bbox = Bbox(np.array([[xmin, ymin], [xmax, ymax]]))
     hfig.set_figwidth(hfig.get_figwidth() * bbox.width)
     hfig.set_figheight(hfig.get_figheight() * bbox.height)
+    ax.set_xlim([bbox.xmin, bbox.xmax])
+    ax.set_ylim([bbox.ymin, bbox.ymax])
 
     return ax
     
