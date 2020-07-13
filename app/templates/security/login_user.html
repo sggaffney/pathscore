@@ -5,16 +5,18 @@
     <h1>Login</h1>
 </div>
 
-{% from "security/_macros.html" import render_field_with_errors, render_field %}
+<div class="container">
+{% from "security/_macros.html" import render_field_bootstrap, render_field %}
 <!--{% include "security/_messages.html" %}-->
-<form action="{{ url_for_security('login') }}" method="POST" name="login_user_form">
+<form action="{{ url_for_security('login') }}" method="POST"
+      name="login_user_form" class="form-horizontal">
   {{ login_user_form.hidden_tag() }}
-  {{ render_field_with_errors(login_user_form.email) }}
-  {{ render_field_with_errors(login_user_form.password) }}
-  {{ render_field_with_errors(login_user_form.remember) }}
-  {{ render_field(login_user_form.next) }}
-  {{ render_field(login_user_form.submit) }}
+  {{ render_field_bootstrap(login_user_form.email) }}
+  {{ render_field_bootstrap(login_user_form.password, autocomplete='current_password') }}
+  {{ render_field_bootstrap(login_user_form.remember) }}
+  {{ render_field_bootstrap(login_user_form.submit) }}
 </form>
+</div>{# end container div #}
 {% include "security/_menu.html" %}
 
 {% endblock %}

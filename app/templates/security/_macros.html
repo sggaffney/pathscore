@@ -13,6 +13,38 @@
   </div>
 {% endmacro %}
 
+
+{% macro render_field_bootstrap(field) %}
+  <div class="form-group">
+    {% if field.name not in ['submit', 'remember'] %}
+      {{ field.label(class="control-label col-sm-2") }}
+      <div class="col-sm-6">
+        {{ field(class="form-control", **kwargs)|safe }}
+        {% if field.errors %}
+          <ul>
+          {% for error in field.errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+      {% else %}
+        <div class="col-sm-offset-2 col-sm-6">
+        {% if field.name == 'remember' %}
+          <div class="checkbox">
+          <label>
+              {{ field(**kwargs)|safe }} Remember me
+          </label>
+          </div>
+        {% else %}
+          {{ field(class="btn btn-default", **kwargs)|safe }}
+        {% endif %}
+        </div>
+      {% endif %}
+  </div>
+{% endmacro %}
+
+
 {% macro render_field(field) %}
   <div class="form-group">{{ field(**kwargs)|safe }}</div>
 {% endmacro %}
