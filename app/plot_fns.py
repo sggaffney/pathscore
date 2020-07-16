@@ -47,6 +47,7 @@ def get_span(location=0.5, dim='width', **style_kws):
 
 def get_scatter_dict(upload_obj):
     """Create dictionary required for scatter view."""
+    scatter_dict = dict(resources=resources, js_inds=[], plot_inds=[])
     detail_path = naming_rules.get_detailed_path(upload_obj)
     all_pathways = load_pathway_list_from_file(detail_path)
     data_pways, data_pvals, data_effect, data_d = [], [], [], []
@@ -58,6 +59,8 @@ def get_scatter_dict(upload_obj):
         data_effect.append(float(p.n_effective) / p.n_actual)
         data_pways.append(p)
         data_d.append(p.D)
+    if not data_effect:
+        return scatter_dict
     x = np.log2(np.array(data_effect))  # effect size
     y = -np.log10(np.array(data_pvals))  # p-value
     d_vals = np.array(data_d)  # alternatively: np.log2...
@@ -106,16 +109,15 @@ def get_scatter_dict(upload_obj):
         has_cnv = True
     else:
         has_cnv = False
-
-    return {
+    scatter_dict.update({
         'js_name': js_name,
         'js_inds': js_inds,
         'plot_inds': plot_inds,
         'has_cnv': has_cnv,
         'bokeh_script': script,
         'bokeh_div': div,
-        'resources': resources
-        }
+        })
+    return scatter_dict
 
 
 def get_tree_data(upload_obj):

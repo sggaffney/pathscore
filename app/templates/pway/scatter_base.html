@@ -38,6 +38,7 @@
     </div>
 </div>
 
+{% if bokeh_div %}
 <form class="form-inline" style="margin-top: 15px;" id="geneForm">
   <div class="form-group">
     <!--<label for="userGenes">Email address</label>-->
@@ -47,6 +48,9 @@
     <label for="userGenes" class="control-label" id="selectCount"></label>
   </div>
 </form>
+{% else %}
+No significantly mutated pathways found.
+{% endif %}
 
 {% if has_cnv %}
 <div>
@@ -57,6 +61,7 @@
 
 <div id="imageContainer" class="padded">
 </div>
+
 
 {% endblock page_content %}
 
