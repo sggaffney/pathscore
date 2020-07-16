@@ -14,7 +14,9 @@ from bokeh.models import Range1d
 from bokeh.models.tools import HoverTool
 from bokeh.models.widgets import TextInput, RadioGroup
 from bokeh.models.callbacks import CustomJS
+from time import sleep
 
+from ..compare import get_comparison_table, proj_ids_from_str, proj_str_from_ids
 from . import pway  # FileTester, TempFile
 from ..uploads import MutationFile, BmrFile
 from ..errors import ValidationError
@@ -415,6 +417,48 @@ def compare():
                            bokeh_script=script,
                            bokeh_div=div, include_genes=include,
                            resources=plot_fns.resources)
+
+
+@pway.route('/compare/<int:ref>/<int:alt>', defaults={'others': ''})
+@pway.route('/compare/<int:ref>/<int:alt>/<path:others>')
+@login_required
+def comparison_table(ref, alt, others):
+    # if proj among arguments, show this tree first.
+    try:
+        others = [int(i) for i in others.split('/')] if others else []
+    except ValueError as e:
+        abort(404, 'Invalid IDs.')
+    # This should be an make_async call so basic page render can proceed
+    proj_ids = [ref, alt] + others
+    try:
+        get_comparison_table(proj_ids)
+    except ValidationError as e:
+        abort(404, str(e))
+    proj_str = proj_str_from_ids(proj_ids)
+    return render_template('pway/comparison_table.html', ref=ref, alt=alt,
+                           others=others, proj_str=proj_str)
+
+
+@login_required
+@pway.route('/load_comparison', methods=['POST'])
+def load_comparison():
+    proj_ids = []
+    try:
+        proj_str = request.form['proj_str']
+        proj_ids = proj_ids_from_str(proj_str)
+    except ValidationError as e:
+        abort(404)
+    comp_dir = naming_rules.get_comparison_dir(current_user.id, proj_ids)
+    if not os.path.exists(comp_dir):
+        abort(404, 'Invalid directory.')
+    # make sure directory is present before doing threaded calcs
+    complete_file = os.path.join(comp_dir, '.complete')
+    html_path = os.path.join(comp_dir, 'comparison.html')
+    while not os.path.exists(complete_file):
+        sleep(2)
+    with open(html_path, 'r') as infile:
+        lines = infile.readlines()
+    return {'html': '\n'.join(lines)}
 
 
 def get_effect_at_index(path_list, index):

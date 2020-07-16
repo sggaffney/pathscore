@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-md-12 no-gutter" style="overflow: scroll">
+<style scoped="">
+
+{# SEE https://github.com/jupyterlab/jupyterlab/blob/3d07723da5543c8bfb4f509f00b95f75789d38c7/packages/rendermime/style/index.css#L341 #}
+
+/* jupyterlab/packages/theme-light-extension/style/variables.css */
+:root {
+  --jp-ui-font-color0: rgba(0, 0, 0, 1);
+  --jp-ui-font-color1: rgba(0, 0, 0, 0.87);
+  --jp-layout-color0: white;
+  --jp-rendermime-error-background: #fdd;
+  --jp-rendermime-table-row-background: #ddd;
+  --jp-rendermime-table-row-hover-background: #aaa;
+}
+
+/* Tables */
+.jp-RenderedHTMLCommon table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: none;
+  color: var(--jp-ui-font-color1);
+  font-size: 12px;
+  table-layout: fixed;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.jp-RenderedHTMLCommon thead {
+  border-bottom: var(--jp-border-width) solid var(--jp-border-color1);
+  vertical-align: bottom;
+}
+
+.jp-RenderedHTMLCommon td,
+.jp-RenderedHTMLCommon th,
+.jp-RenderedHTMLCommon tr {
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+
+.jp-RenderedMarkdown.jp-RenderedHTMLCommon td,
+.jp-RenderedMarkdown.jp-RenderedHTMLCommon th {
+  max-width: none;
+}
+
+:not(.jp-RenderedMarkdown).jp-RenderedHTMLCommon td,
+:not(.jp-RenderedMarkdown).jp-RenderedHTMLCommon th,
+:not(.jp-RenderedMarkdown).jp-RenderedHTMLCommon tr {
+  text-align: right;
+}
+
+.jp-RenderedHTMLCommon th {
+  font-weight: bold;
+}
+
+.jp-RenderedHTMLCommon tbody tr:nth-child(odd) {
+  background: var(--jp-layout-color0);
+}
+
+.jp-RenderedHTMLCommon tbody tr:nth-child(even) {
+  background: var(--jp-rendermime-table-row-background);
+}
+
+.jp-RenderedHTMLCommon tbody tr:hover {
+  background: var(--jp-rendermime-table-row-hover-background);
+}
+
+.jp-RenderedHTMLCommon table {
+  margin-bottom: 1em;
+}
+
+.jp-RenderedHTMLCommon p {
+  text-align: left;
+  margin: 0px;
+}
+
+.jp-RenderedHTMLCommon p {
+  margin-bottom: 1em;
+}
+</style>
+        <div id="comp-table" class="p-Widget jp-RenderedHTMLCommon jp-RenderedHTML jp-mod-trusted jp-OutputArea-output" data-mime-type="text/html">
+            <img src="{{ url_for('static', filename='loading.gif') }}">&nbsp;Loading...
+        </div>
+
+    </div>
+</div>
+
+{% endblock page_content %}
+
+
+{% block scripts %}
+{{super()}}
+
+<script>
+    $(function() {
+        load_tables('{{ proj_str }}', '#comp-table');
+    })
+</script>
+
+<script>
+    function load_tables(proj_str, destElem) {
+        console.log('Loading tables.')
+        $.post('{{ url_for("pway.load_comparison") }}', {
+            proj_str: proj_str,
+        }).done(function(response) {
+            $(destElem).html(response['html'])
+        }).fail(function() {
+            $(destElem).text("Error: Could not contact server.");
+        });
+    }
+</script>
+
+
+{% endblock %}
+

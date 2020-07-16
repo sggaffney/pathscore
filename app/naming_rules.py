@@ -20,6 +20,21 @@ def get_bmr_folder(user_id):
     return os.path.join(user_folder, 'bmr')
 
 
+def get_user_comparison_dir(user_id):
+    """Holds directories with specific project list comparisons."""
+    dir_path = get_user_folder(user_id)
+    comparison_dir = os.path.join(dir_path, 'comparisons')
+    return comparison_dir
+
+
+def get_comparison_dir(user_id, proj_id_list):
+    """Directory for specific project list comparison tables."""
+    parent = get_user_comparison_dir(user_id)
+    proj_str = '_'.join([str(i) for i in proj_id_list])
+    path = os.path.join(parent, proj_str)
+    return path
+
+
 def get_js_name(upload_obj):
     return upload_obj.get_local_filename() + ".js"
 
@@ -145,4 +160,3 @@ def get_rejected_gene_path(upload_obj):
 
 def get_apache_path(full_path):
     return full_path.replace('/www/pway', '/static/data')
-

@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3
+  - python>=3.6
   - pip
   - Flask
   - Flask-Login==0.3.2
@@ -24,6 +24,7 @@ dependencies:
   - bokeh==0.12.6
   - matplotlib
   - scikit-learn
+  - openpyxl
   - pip:
     - py-bcrypt
     - flask_httpauth
