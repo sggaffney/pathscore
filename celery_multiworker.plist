@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>EnvironmentVariables</key>
+        <dict>
+                <key>LANG</key>
+                <string>en_US.utf-8</string>
+                <key>LC_ALL</key>
+                <string>en_US.UTF-8</string>
+                <key>PATH</key>
+                <string>/some/dir1/bin:/some/dir2/bin</string>
+        </dict>
+        <key>GroupName</key>
+        <string>staff</string>
+        <key>Label</key>
+        <string>org.celeryq.multiworker</string>
+        <key>ProgramArguments</key>
+        <array>
+                <string>/path/to/python/environment/bin/celery</string>
+                <string>multi</string>
+                <string>start</string>
+                <string>mailer</string>
+                <string>analyst</string>
+                <string>-Q:mailer</string>
+                <string>mail</string>
+                <string>-Q:analyst</string>
+                <string>analysis</string>
+                <string>-c:mailer</string>
+                <string>1</string>
+                <string>-c:analyst</string>
+                <string>3</string>
+                <string>-A</string>
+                <string>celery_worker.celery</string>
+                <string>--loglevel=info</string>
+                <string>-E</string>
+                <string>--pidfile=/path/to/app/dir/celery/%N.pid</string>
+                <string>--logfile=/path/to/app/dir/celery/%N.log</string>
+        </array>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>Umask</key>
+        <integer>7</integer>
+        <key>UserName</key>
+        <string>_www</string>
+        <key>WorkingDirectory</key>
+        <string>/path/to/app/dir/</string>
+</dict>
+</plist>
