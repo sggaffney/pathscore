@@ -14,11 +14,15 @@
 {% endmacro %}
 
 
+{% set w_left = 4 %}
+{% set w_right = 8 %}
+
 {% macro render_field_bootstrap(field) %}
   <div class="form-group">
     {% if field.name not in ['submit', 'remember'] %}
-      {{ field.label(class="control-label col-sm-2") }}
-      <div class="col-sm-6">
+      {% set temp_class = "control-label col-sm-" ~ w_left %}
+      {{ field.label(class=temp_class) }}
+      <div class="col-sm-{{ w_right }}">
         {{ field(class="form-control", **kwargs)|safe }}
         {% if field.errors %}
           <ul>
@@ -29,7 +33,7 @@
         {% endif %}
       </div>
       {% else %}
-        <div class="col-sm-offset-2 col-sm-6">
+        <div class="col-sm-offset-{{ w_left }} col-sm-{{ w_right }}">
         {% if field.name == 'remember' %}
           <div class="checkbox">
           <label>
