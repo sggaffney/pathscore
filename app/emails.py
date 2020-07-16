@@ -27,7 +27,7 @@ def run_finished_notification(upload_id):
     run_finished_notification_async(msg)
 
 
-# @async
+# @make_async
 # @celery.task
 def run_finished_notification_async(msg):
     with mail.connect() as conn:

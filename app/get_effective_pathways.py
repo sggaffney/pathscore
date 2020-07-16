@@ -59,7 +59,7 @@ class MatlabFailureException(Exception):
     pass
 
 
-# @async
+# @make_async
 # @celery.task
 def run_analysis_async(upload_id):
     """Asynchronous run of pathway analysis."""

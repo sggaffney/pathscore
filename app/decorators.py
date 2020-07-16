@@ -31,7 +31,7 @@ def ssl_required(fn):
     return decorated_view
 
 
-def async(fn):
+def make_async(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         thr = Thread(target=fn, args=args, kwargs=kwargs)
