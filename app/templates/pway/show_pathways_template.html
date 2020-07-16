@@ -47,7 +47,7 @@
 
 
 
-<div>
+<div id="intro">
 	<p class="lead">Target plots and matrix plots are shown for each significant pathway.
 		Toggle the plot displays using the buttons below. Click on a matrix plot to expand
 		to full size.</p>
@@ -59,7 +59,7 @@
 <div id="imageContainer" class="padded">
 </div>
 
-<nav>
+<nav id="pway-pager">
   <ul class="pager">
     <!--<li><a id="prvPways">Previous</a></li>-->
     <li><a id="nextPways">Show additional pathways</a></li>
@@ -241,11 +241,21 @@
 			}
 		}
         if(!use_pways.length){
-			$imageContainer.text("No pathways found.");
+			$imageContainer.html('<span style="color: red">No significantly mutated pathways found. Please select another project.</span>');
+			$targetButton.hide()
+			$matrixButton.hide()
+			$("#intro").hide()
 		}
 		else {
 			$imageContainer.text(use_pways.length + " pathways found.");
+			$targetButton.show()
+			$matrixButton.show()
+			$("#intro").show()
 		}
+		if(use_pways.length <= pageMax)
+			$("#nextPways").hide()
+		else
+			$("#nextPways").show()
 		// sets use_pways_page to first page set
 		use_pways_page = use_pways.slice(0, pageNo+pageMax);
 		updateImages()
