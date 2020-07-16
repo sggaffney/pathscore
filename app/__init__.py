@@ -7,7 +7,8 @@ from flask_login import LoginManager
 from flask_bootstrap import Bootstrap
 from flask_mail import Mail
 from celery import Celery
-from config import config, Config
+
+from ..config import config, Config
 import logging
 
 bootstrap = Bootstrap()
@@ -112,7 +113,7 @@ def create_app(config_name):
     #                                password='password')
     #     db.session.commit()
 
-    from app.admin import start_cleanup_thread, force_all_stopped_status
+    from .admin import start_cleanup_thread, force_all_stopped_status
 
     @app.before_first_request
     def before_first_request():

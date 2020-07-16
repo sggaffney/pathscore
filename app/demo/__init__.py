@@ -1,6 +1,6 @@
 import os
 from flask import Blueprint, g, flash, url_for, current_app, redirect
-from app.get_effective_pathways import ref_info
+from ..get_effective_pathways import ref_info
 from ..errors import LimitError
 
 demo = Blueprint('demo', __name__)

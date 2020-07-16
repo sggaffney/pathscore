@@ -6,7 +6,7 @@ from flask import request
 from werkzeug.utils import secure_filename
 
 from . import api
-from app import db
+from .. import db
 from ..decorators import limit_user_uploads  # ssl_required
 from .decorators import json, etag, collection
 from ..errors import ValidationError

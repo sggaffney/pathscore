@@ -11,8 +11,8 @@ import pandas as pd
 
 from . import plot_fns, naming_rules
 from .emails import run_finished_notification
-from app.get_effective_pathways import MutationTable, save_project_params_txt
-from app.naming_rules import get_user_folder, get_project_folder, \
+from .get_effective_pathways import MutationTable, save_project_params_txt
+from .naming_rules import get_user_folder, get_project_folder, \
     get_params_path
 
 _cleanup_thread = None
@@ -131,7 +131,7 @@ def export_detail_path(upload_obj):
         'cooccurring',
         'gene_coverage',
         'n_genes_mutated',
-        'n_geness_total',
+        'n_genes_total',
         'n_cov',
         'pc_cov',
     ]

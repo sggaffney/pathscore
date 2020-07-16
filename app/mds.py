@@ -12,10 +12,10 @@ from sklearn import manifold
 from sklearn.decomposition import PCA
 
 import app
-from app import naming_rules, db
-from app.models import UserFile
-import app.get_effective_pathways as gep
-import app.db_lookups as lookup
+from . import naming_rules, db
+from .models import UserFile
+from . import get_effective_pathways as gep
+from . import db_lookups as lookup
 
 
 metric_list = ['jaccard', 'dice', 'odds_inv', 'hamming', 'rogerstanimoto',

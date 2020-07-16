@@ -17,7 +17,7 @@ from .comb_functions import get_pway_likelihood_cython
 from . import db, celery
 from . import emails
 from .models import UserFile
-import app
+# import app
 from .db_lookups import lookup_path_sizes, lookup_background_size, \
     lookup_patient_counts, lookup_patient_lengths, build_path_patient_dict, \
     lookup_path_lengths, fetch_path_ids_interest_genes, get_pathway_name_dict, \

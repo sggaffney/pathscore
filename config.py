@@ -90,6 +90,7 @@ class DevelopmentConfig(Config):
     DB_NAME = os.environ.get('MYSQLDB_DB_DEV')
     SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO') == 'True'
 
+
 class TestingConfig(Config):
     TESTING = True
     SECRET_KEY = 'secret'
