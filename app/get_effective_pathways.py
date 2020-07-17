@@ -14,7 +14,7 @@ pyximport.install(setup_args={'include_dirs': np.get_include()})
 from sqlalchemy.orm.exc import StaleDataError
 
 from .comb_functions import get_pway_likelihood_cython
-from . import db
+from . import db, celery
 from . import emails
 from .models import UserFile
 # import app
@@ -27,7 +27,7 @@ from .db_lookups import lookup_path_sizes, lookup_background_size, \
 from . import plot
 from . import misc
 from . import naming_rules
-from .decorators import make_async
+# from .decorators import make_async
 
 ref_info = None
 
@@ -60,7 +60,7 @@ class MatlabFailureException(Exception):
     pass
 
 
-@make_async
+@celery.task
 def run_analysis_async(upload_id):
     """Asynchronous run of pathway analysis."""
     db.session.remove()  # guarantee new db session for this thread
@@ -137,7 +137,7 @@ def run_analysis(upload_id):
     # db.session.add(user_upload)
     # db.session.commit()
     # app_obj = current_app._get_current_object()
-    run_analysis_async(upload_id)
+    run_analysis_async.delay(upload_id)
 
 
 def drop_table(table_name):

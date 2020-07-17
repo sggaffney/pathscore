@@ -39,12 +39,12 @@ def _threads_wrapper(fn):
     return wrapped
 
 
-def _celery_wrapper(fn):
-    @celery.task
-    @wraps(fn)
-    def wrapped(*args, **kwargs):
-        return fn(*args, **kwargs)
-    return wrapped
+# def _celery_wrapper(fn):
+#     @celery.task
+#     @wraps(fn)
+#     def wrapped(*args, **kwargs):
+#         return fn(*args, **kwargs)
+#     return wrapped
 
 
 def make_async(fn):
