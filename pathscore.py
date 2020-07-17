@@ -10,6 +10,6 @@ env_path = os.getenv('ENV_NAME', find_dotenv())
 logger.info("Loading .env from %s", env_path)
 load_dotenv(env_path, override=True)
 
-from .app import create_app
+from app import create_app
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')

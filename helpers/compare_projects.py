@@ -1,6 +1,6 @@
 import re
 import logging
-from collections import OrderedDict, Counter
+from collections import Counter
 
 import pandas as pd
 import scipy.stats as stats

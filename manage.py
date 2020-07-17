@@ -16,9 +16,9 @@ import shutil
 from flask_migrate import Migrate, MigrateCommand
 from flask_script import Manager
 
-from .app import create_app, db, mds
-from .app.models import User, Role, UserFile
-from .app.naming_rules import get_project_folder
+from app import create_app, db, mds
+from app.models import User, Role, UserFile
+from app.naming_rules import get_project_folder
 
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')

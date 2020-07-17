@@ -8,7 +8,7 @@ from flask_bootstrap import Bootstrap
 from flask_mail import Mail
 from celery import Celery
 
-from ..config import config, Config
+from config import config, Config
 import logging
 
 bootstrap = Bootstrap()
