@@ -1,12 +1,14 @@
+import os
 from threading import Thread
 from functools import wraps
 from datetime import datetime, timedelta
 from flask import request, redirect, g
 from flask_login import current_user
 
+from . import celery
 from .models import UserFile
 from .misc import get_wait_time_string
-from .errors import LimitError
+from .errors import LimitError, ConfigError
 
 
 def no_ssl(fn):
@@ -26,17 +28,43 @@ def ssl_required(fn):
             return fn(*args, **kwargs)
         else:
             return redirect(request.url.replace("http://", "https://"))
-        return fn(*args, **kwargs)
-
     return decorated_view
 
 
-def make_async(fn):
+def _threads_wrapper(fn):
     @wraps(fn)
-    def wrapper(*args, **kwargs):
+    def wrapped(*args, **kwargs):
         thr = Thread(target=fn, args=args, kwargs=kwargs)
         thr.start()
-    return wrapper
+    return wrapped
+
+
+def _celery_wrapper(fn):
+    @celery.task
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        return fn(*args, **kwargs)
+    return wrapped
+
+
+def make_async(fn):
+    try:
+        mode = os.environ.get('PARALLEL_MODE')
+    except KeyError:
+        raise ConfigError("Missing PARALLEL_MODE in environment.")
+    if mode == 'celery':
+        dec = celery.task
+    elif mode == 'threads':
+        dec = _threads_wrapper
+    elif mode == 'off':
+        return fn
+    else:
+        raise ConfigError("Unrecognised PARALLEL_MODE configuration.")
+
+    @dec
+    def wrapped(*args, **kwargs):
+        return fn(*args, **kwargs)
+    return wrapped
 
 
 def limit_user_uploads(f):

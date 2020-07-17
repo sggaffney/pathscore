@@ -1,9 +1,9 @@
 from flask import current_app, render_template, url_for
 from flask_mail import Message
-from . import mail, celery
-from .models import UserFile
 
-_email_thread = None
+from . import mail
+from .models import UserFile
+from .decorators import make_async
 
 
 def get_notification_email(email, subject, body_text, body_html):
@@ -27,8 +27,7 @@ def run_finished_notification(upload_id):
     run_finished_notification_async(msg)
 
 
-# @make_async
-# @celery.task
+@make_async
 def run_finished_notification_async(msg):
     with mail.connect() as conn:
         conn.send(msg)
