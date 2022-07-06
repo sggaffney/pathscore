@@ -40,6 +40,9 @@ def get_comparison_table(proj_ids: list, nice_names=None, caption=None):
     projs = query.filter(UserFile.file_id.in_(proj_ids)).all()
     if len(projs) != n_ids:
         raise ValidationError("Invalid project(s) requested")
+    # Ensure project ordering matches proj_ids
+    proj_dict = {i.file_id: i for i in projs}
+    projs = [proj_dict[i] for i in proj_ids]
     if nice_names is None:
         categ_names = [p.proj_suffix for p in projs]
     else:
