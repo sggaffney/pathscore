@@ -17,3 +17,4 @@ unused/
 notebooks/
 test_files/
 *.egg-info
+.my.cnf*
