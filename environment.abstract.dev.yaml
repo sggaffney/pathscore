@@ -1,0 +1,38 @@
+name: base
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.6
+  - pip
+  - Flask
+  - alembic
+  - Flask-Login
+  - Flask-Bootstrap
+  - Flask-SQLAlchemy
+  - Flask-Security
+  - Flask-Script
+  # - Flask-Uploads
+  - Flask-Migrate
+  - numpy
+  - scipy
+  - pymysql
+  - Unidecode
+  - cython
+  - pandas
+  - celery
+  - bokeh
+  - matplotlib
+  - scikit-learn
+  - openpyxl
+  # dev extras
+  - jupyterlab
+  # gcc
+  - pip:
+#    - py-bcrypt
+    - flask_httpauth
+    # - mod_wsgi
+    - python-dotenv
+    - redis
+#    - flower
+    - email_validator
