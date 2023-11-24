@@ -1,4 +1,6 @@
 import os
+import logging
+
 from flask import Flask, request, url_for, current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import Security, SQLAlchemyUserDatastore
@@ -8,8 +10,7 @@ from flask_bootstrap import Bootstrap
 from flask_mail import Mail
 from celery import Celery
 
-from config import config, Config
-import logging
+from .config import config, Config
 
 bootstrap = Bootstrap()
 db = SQLAlchemy()

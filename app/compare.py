@@ -10,7 +10,7 @@ from .models import UserFile
 from .naming_rules import get_all_pways_path, get_comparison_dir
 from .admin import export_detail_path
 
-from helpers import compare_projects as cp
+from ..helpers import compare_projects as cp
 
 
 def get_comparison_table(proj_ids: list, nice_names=None, caption=None):

@@ -2,7 +2,7 @@ import os
 import shutil
 from datetime import datetime, timedelta
 from collections import OrderedDict
-from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from itsdangerous import URLSafeTimedSerializer as Serializer
 from flask import current_app, url_for
 from flask_login import current_user
 from flask_security import RoleMixin, UserMixin
