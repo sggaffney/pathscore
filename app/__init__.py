@@ -115,8 +115,7 @@ def create_app(config_name):
 
     from .admin import start_cleanup_thread, force_all_stopped_status
 
-    @app.before_first_request
-    def before_first_request():
+    with app.app_context():
         db.create_all()
         start_cleanup_thread()
         force_all_stopped_status()
