@@ -1,6 +1,5 @@
 import os
 import redis
-from kombu import Exchange, Queue
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -85,24 +84,24 @@ class DevelopmentConfig(Config):
     DEBUG = True
     LOGGING_LEVEL = 'DEBUG'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
+                              'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
     DB_NAME = os.environ.get('MYSQLDB_DB_DEV')
-    SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO').lower() in \
-        ['true', '1', 'on']
+    SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO', 'off').lower() in \
+                      ['true', '1', 'on']
 
 
 class TestingConfig(Config):
     TESTING = True
     LOGGING_LEVEL = 'INFO'
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
+                              'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
     DB_NAME = os.environ.get('MYSQLDB_DB_TEST')
 
 
 class ProductionConfig(Config):
     LOGGING_LEVEL = 'INFO'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+                              'sqlite:///' + os.path.join(basedir, 'data.sqlite')
     DB_NAME = os.environ.get('MYSQLDB_DB')
 
 
@@ -113,5 +112,3 @@ config = {
 
     'default': DevelopmentConfig
 }
-
-
