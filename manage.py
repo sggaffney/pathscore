@@ -6,10 +6,22 @@ from dotenv import load_dotenv, find_dotenv
 
 logger = logging.getLogger(__name__)
 
-# LOAD .env file from location specified by ENV_NAME environment variable
-env_path = os.getenv('ENV_NAME', find_dotenv())
+
+def _get_env_path():
+    """Use .env in app project directory, fallback to find_dotenv."""
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    default_path = os.path.join(basedir, '.env')
+    if os.path.exists(default_path):
+        return default_path
+    alt_path = find_dotenv()
+    if alt_path:
+        return alt_path
+    raise FileNotFoundError("Couldn't find .env file")
+
+
+env_path = _get_env_path()
 logger.info("Loading .env from %s", env_path)
-load_dotenv(env_path, override=True)
+load_dotenv(env_path, override=False)
 
 
 import shutil
