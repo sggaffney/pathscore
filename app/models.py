@@ -8,7 +8,7 @@ from flask_login import current_user
 from flask_security import RoleMixin, UserMixin
 from . import db, login_manager
 from unidecode import unidecode
-from flask_security.utils import encrypt_password, verify_password
+from flask_security.utils import hash_password, verify_password
 
 from . import naming_rules
 from .errors import ValidationError
@@ -51,8 +51,8 @@ class User(UserMixin, db.Model):
 
     @password_raw.setter
     def password_raw(self, password):
-        """Used by manager adduser to has password."""
-        self.password = encrypt_password(password)
+        """Used by manager adduser to hash password."""
+        self.password = hash_password(password)
 
     def verify_password(self, password):
         return verify_password(password, self.password)
@@ -96,17 +96,17 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-@login_manager.token_loader
-def load_token(token):
-    s = Serializer(current_app.config['SECRET_KEY'])
-    try:
-        data = s.loads(token)
-    except:
-        return None
-    id = data.get('user')
-    if id:
-        return User.query.get(id)
-    return None
+# @login_manager.token_loader
+# def load_token(token):
+#     s = Serializer(current_app.config['SECRET_KEY'])
+#     try:
+#         data = s.loads(token)
+#     except:
+#         return None
+#     id = data.get('user')
+#     if id:
+#         return User.query.get(id)
+#     return None
 
 
 class UserFile(db.Model):
