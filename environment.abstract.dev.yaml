@@ -10,9 +10,9 @@ dependencies:
   - Flask-Login
   - Flask-Bootstrap
   - Flask-SQLAlchemy
-  - Flask-Security
+  - flask-security-too>=5.3.1
+  - flask-mail
   - Flask-Script
-  # - Flask-Uploads
   - Flask-Migrate
   - numpy
   - scipy
@@ -25,14 +25,15 @@ dependencies:
   - matplotlib
   - scikit-learn
   - openpyxl
+  - python-dotenv
+  - email_validator
+  - flask-httpauth
+  - redis-py
   # dev extras
   - jupyterlab
-  # gcc
-  - pip:
+#  - gcc
+#  - pip:
 #    - py-bcrypt
-    - flask_httpauth
-    # - mod_wsgi
-    - python-dotenv
-    - redis
+#    - mod_wsgi
+#    - redis
 #    - flower
-    - email_validator

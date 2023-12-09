@@ -1,4 +1,4 @@
-name: pway
+name: base
 channels:
   - conda-forge
   - defaults
@@ -6,13 +6,14 @@ dependencies:
   - python>=3.6
   - pip
   - Flask
+  - alembic==1.7
   - Flask-Login==0.3.2
   - Flask-Bootstrap
   - Flask-SQLAlchemy
   - Flask-Security
   - Flask-Script
-  - Flask-Uploads
-  - Flask-Migrate
+  # - Flask-Uploads
+  - Flask-Migrate==2.7.0
   - numpy
   - scipy
   - pymysql
@@ -25,11 +26,12 @@ dependencies:
   - matplotlib
   - scikit-learn
   - openpyxl
+#  - gcc
   - pip:
-    - py-bcrypt
+#    - py-bcrypt
     - flask_httpauth
-    - mod_wsgi
+    # - mod_wsgi
     - python-dotenv
     - redis==2.10.6
-    - flower
+#    - flower
     - email_validator

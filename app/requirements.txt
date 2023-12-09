@@ -1,13 +1,14 @@
-python>=3.6
+# TODO: sync with conda yml
+python>=3.8.0
 Flask
-Flask-Login==0.3.2
+Flask-Login
 Flask-Bootstrap
 Flask-SQLAlchemy
-Flask-Security
+Flask-Security-Too
 Flask-Script
-MySQL-Python
-py-bcrypt
-Flask-Uploads
+PyMySQL
+# py-bcrypt
+# Flask-Uploads
 Flask-Migrate
 numpy
 scipy
