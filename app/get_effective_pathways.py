@@ -939,7 +939,7 @@ def generate_initial_text_output(user_upload, genome_size=None,
     table_list = [table_name]  # code can iterate through list of tables
     # max_mutations = user_upload.n_cutoff or 500  # default max is 500
     ignore = user_upload.ignore_genes
-    ignore_genes = str(ignore).split(',') if ignore else []
+    ignore_genes: list = str(ignore).split(',') if ignore else []
 
     proj_suffix = user_upload.get_local_filename()
 
