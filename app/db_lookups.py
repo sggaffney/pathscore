@@ -1,4 +1,7 @@
 from collections import defaultdict, Counter
+
+from sqlalchemy import text
+
 from . import db
 
 
@@ -37,8 +40,7 @@ def lookup_background_size(ignore_genes=None, alg=None, bmr_table=None):
         field_str = "sum(length_bp)"
     else:
         field_str = "count(*)"
-    cmd = """SELECT {field_str} FROM {table} {genes_str};""".format(
-        field_str=field_str, table=table_name, genes_str=genes_str)
+    cmd = text(f"""SELECT {field_str} FROM {table_name} {genes_str};""")
 
     result = db.session.execute(cmd)
     row_count = result.rowcount
@@ -58,10 +60,10 @@ def lookup_path_sizes(ignore_genes=None):
         genes_string = "WHERE symbol NOT IN {}".format(genes_string)
     else:
         genes_string = ""
-    cmd = """SELECT path_id, count(DISTINCT entrez_id)
+    cmd = text(f"""SELECT path_id, count(DISTINCT entrez_id)
     FROM refs.pathway_gene_link pgl
     INNER JOIN refs.ncbi_entrez n ON pgl.entrez_id = n.geneId
-    {genes_string} GROUP BY path_id;""".format(genes_string=genes_string)
+    {genes_string} GROUP BY path_id;""")
     size_dict = dict()
 
     result = db.session.execute(cmd)
@@ -88,11 +90,10 @@ def lookup_path_lengths(ignore_genes=None, alg=None, bmr_table=None):
         genes_string = ""
     table_name = bmr_table if bmr_table else 'refs.entrez_length'
     field_str = 'effective_bp' if alg == 'bmr_length' else 'length_bp'
-    cmd = """SELECT path_id, sum({field_str}) AS bp FROM {table} l
+    cmd = text(f"""SELECT path_id, sum({field_str}) AS bp FROM {table_name} l
         INNER JOIN refs.pathway_gene_link pgl ON l.entrez_id = pgl.entrez_id
         {genes_string}
-        GROUP BY pgl.path_id;""".format(genes_string=genes_string,
-                                        field_str=field_str, table=table_name)
+        GROUP BY pgl.path_id;""")
     len_dict = dict()
 
     result = db.session.execute(cmd)
@@ -114,9 +115,8 @@ def lookup_patient_counts(table_name, ignore_genes):
         genes_string = "WHERE hugo_symbol NOT IN {}".format(genes_string)
     else:
         genes_string = ""
-    cmd = """SELECT patient_id, count(DISTINCT entrez_id)
-              FROM {table_name} {genes_string} GROUP BY patient_id;"""\
-        .format(table_name=table_name, genes_string=genes_string)
+    cmd = text(f"""SELECT patient_id, count(DISTINCT entrez_id)
+               FROM {table_name} {genes_string} GROUP BY patient_id;""")
 
     patient_size_dict = dict()
     result = db.session.execute(cmd)
@@ -133,9 +133,8 @@ def lookup_patient_counts(table_name, ignore_genes):
 
 def lookup_hypermutated_patients(table_name, cutoff=500):
     """Get patient ids for patients with >500 mutations (or specified cutoff)."""
-    cmd = """SELECT patient_id FROM {table_name}
-              GROUP BY patient_id HAVING count(*)>{cutoff};"""\
-        .format(table_name=table_name, cutoff=cutoff)
+    cmd = text(f"""SELECT patient_id FROM {table_name}
+               GROUP BY patient_id HAVING count(*)>{cutoff};""")
     patient_list = []
     result = db.session.execute(cmd)
     for row in result:
@@ -150,10 +149,9 @@ def lookup_patient_lengths(table_name, ignore_genes):
         genes_string = "WHERE m.hugo_symbol NOT IN {}".format(genes_string)
     else:
         genes_string = ""
-    cmd = """SELECT patient_id, count(*)
-      FROM {table_name} m
-      {genes_string} GROUP BY patient_id;"""\
-        .format(table_name=table_name, genes_string=genes_string)
+    cmd = text("""SELECT patient_id, count(*)
+        FROM {table_name} m
+        {genes_string} GROUP BY patient_id;""")
     patient_len_dict = dict()
     result = db.session.execute(cmd)
     for row in result:
@@ -163,8 +161,7 @@ def lookup_patient_lengths(table_name, ignore_genes):
 
 def count_patients(table_name):
     """Get patient count for project."""
-    cmd = """SELECT count(distinct patient_id) FROM {table_name};"""\
-        .format(table_name=table_name)
+    cmd = text(f"""SELECT count(distinct patient_id) FROM {table_name};""")
     patient_count = None
     result = db.session.execute(cmd)
     row_count = result.rowcount
@@ -183,12 +180,11 @@ def build_path_patient_dict(table_name, ignore_genes):
         genes_string = "WHERE hugo_symbol NOT IN {}".format(genes_string)
     else:
         genes_string = ""
-    cmd = """SELECT pgl.path_id, patient_id FROM
+    cmd = text(f"""SELECT pgl.path_id, patient_id FROM
             (SELECT DISTINCT patient_id, entrez_id FROM {table_name}
              {genes_string}) pg
             INNER JOIN
-            refs.pathway_gene_link pgl ON pg.entrez_id = pgl.entrez_id;"""\
-        .format(table_name=table_name, genes_string=genes_string)
+            refs.pathway_gene_link pgl ON pg.entrez_id = pgl.entrez_id;""")
     path_patient_dict = dict()
     result = db.session.execute(cmd)
     row_count = result.rowcount
@@ -310,8 +306,8 @@ def get_pway_lenstats_dict(mutation_table, ignore_genes):
 def fetch_path_info_global():
     """Get url, brief description and contributor as tuple."""
     url_row = None
-    cmd = "SELECT path_id, info_url, `description_brief`, contributor " \
-          "FROM refs.pathways;"
+    cmd = text("SELECT path_id, info_url, `description_brief`, contributor "
+               "FROM refs.pathways;")
     info_dict = dict()
     result = db.session.execute(cmd)
     row_count = result.rowcount
@@ -336,17 +332,16 @@ def get_gene_combs_hit(table_name):
         path_genes_dict = dict()
 
         cmd_maxlen = "SET group_concat_max_len = 10000;"
-        cmd = """SELECT DISTINCT path_id, symbols FROM
+        cmd = text(f"""SELECT DISTINCT path_id, symbols FROM
             (
             # PATH, HUGO PAIRS in pathway of interest.
             SELECT path_id, group_concat(DISTINCT hugo_symbol
             ORDER BY hugo_symbol SEPARATOR ',') AS symbols
-            FROM {table} t
+            FROM {table_name} t
             INNER JOIN refs.`pathway_gene_link` pgl
             ON t.entrez_id = pgl.entrez_id
             GROUP BY path_id, patient_id
-            ) g;""". \
-            format(table=table_name)
+            ) g;""")
         db.session.execute(cmd_maxlen)
         result = db.session.execute(cmd)
         for row in result:
