@@ -38,12 +38,12 @@ def _create_logger(log_level: Union[str, None] = None):
 
 
 env_path = _get_env_path()
-print("Loading .env from %s", env_path)
+print(f"Loading .env from {env_path}")
 load_dotenv(env_path, override=False)
 
 logger = _create_logger()
 
 
-from .app import create_app
+from app import create_app
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')

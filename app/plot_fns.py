@@ -10,7 +10,7 @@ from bokeh.models.tools import HoverTool
 from bokeh.resources import Resources, CDN
 from bokeh.embed import components
 from bokeh.models.renderers import GlyphRenderer
-from bokeh.models.markers import Circle
+from bokeh.models import Circle
 
 from . import naming_rules
 from . import misc

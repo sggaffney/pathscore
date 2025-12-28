@@ -1,4 +1,5 @@
-from jinja2 import Markup
+from markupsafe import Markup
+
 
 class momentjs(object):
     def __init__(self, timestamp):

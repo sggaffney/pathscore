@@ -3,8 +3,7 @@
 from flask_wtf import Form
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 from wtforms import SubmitField, RadioField, TextAreaField, \
-    StringField, SelectField
-from wtforms.fields.html5 import IntegerField
+    StringField, SelectField, IntegerField
 from wtforms.validators import Length, DataRequired, optional, length, Regexp
 from ..misc import GeneListTester
 

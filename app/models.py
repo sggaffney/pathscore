@@ -2,6 +2,8 @@ import os
 import shutil
 from datetime import datetime, timedelta
 from collections import OrderedDict
+
+from sqlalchemy import UniqueConstraint
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from flask import current_app, url_for
 from flask_login import current_user
@@ -42,6 +44,7 @@ class User(UserMixin, db.Model):
     member_since = db.Column(db.DateTime(), default=datetime.utcnow)
     active = db.Column(db.Boolean())
     confirmed_at = db.Column(db.DateTime())
+    fs_uniquifier = db.Column(db.String(64), unique=True, nullable=False)
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
 
@@ -566,12 +569,12 @@ class BmrProcessor:
 
     def _remove_genes_unrecognized(self):
         cmd1 = u"""SELECT m.* FROM `{}` m
-            LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.geneId
-            WHERE n.geneId IS NULL OR m.hugo_symbol <> n.symbol;""".format(
+            LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.entrez_id
+            WHERE n.entrez_id IS NULL OR m.hugo_symbol <> n.symbol;""".format(
             self.table_name)
         cmd2 = u"""delete from m using `{}` m
-          LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.geneId
-            WHERE n.geneId IS NULL OR m.hugo_symbol <> n.symbol;""" \
+          LEFT JOIN refs.ncbi_entrez n ON m.entrez_id = n.entrez_id
+            WHERE n.entrez_id IS NULL OR m.hugo_symbol <> n.symbol;""" \
             .format(self.table_name)
         # EXPORT REJECTED GENES
         result = db.session.execute(cmd1)
@@ -668,3 +671,66 @@ class BmrProcessor:
             format(columns=columns_str, table=self.table_name, tmp=tmp_path)
         db.session.execute(cmd_fetch)
         shutil.move(tmp_path, final_path)
+
+
+# db.Boolean
+# db.Column
+# db.DateTime
+# db.ForeignKey
+# db.Integer
+# db.Model
+# db.relationship
+# db.session
+# db.String
+# db.Table
+# db.Text
+
+class Pathway(db.Model):
+    __tablename__ = 'pathways'
+    path_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    pathway_name = db.Column(db.String(255), nullable=False, default='')
+    info_url = db.Column(db.String(255), nullable=True)
+    description_brief = db.Column(db.String(255), nullable=True)
+    contributor = db.Column(db.String(255), nullable=True)
+    name_systematic = db.Column(db.String(255), nullable=True)
+    collection = db.Column(db.String(255), nullable=True)
+
+    def __repr__(self):
+        return f'<Pathway {self.path_id}: {self.pathway_name}>'
+
+
+pathways_genes = db.Table(
+    'pathway_gene_link',
+    db.Column('path_id', db.Integer, db.ForeignKey('pathways.path_id'), nullable=False),
+    db.Column('entrez_id', db.Integer, db.ForeignKey('ncbi_entrez.entrez_id'), nullable=False),
+    UniqueConstraint('path_id', 'entrez_id', name='pathway_gene_link_unique_pair'),
+    db.Index('pathway_gene_link_pathway_id', 'path_id'),
+    db.Index('pathway_gene_link_entrez_id', 'entrez_id'),
+)
+
+
+class Entrez(db.Model):
+    __tablename__ = 'ncbi_entrez'
+    entrez_id = db.Column(db.Integer, primary_key=True, nullable=False, default=0)
+    symbol = db.Column(db.String(255), nullable=False, unique=True, default='')
+
+    def __repr__(self):
+        return f'<Entrez {self.entrez_id: {self.symbol}}>'
+
+
+class EntrezLength(db.Model):
+    __tablename__ = 'entrez_length'
+    hugo_symbol = db.Column(db.String(255), unique=True, nullable=False)
+    entrez_id = db.Column(db.Integer, db.ForeignKey('ncbi_entrez.entrez_id'),
+                          primary_key=True, index=True, default=None)
+    chromosome = db.Column(db.String(255), default=None)
+    Ensembl_gene_ID = db.Column(db.String(255), default=None)
+    canonical_transcript = db.Column(db.String(255), default=None)
+    length_bp = db.Column(db.Integer, default=None)
+    per_Mb = db.Column(db.Float, default=None)
+    effective_bp = db.Column(db.Integer, default=None)
+    type_of_gene = db.Column(db.String(255), default=None)
+    rate_type = db.Column(db.String(255), default=None)
+
+    def __repr__(self):
+        return f'<EntrezLength {self.entrez_id}>'

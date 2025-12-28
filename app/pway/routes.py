@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import bokeh
 from bokeh.plotting import figure, ColumnDataSource
-from bokeh.layouts import widgetbox, gridplot, Spacer
+from bokeh.layouts import column, gridplot, Spacer
 from bokeh.models import Range1d
 from bokeh.models.tools import HoverTool
 from bokeh.models.widgets import TextInput, RadioGroup
@@ -313,8 +313,8 @@ def compare():
         gene_input = TextInput(value='', title="Gene list",
                                placeholder='e.g. TP53,BRAF')
         radio_include = RadioGroup(labels=["Include", "Exclude"], active=0)
-        widgets = widgetbox(q_input, gene_input, radio_include, width=200,
-                            css_classes=['widgets_sg'])
+        widgets = column([q_input, gene_input, radio_include], width=200,
+                         css_classes=['widgets_sg'])
 
         grid = gridplot([[pb, p, widgets],
                          [Spacer(width=DIM_COMP_SM), pa, Spacer()]],
