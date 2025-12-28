@@ -1,7 +1,7 @@
 from flask import current_app, render_template, url_for
 from flask_mail import Message
 
-from . import mail, celery
+from . import mail, celery, db
 from .models import UserFile
 from .decorators import make_async
 
@@ -14,7 +14,7 @@ def get_notification_email(email, subject, body_text, body_html):
 
 
 def run_finished_notification(upload_id):
-    upload = UserFile.query.get(upload_id)
+    upload = db.session.get(UserFile, upload_id)
     # Prevent email attempt if user is anonymous
     if 'anonymous' in [r.name for r in upload.uploader.roles]:
         return

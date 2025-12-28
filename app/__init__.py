@@ -8,14 +8,14 @@ from flask_security.signals import user_registered
 from flask_login import LoginManager
 from flask_bootstrap import Bootstrap
 from flask_mail import Mail
-from celery import Celery
+from celery import Celery, Task
 
 from .config import config, Config
 
 bootstrap = Bootstrap()
 db = SQLAlchemy()
 mail = Mail()
-celery = Celery(__name__, broker=Config.CELERY_BROKER_URL)
+celery = Celery()
 
 login_manager = LoginManager()
 # login_manager.login_view = 'auth.login'
@@ -23,6 +23,20 @@ login_manager = LoginManager()
 from .models import User, Role
 
 dbvars = dict()  # set in create_app. used in mysqldb queries.
+
+
+def celery_init_app(app: Flask) -> Celery:
+    """Initialize Celery with Flask app context (Celery 5.x pattern)."""
+    class FlaskTask(Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    celery_app = Celery(app.name, task_cls=FlaskTask)
+    celery_app.config_from_object(app.config['CELERY'])
+    celery_app.set_default()
+    app.extensions['celery'] = celery_app
+    return celery_app
 
 
 def create_app(config_name):
@@ -73,7 +87,10 @@ def create_app(config_name):
     bootstrap.init_app(app)
     db.init_app(app)
     mail.init_app(app)
-    celery.conf.update(app.config)
+
+    # Initialize Celery with Flask app context
+    global celery
+    celery = celery_init_app(app)
 
     from . import get_effective_pathways
     get_effective_pathways.set_refs(app)

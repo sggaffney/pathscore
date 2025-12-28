@@ -97,11 +97,13 @@ services:
       LOCAL_MODE: ${LOCAL_MODE:-false}
     volumes:
       - app_data:/data
-      - ./app:/app/app:ro  # Mount source for development
+      # Note: Do NOT mount ./app here - it overwrites the compiled Cython extension
+      # Use flask-dev service for development with hot reload
     command: ["gunicorn", "-b", "0.0.0.0:5000", "-w", "2", "--timeout", "120", "pathscore:app"]
 
   flask-dev:
     # Development variant with Flask's built-in server and hot reload
+    # Note: Uses pyximport for Cython (recompiles on import), slower startup
     build:
       context: .
       dockerfile: Dockerfile
@@ -134,7 +136,7 @@ services:
       LOCAL_MODE: ${LOCAL_MODE:-false}
     volumes:
       - app_data:/data
-      - ./app:/app/app  # Writable mount for development
+      - ./app:/app/app  # Mount for hot reload (pyximport handles Cython)
       - ./pathscore.py:/app/pathscore.py
     command: ["flask", "run", "--host=0.0.0.0", "--port=5000", "--reload"]
 
@@ -154,6 +156,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
       PARALLEL_MODE: celery
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-www}:${MYSQL_PASSWORD:-pathscore_dev}@mysql:3306/pway
+      DEV_DATABASE_URL: mysql+pymysql://${MYSQL_USER:-www}:${MYSQL_PASSWORD:-pathscore_dev}@mysql:3306/pway
       MYSQLDB_HOST: mysql
       MYSQLDB_DB: pway
       CELERY_BROKER_URL: redis://redis:6379/0

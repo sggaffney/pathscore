@@ -54,3 +54,7 @@ logger = _create_logger()
 from app import create_app
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
+
+# Import celery AFTER create_app() since it's initialized there
+# This makes celery accessible for 'celery -A pathscore.celery worker' command
+from app import celery

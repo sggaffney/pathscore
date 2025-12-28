@@ -59,16 +59,18 @@ class Config:
 
     USE_TOKEN_AUTH = True
 
-    CELERY_BROKER_URL = 'redis://localhost:6379/0'
-    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-    CELERY_RESULT_DB_SHORT_LIVED_SESSIONS = True
-    CELERY_DEFAULT_QUEUE = 'default'
-    CELERY_CREATE_MISSING_QUEUES = True
-    CELERY_ROUTES = {
-        'app.emails.run_finished_notification_async':
-            {'queue': 'mail'},
-        'app.get_effective_pathways.run_analysis_async':
-            {'queue': 'analysis'},
+    # Celery 5.x configuration (lowercase keys)
+    CELERY = {
+        'broker_url': os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0'),
+        'result_backend': os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'),
+        'result_extended': True,
+        'task_default_queue': 'default',
+        'task_create_missing_queues': True,
+        'task_routes': {
+            'app.emails.run_finished_notification_async': {'queue': 'mail'},
+            'app.get_effective_pathways.run_analysis_async': {'queue': 'analysis'},
+        },
+        'broker_connection_retry_on_startup': True,
     }
 
     # enable rate limits only if redis is running
