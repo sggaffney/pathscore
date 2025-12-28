@@ -1,0 +1,29 @@
+# PathScore MySQL Database Dockerfile
+# MySQL 8.2.0 with reference data pre-loaded
+
+FROM mysql:8.2.0
+
+# MySQL configuration for PathScore
+# - Enable local_infile for data loading
+# - Relax secure_file_priv for imports
+RUN echo "[mysqld]" >> /etc/mysql/conf.d/pathscore.cnf && \
+    echo "local_infile=1" >> /etc/mysql/conf.d/pathscore.cnf && \
+    echo "secure_file_priv=''" >> /etc/mysql/conf.d/pathscore.cnf
+
+# Copy initialization scripts
+# Files are executed in alphabetical order, so prefix with numbers
+# 00_create_dbs.sql - Creates pway database and grants permissions
+COPY ./data/create_dbs.sql /docker-entrypoint-initdb.d/00_create_dbs.sql
+
+# Copy gzipped reference data files
+# These load into the 'refs' database (set by MYSQL_DATABASE env var)
+COPY ./data/refs_*.sql.gz /docker-entrypoint-initdb.d/
+COPY ./data/refs_pathways.sql /docker-entrypoint-initdb.d/
+
+# Decompress gzipped SQL files and fix permissions
+RUN gunzip /docker-entrypoint-initdb.d/*.sql.gz && \
+    chmod 644 /docker-entrypoint-initdb.d/*.sql
+
+# Note: The MYSQL_DATABASE environment variable (set in docker-compose.yml)
+# determines which database the refs_*.sql files are loaded into.
+# The create_dbs.sql script creates the 'pway' database for application data.

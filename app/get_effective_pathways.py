@@ -9,11 +9,15 @@ import timeit
 from collections import OrderedDict
 import json
 import os
-import pyximport
-pyximport.install(setup_args={'include_dirs': np.get_include()})
 from sqlalchemy.orm.exc import StaleDataError
 
-from .comb_functions import get_pway_likelihood_cython
+# Try to import pre-compiled Cython extension first, fall back to pyximport
+try:
+    from .comb_functions import get_pway_likelihood_cython
+except ImportError:
+    import pyximport
+    pyximport.install(setup_args={'include_dirs': np.get_include()})
+    from .comb_functions import get_pway_likelihood_cython
 from . import db, celery
 from . import emails
 from .models import UserFile

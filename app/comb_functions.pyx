@@ -39,7 +39,7 @@ def get_pway_likelihood_cython(int G,
     cdef double p_no_mut, p
     # iterate over patients
     # for patient in self.pway.patients:
-    for patient_no in xrange(n_patients):
+    for patient_no in range(n_patients):
 
         n_patient = n_mutated_array[patient_no]
 
@@ -66,7 +66,7 @@ def get_p_no_mutations_cython(DTYPE_td G, int pway_size, DTYPE_ti n):
     genes mutated in patient."""
     cdef DTYPE_td prob = 1
     cdef int i
-    for i in xrange(n):
+    for i in range(n):
         prob = prob * (1 - pway_size/(G-i))
     # PREVIOUS prob = exp(math.log(comb(G - x, n, exact=True)) - math.log(comb(G, n, exact=True)))
     return prob
