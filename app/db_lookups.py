@@ -50,12 +50,11 @@ def lookup_background_size(ignore_genes=None, alg=None, bmr_table=None):
 def execute_cmd_fetchone_col0_col1_map(cmd: TextClause) -> dict:
     out_dict = dict()
     result = db.session.execute(cmd)
-    row_count = result.rowcount
-    if not row_count:
+    rows = result.all()
+    if not rows:
         print("No pathways found.")
         return out_dict
-    for row_no in range(row_count):
-        row = result.fetchone()
+    for row in rows:
         out_dict[row[0]] = row[1]
     return out_dict
 
@@ -156,11 +155,11 @@ def build_path_patient_dict(table_name, ignore_genes: list):
             refs.pathway_gene_link pgl ON pg.entrez_id = pgl.entrez_id;""")
     path_patient_dict = dict()
     result = db.session.execute(cmd)
-    row_count = result.rowcount
-    if not row_count:
+    rows = result.all()
+    if not rows:
         print("No patient-pathway pairs found.")
         return path_patient_dict
-    for row in result:
+    for row in rows:
         path_id = row[0]
         patient_id = row[1]
         if path_id in path_patient_dict:
@@ -179,12 +178,12 @@ def fetch_path_ids_interest_genes(interest_genes):
             {require_genes_str}) g
         ON pgl.entrez_id = g.geneId ORDER BY path_id;""")
     result = db.session.execute(cmd1)
-    row_count = result.rowcount
-    if not row_count:
+    rows = result.all()
+    if not rows:
         raise Exception(
-            "Result contains %g rows Ids for pathway lookup." % row_count)
+            "Result contains 0 rows for pathway lookup.")
     # result is [[id,name],[id,name],...]
-    for row in result:
+    for row in rows:
         all_path_ids.append(int(row[0]))
     return all_path_ids
 
@@ -198,13 +197,12 @@ def get_pathway_name_dict():
         (SELECT DISTINCT path_id FROM refs.pathway_gene_link) l
         ON p.path_id = l.path_id;""")
     result = db.session.execute(cmd1)
-    row_count = result.rowcount
-    if not row_count > 1:
+    rows = result.all()
+    if len(rows) <= 1:
         raise Exception(
-            "Result contains %g rows Ids for pathway lookup."
-            % row_count)
+            f"Result contains {len(rows)} rows for pathway lookup.")
     # rows is [[id,name],[id,name],...]
-    for pair in result:
+    for pair in rows:
         path_id = int(pair[0])
         path_name = pair[1]
         pathway_dict[path_id] = path_name
@@ -238,13 +236,12 @@ def get_pway_lenstats_dict(mutation_table, ignore_genes):
             {exclude_genes_str} GROUP BY path_id) g ON g.path_id = pgl.`path_id`
             {exclude_genes_str} GROUP BY g.path_id;""")
     result = db.session.execute(cmd1)
-    row_count = result.rowcount
-    if not row_count > 1:
+    rows = result.all()
+    if len(rows) <= 1:
         raise Exception(
-            "Result contains %g rows Ids for pathway lookup."
-            % row_count)
+            f"Result contains {len(rows)} rows for pathway lookup.")
     # rows is [[id,min,max,avg],[id,min,max,avg],...]
-    for temp_lengths in result:
+    for temp_lengths in rows:
         path_id = int(temp_lengths[0])
         len_min = str(temp_lengths[1])
         gene_min = str(temp_lengths[2])
@@ -263,11 +260,11 @@ def fetch_path_info_global():
                "FROM refs.pathways;")
     info_dict = dict()
     result = db.session.execute(cmd)
-    row_count = result.rowcount
-    if not row_count > 1:
+    rows = result.all()
+    if len(rows) <= 1:
         raise Exception("Failed info lookup for all pathways.")
     # rows is [[id,url,desc,contrib],[id,url,desc,contrib],...]
-    for row in result:
+    for row in rows:
         path_id = row[0]
         url = row[1]
         desc = row[2]
@@ -319,12 +316,12 @@ def get_gene_counts(table_name):
         GROUP BY path_id, hugo_symbol;""")
     db.session.execute(cmd0)
     result = db.session.execute(cmd2)
-    row_count = result.rowcount
+    rows = result.all()
     path_gene_dict = defaultdict(dict)
-    if not row_count:
+    if not rows:
         # NO GENES MUTATED. n_effective < n_pathway
         return path_gene_dict
-    for row in result:
+    for row in rows:
         path_id = row[0]
         gene = row[1]
         coverage = int(row[2])

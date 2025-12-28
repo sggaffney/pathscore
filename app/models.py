@@ -3,7 +3,7 @@ import shutil
 from datetime import datetime, timedelta
 from collections import OrderedDict
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, select, text
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from flask import current_app, url_for
 from flask_login import current_user
@@ -74,7 +74,7 @@ class User(UserMixin, db.Model):
             return None
         id = data.get('user')
         if id:
-            return User.query.get(id)
+            return db.session.get(User, id)
         return None
 
     @staticmethod
@@ -96,7 +96,7 @@ class User(UserMixin, db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 
 # @login_manager.token_loader
@@ -256,7 +256,7 @@ class UserFile(db.Model):
             ('n_loaded', self.n_loaded)
         ])
         url_dict = self.get_related_urls()
-        for key, val in url_dict.iteritems():
+        for key, val in url_dict.items():
             info_dict[key] = val
         return info_dict
 
@@ -340,7 +340,8 @@ def create_anonymous_user():
     temp_uname = User.get_guest_username(temp_user.id)
     temp_user.email = temp_uname
     temp_user.confirmed_at = datetime.utcnow()
-    temp_user.roles.append(Role.query.filter_by(name='anonymous').one())
+    anon_role = db.session.execute(select(Role).where(Role.name == 'anonymous')).scalar_one()
+    temp_user.roles.append(anon_role)
     db.session.commit()
     return temp_user, temp_pswd
 
@@ -431,15 +432,15 @@ class CustomBMR(db.Model):
             into table `{}` fields terminated by '\t'
             lines terminated by '\n' ignore 1 lines;""".format(
             file_path, table_name)
-        db.session.execute(cmd.format(table=table_name))
-        db.session.execute(load_str.format(table=table_name))
+        db.session.execute(text(cmd.format(table=table_name)))
+        db.session.execute(text(load_str.format(table=table_name)))
         db.session.commit()
 
     def remove_table(self, proj_id):
         """Delete final bmr table. Called after custom analyses completes."""
         table_name = self.get_proj_table_name(proj_id)
         cmd = u"drop table {};".format(table_name)
-        db.session.execute(cmd)
+        db.session.execute(text(cmd))
         db.session.commit()
 
     def init_from_upload(self, bmr_file):
@@ -541,7 +542,7 @@ class BmrProcessor:
             loaded = True
             self._save_final()
         self._update_db(loaded, n_loaded, n_rejected, n_ignored)
-        db.session.execute('drop table {}'.format(self.table_name))
+        db.session.execute(text('drop table {}'.format(self.table_name)))
         db.session.commit()
 
     def _populate_table(self):
@@ -561,9 +562,9 @@ class BmrProcessor:
             lines terminated by '\n' ignore 1 lines;""".format(
             data_path, table_name)
         cmd = u"select count(*) from `{}` m;".format(self.table_name)
-        db.session.execute(create_str)
-        db.session.execute(load_str)
-        n_initial = db.session.execute(cmd).scalar()
+        db.session.execute(text(create_str))
+        db.session.execute(text(load_str))
+        n_initial = db.session.execute(text(cmd)).scalar()
         db.session.commit()
         return n_initial
 
@@ -577,12 +578,12 @@ class BmrProcessor:
             WHERE n.entrez_id IS NULL OR m.hugo_symbol <> n.symbol;""" \
             .format(self.table_name)
         # EXPORT REJECTED GENES
-        result = db.session.execute(cmd1)
+        result = db.session.execute(text(cmd1))
         n_rejected = result.rowcount
         if n_rejected > 0:
             self._save_mutations_subset(result, self.bmr.get_path(kind='rejected'))
             # DELETE EXTRA GENE LINES
-            db.session.execute(cmd2)
+            db.session.execute(text(cmd2))
             db.session.commit()
         return n_rejected
 
@@ -603,13 +604,13 @@ class BmrProcessor:
           ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;""" \
             .format(self.table_name)
         # EXPORT EXTRA GENE LINES
-        result = db.session.execute(cmd1)
+        result = db.session.execute(text(cmd1))
         n_ignored = result.rowcount
         if n_ignored > 0:
             self._save_mutations_subset(result,
                                         self.bmr.get_path(kind='ignored'))
             # DELETE EXTRA GENE LINES
-            db.session.execute(cmd2)
+            db.session.execute(text(cmd2))
             db.session.commit()
         return n_ignored
 
@@ -638,11 +639,11 @@ class BmrProcessor:
                     "WHERE b.per_Mb IS NULL;"
         cmd_effective = u"UPDATE {table} SET `effective_bp` = `per_Mb` * " \
                         u"`length_bp`;"
-        db.session.execute(cmd_alter.format(table=self.table_name))
-        db.session.execute(cmd_fetch_len.format(table=self.table_name))
-        db.session.execute(cmd_extra.format(table=self.table_name))
-        db.session.execute(cmd_permb.format(table=self.table_name))
-        db.session.execute(cmd_effective.format(table=self.table_name))
+        db.session.execute(text(cmd_alter.format(table=self.table_name)))
+        db.session.execute(text(cmd_fetch_len.format(table=self.table_name)))
+        db.session.execute(text(cmd_extra.format(table=self.table_name)))
+        db.session.execute(text(cmd_permb.format(table=self.table_name)))
+        db.session.execute(text(cmd_effective.format(table=self.table_name)))
         db.session.commit()
 
     def _update_db(self, loaded, n_loaded, n_rejected, n_ignored):
@@ -669,7 +670,7 @@ class BmrProcessor:
         cmd_fetch = u"select {columns} union all select * from {table} " \
                     u"into outfile {tmp!r};".\
             format(columns=columns_str, table=self.table_name, tmp=tmp_path)
-        db.session.execute(cmd_fetch)
+        db.session.execute(text(cmd_fetch))
         shutil.move(tmp_path, final_path)
 
 

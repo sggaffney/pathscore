@@ -4,6 +4,7 @@ from flask import current_app, g, send_file  # redirect, url_for, abort,
 from flask_login import current_user, login_user
 from flask import request
 from werkzeug.utils import secure_filename
+from sqlalchemy import select
 
 from . import api
 from .. import db
@@ -32,13 +33,18 @@ def test():
 @api.route('/archives/<int:proj>', methods=['GET'])
 @auth.login_required
 def archive(proj):
-    upload_obj = UserFile.query.\
-        filter_by(user_id=g.user.id, file_id=proj).\
-        first_or_404()
+    stmt = select(UserFile).where(
+        UserFile.user_id == g.user.id,
+        UserFile.file_id == proj
+    )
+    upload_obj = db.session.execute(stmt).scalar_one_or_none()
+    if upload_obj is None:
+        from flask import abort
+        abort(404)
     zip_path = zip_project(upload_obj)
     filename = os.path.basename(zip_path)
     return send_file(zip_path, mimetype='application/zip',
-                     as_attachment=True, attachment_filename=filename)
+                     as_attachment=True, download_name=filename)
 
 
 @api.route('/bmr/', methods=['GET'])
@@ -47,7 +53,8 @@ def archive(proj):
 @json
 @collection(UserFile, name='bmr')
 def get_user_bmr():
-    return CustomBMR.query.filter_by(user_id=g.user.id)
+    stmt = select(CustomBMR).where(CustomBMR.user_id == g.user.id)
+    return db.session.execute(stmt).scalars()
 
 
 @api.route('/bmr/<int:bmr_id>', methods=['GET'])
@@ -55,9 +62,15 @@ def get_user_bmr():
 @auth.login_required
 @json
 def get_bmr(bmr_id):
-    # import pdb; pdb.set_trace()
-    return CustomBMR.query.filter_by(user_id=g.user.id, bmr_id=bmr_id).\
-        first_or_404()
+    stmt = select(CustomBMR).where(
+        CustomBMR.user_id == g.user.id,
+        CustomBMR.bmr_id == bmr_id
+    )
+    result = db.session.execute(stmt).scalar_one_or_none()
+    if result is None:
+        from flask import abort
+        abort(404)
+    return result
 
 
 @api.route('/bmr/', methods=['POST'])
@@ -91,7 +104,8 @@ def upload_bmr():
 @json
 @collection(UserFile, name='projects')
 def get_user_projects():
-    return UserFile.query.filter_by(user_id=g.user.id)
+    stmt = select(UserFile).where(UserFile.user_id == g.user.id)
+    return db.session.execute(stmt).scalars()
 
 
 @api.route('/projects/<int:file_id>', methods=['GET'])
@@ -99,8 +113,15 @@ def get_user_projects():
 @auth.login_required
 @json
 def get_project(file_id):
-    return UserFile.query.filter_by(user_id=g.user.id, file_id=file_id).\
-        first_or_404()
+    stmt = select(UserFile).where(
+        UserFile.user_id == g.user.id,
+        UserFile.file_id == file_id
+    )
+    result = db.session.execute(stmt).scalar_one_or_none()
+    if result is None:
+        from flask import abort
+        abort(404)
+    return result
 
 
 @api.route('/projects/<int:file_id>', methods=['DELETE'])
@@ -108,8 +129,14 @@ def get_project(file_id):
 @auth.login_required
 @json
 def delete_project(file_id):
-    project = UserFile.query.filter_by(user_id=g.user.id, file_id=file_id).\
-        first_or_404()
+    stmt = select(UserFile).where(
+        UserFile.user_id == g.user.id,
+        UserFile.file_id == file_id
+    )
+    project = db.session.execute(stmt).scalar_one_or_none()
+    if project is None:
+        from flask import abort
+        abort(404)
     delete_project_folder(project)
     db.session.delete(project)
     db.session.commit()
@@ -134,8 +161,13 @@ def upload():
         raise ValidationError("Use txt or tsv extension for mut_file.")
     mut_file = MutationFile(filestore)
     if user_upload.bmr_id:
-        if not current_user.is_authenticated or not CustomBMR.query.filter_by(
-                user_id=current_user.id, bmr_id=user_upload.bmr_id).all():
+        if not current_user.is_authenticated:
+            raise ValidationError("Invalid bmr_id specified.")
+        stmt = select(CustomBMR).where(
+            CustomBMR.user_id == current_user.id,
+            CustomBMR.bmr_id == user_upload.bmr_id
+        )
+        if not db.session.execute(stmt).scalars().all():
             raise ValidationError("Invalid bmr_id specified.")
 
     rv = {}

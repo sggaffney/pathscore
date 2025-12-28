@@ -416,7 +416,7 @@ def archive(proj):
     zip_path = zip_project(upload_obj)
     filename = os.path.basename(zip_path)
     return send_file(zip_path, mimetype='application/zip',
-                     as_attachment=True, attachment_filename=filename)
+                     as_attachment=True, download_name=filename)
 
 
 @demo.route('/results')

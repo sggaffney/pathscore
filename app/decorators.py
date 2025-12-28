@@ -4,8 +4,9 @@ from functools import wraps
 from datetime import datetime, timedelta
 from flask import request, redirect, g
 from flask_login import current_user
+from sqlalchemy import select
 
-from . import celery
+from . import celery, db
 from .models import UserFile
 from .misc import get_wait_time_string
 from .errors import LimitError, ConfigError
@@ -73,8 +74,11 @@ def limit_user_uploads(f):
     def wrapped(*args, **kwargs):
         # CHECK IF RUNNING PROJECT COUNT IS WITHIN USER LIMITS
         if current_user.is_authenticated:
-            incomplete = UserFile.query.filter_by(user_id=current_user.id)\
-                .filter_by(run_complete=0).all()
+            stmt = select(UserFile).where(
+                UserFile.user_id == current_user.id,
+                UserFile.run_complete == 0
+            )
+            incomplete = db.session.execute(stmt).scalars().all()
             role_names = [r.name for r in current_user.roles]
             if 'vip' not in role_names and incomplete:
                 raise LimitError("Sorry, you must wait until your currently "
@@ -82,9 +86,12 @@ def limit_user_uploads(f):
 
             # ENFORCE WEEKLY LIMIT AND DISPLAY INFO MESSAGE
             week_ago = datetime.utcnow() - timedelta(days=7)
-            week_complete = UserFile.query.filter_by(user_id=current_user.id)\
-                .filter_by(run_complete=True)\
-                .filter(UserFile.upload_time > week_ago).all()
+            stmt = select(UserFile).where(
+                UserFile.user_id == current_user.id,
+                UserFile.run_complete == True,
+                UserFile.upload_time > week_ago
+            )
+            week_complete = db.session.execute(stmt).scalars().all()
             n_week = len(week_complete)
             n_week_max = int(max([r.uploads_pw for r in current_user.roles]))
             # if len(week_complete>9):

@@ -1,7 +1,9 @@
 from flask import render_template, current_app, request, redirect, url_for, \
     flash
 from flask_login import login_user, logout_user, login_required
+from sqlalchemy import select
 from ..models import User
+from .. import db
 from . import auth
 from .forms import LoginForm
 
@@ -13,7 +15,8 @@ def login():
         return redirect(url_for('.login', _external=True, _scheme='https'))
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
+        stmt = select(User).where(User.email == form.email.data)
+        user = db.session.execute(stmt).scalar_one_or_none()
         if user is None or not user.verify_password(form.password.data):
             flash('Invalid email or password.')
             return redirect(url_for('.login'))

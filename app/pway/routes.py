@@ -16,6 +16,8 @@ from bokeh.models.widgets import TextInput, RadioGroup
 from bokeh.models.callbacks import CustomJS
 from time import sleep
 
+from sqlalchemy import select
+
 from ..compare import get_comparison_table, proj_ids_from_str, proj_str_from_ids
 from . import pway  # FileTester, TempFile
 from ..uploads import MutationFile, BmrFile
@@ -42,7 +44,8 @@ SCATTER_KW = dict(size=10, color="red", alpha=0.1, line_color="firebrick",
 @pway.route('/')
 @login_required
 def index():
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).all()
+    stmt = select(UserFile).where(UserFile.user_id == current_user.id)
+    upload_list = db.session.execute(stmt).scalars().all()
     return render_template('pway/index2.html', projects=upload_list)
 
 
@@ -75,8 +78,11 @@ def scatter():
         show_proj = None
     include = request.args.get('include', None)
     # list of projects (and proj_names) used to create dropdown project selector
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).order_by(UserFile.file_id).all()
+    stmt = select(UserFile).where(
+        UserFile.user_id == current_user.id,
+        UserFile.run_complete == True
+    ).order_by(UserFile.file_id)
+    upload_list = db.session.execute(stmt).scalars().all()
 
     if upload_list:
         # Use specified project from args or highest file_id as CURRENT PROJECT
@@ -114,9 +120,12 @@ def mds():
     include = request.args.get('include', None)
     # list of projects (and proj_names) used to create dropdown project selector
 
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).filter_by(has_mds=True).\
-        order_by(UserFile.file_id).all()
+    stmt = select(UserFile).where(
+        UserFile.user_id == current_user.id,
+        UserFile.run_complete == True,
+        UserFile.has_mds == True
+    ).order_by(UserFile.file_id)
+    upload_list = db.session.execute(stmt).scalars().all()
     if not upload_list:
         flash("No project results to show yet.", "warning")
         return redirect(url_for('.index'))
@@ -154,7 +163,7 @@ def patient_overlap():
     current_app.logger.info(path_a)
     current_app.logger.info(path_b)
 
-    upload_obj = UserFile.query.get(proj_id)  # type: UserFile
+    upload_obj = db.session.get(UserFile, proj_id)  # type: UserFile
 
     df = plot_fns.MDSPlotter(upload_obj).df
 
@@ -196,8 +205,11 @@ def compare():
     include = request.args.get('include', None)
 
     # list of projects (and proj_names) used to create dropdown project selector
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).order_by(UserFile.file_id).all()
+    stmt = select(UserFile).where(
+        UserFile.user_id == current_user.id,
+        UserFile.run_complete == True
+    ).order_by(UserFile.file_id)
+    upload_list = db.session.execute(stmt).scalars().all()
 
     if len(upload_list) > 1:
         # Use specified project from args or highest file_id as CURRENT PROJECT
@@ -495,8 +507,11 @@ def tree():
     except (TypeError, ValueError):
         show_proj = None
     # list of projects (and proj_names) used to create dropdown project selector
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).order_by(UserFile.file_id).all()
+    stmt = select(UserFile).where(
+        UserFile.user_id == current_user.id,
+        UserFile.run_complete == True
+    ).order_by(UserFile.file_id)
+    upload_list = db.session.execute(stmt).scalars().all()
     proj_names = {int(i.file_id): i.get_local_filename() for i in upload_list}
     if upload_list:
         # Use specified project from args or highest file_id as CURRENT PROJECT
@@ -525,13 +540,17 @@ def faq():
 @pway.route('/archive/<int:proj>')
 @login_required
 def archive(proj):
-    upload_obj = UserFile.query.\
-        filter_by(user_id=current_user.id, file_id=proj).\
-        first_or_404()
+    stmt = select(UserFile).where(
+        UserFile.user_id == current_user.id,
+        UserFile.file_id == proj
+    )
+    upload_obj = db.session.execute(stmt).scalar_one_or_none()
+    if upload_obj is None:
+        abort(404)
     zip_path = zip_project(upload_obj)
     filename = os.path.basename(zip_path)
     return send_file(zip_path, mimetype='application/zip',
-                     as_attachment=True, attachment_filename=filename)
+                     as_attachment=True, download_name=filename)
 
 
 @pway.route('/demofile')
@@ -554,14 +573,15 @@ def get_filtered():
     proj_id = int(proj_id)
     upload_obj = None
     try:
+        from sqlalchemy import or_
         if current_user.is_authenticated:
-            temp_filter = (UserFile.user_id == current_user.user_id) | (UserFile.is_demo == 1)
+            temp_filter = or_(UserFile.user_id == current_user.id, UserFile.is_demo == 1)
         else:
             temp_filter = (UserFile.is_demo == 1)
-        upload_obj = UserFile.query.filter(temp_filter).\
-            filter_by(file_id=proj_id).all()[0]
-    except IndexError:
-        abort(404)
+        stmt = select(UserFile).where(temp_filter, UserFile.file_id == proj_id)
+        upload_obj = db.session.execute(stmt).scalars().first()
+        if upload_obj is None:
+            abort(404)
     except AttributeError:  # catches current_user is anonymous
         abort(403)
     if filter_type == 'ignored':
@@ -585,10 +605,13 @@ def fetch_bmr(bmr_id=None, kind=None):
     if bmr_id is None or kind not in ('final', 'orig', 'ignored', 'rejected'):
         abort(404)
     try:
-        bmr = CustomBMR.query.filter_by(user_id=current_user.id).\
-            filter_by(bmr_id=bmr_id).all()[0]  # type: CustomBMR
-    except IndexError:
-        abort(404)
+        stmt = select(CustomBMR).where(
+            CustomBMR.user_id == current_user.id,
+            CustomBMR.bmr_id == bmr_id
+        )
+        bmr = db.session.execute(stmt).scalar_one_or_none()
+        if bmr is None:
+            abort(404)
     except AttributeError:  # catches current_user is anonymous
         abort(403)
     bmr = bmr  # type: CustomBMR
@@ -607,8 +630,11 @@ def results():
     except (TypeError, ValueError):
         show_proj = None
     include = request.args.get('include', None)
-    upload_list = UserFile.query.filter_by(user_id=current_user.id).\
-        filter_by(run_complete=True).all()
+    stmt = select(UserFile).where(
+        UserFile.user_id == current_user.id,
+        UserFile.run_complete == True
+    )
+    upload_list = db.session.execute(stmt).scalars().all()
     if not upload_list:
         flash("No project results to show yet.", "warning")
         return redirect(url_for('.index'))
@@ -629,8 +655,11 @@ def bmr():
     """http://flask.pocoo.org/docs/0.10/patterns/fileuploads/"""
 
     # load previous bmr objects for table display
-    bmr_list = CustomBMR.query.filter_by(user_id=current_user.id,
-                                         is_valid=True).all()
+    stmt = select(CustomBMR).where(
+        CustomBMR.user_id == current_user.id,
+        CustomBMR.is_valid == True
+    )
+    bmr_list = db.session.execute(stmt).scalars().all()
     headers = ['bmr_id', 'title', 'tissue', 'n_loaded', 'n_rejected',
                'n_ignored', 'description']
     header_map = {'n_rejected': 'rejected', 'n_loaded': 'loaded',
@@ -677,8 +706,11 @@ def upload():
 
     bmr_titles = [(-1, 'Default')]
     if not current_user.is_anonymous:
-        bmr_titles += [(i.bmr_id, i.title) for i in CustomBMR.query.filter_by(
-            user_id=current_user.id, is_valid=True).all()]
+        stmt = select(CustomBMR).where(
+            CustomBMR.user_id == current_user.id,
+            CustomBMR.is_valid == True
+        )
+        bmr_titles += [(i.bmr_id, i.title) for i in db.session.execute(stmt).scalars().all()]
 
     form = UploadForm()
     form.bmr.choices = bmr_titles

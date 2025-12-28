@@ -1,5 +1,4 @@
 """Runs pathway pipeline on CancerDB tables or TCGA tables."""
-import six
 from flask import current_app
 import pandas as pd
 import numpy as np
@@ -10,6 +9,7 @@ from collections import OrderedDict
 import json
 import os
 from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy import text
 
 # Try to import pre-compiled Cython extension first, fall back to pyximport
 try:
@@ -68,7 +68,7 @@ class MatlabFailureException(Exception):
 def run_analysis_async(upload_id):
     """Asynchronous run of pathway analysis."""
     db.session.remove()  # guarantee new db session for this thread
-    user_upload = UserFile.query.get(upload_id)
+    user_upload = db.session.get(UserFile, upload_id)
     user_upload.is_queued = 0
     db.session.add(user_upload)
     db.session.commit()
@@ -145,15 +145,13 @@ def run_analysis(upload_id):
 
 
 def drop_table(table_name):
-    cmd1 = "show tables like {!r}".format(table_name)
-    cmd2 = """drop table {};""".format(table_name)
+    cmd1 = text("show tables like :table_name")
+    cmd2 = text(f"drop table `{table_name}`;")
     try:
-        r = db.session.execute(cmd1)
-        nrows = r.rowcount
-        r.close()
-        if nrows:
-            r = db.session.execute(cmd2)
-            r.close()
+        r = db.session.execute(cmd1, {"table_name": table_name})
+        rows = r.all()
+        if rows:
+            db.session.execute(cmd2)
             db.session.commit()
     except Exception as e:
         db.session.rollback()
@@ -170,16 +168,12 @@ def save_project_params_txt(upload_obj):
         out.write('User data:\n')
         for field in user_fields:
             attr = getattr(upload_obj, field)
-            if type(attr) in six.string_types:
-                attr = attr.encode('utf8')
-            out.write("{}: {}\n".format(field, attr))
+            out.write(f"{field}: {attr}\n")
         out.write('\n\n')
         out.write('Data attributes:\n')
         for field in data_fields:
             attr = getattr(upload_obj, field)
-            if type(attr) in six.string_types:
-                attr = attr.encode('utf8')
-            out.write("{}: {}\n".format(field, attr))
+            out.write(f"{field}: {attr}\n")
 
 
 class NonSingleResult(Exception):
@@ -228,10 +222,10 @@ class MutationTable:
         #     into table `{}` fields terminated by '\t'
         #     lines terminated by '\n' ignore 1 lines;""".format(
         #     data_path, table_name)
-        cmd = u"select count(*) from `{}` m;".format(self.table_name)
+        cmd = text(f"select count(*) from `{self.table_name}` m;")
         try:
             # print(load_str)
-            db.session.execute(create_str)
+            db.session.execute(text(create_str))
             # LOAD USING PANDAS, FORMERLY: db.session.execute(load_str)
             df = pd.read_table(data_path, dtype=str)
             if self.has_annot:
@@ -256,18 +250,18 @@ class MutationTable:
             .format(self.table_name)
 
         try:
-            rej = db.session.execute(cmd1)
-            self.n_rejected = rej.rowcount
+            rej = db.session.execute(text(cmd1))
+            rej_rows = rej.all()
+            self.n_rejected = len(rej_rows)
             if self.n_rejected > 0:
                 if rejected_path:
-                    self.save_mutations_subset(rej, rejected_path)
+                    self.save_mutations_subset(rej_rows, rejected_path)
                 # DELETE EXTRA GENE LINES
-                db.session.execute(cmd2)
+                db.session.execute(text(cmd2))
                 db.session.commit()
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(str(e))
-
 
     def remove_genes_outwith_pathways(self, rejected_path=None):
         """
@@ -286,18 +280,18 @@ class MutationTable:
           ON m.entrez_id = l.entrez_id WHERE l.entrez_id IS NULL;"""\
             .format(self.table_name)
         try:
-            rej = db.session.execute(cmd1)
-            self.n_ignored = rej.rowcount
+            rej = db.session.execute(text(cmd1))
+            rej_rows = rej.all()
+            self.n_ignored = len(rej_rows)
             if self.n_ignored > 0:
                 if rejected_path:
-                    self.save_mutations_subset(rej, rejected_path)
+                    self.save_mutations_subset(rej_rows, rejected_path)
                 # DELETE EXTRA GENE LINES
-                db.session.execute(cmd2)
+                db.session.execute(text(cmd2))
                 db.session.commit()
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(str(e))
-
 
     @staticmethod
     def save_mutations_subset(results, save_path):
