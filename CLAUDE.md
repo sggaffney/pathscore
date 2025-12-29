@@ -185,6 +185,14 @@ naming_rules.get_js_name(upload_obj)         # JavaScript variable name
 
 8. **Don't skip `text()` wrapper for raw SQL** - SQLAlchemy 2.0 requires it
 
+9. **Don't use `pd.np`** - Use `np` directly (pandas 2.x removed `pd.np`)
+
+10. **Don't use `applymap`** - Use `map` for element-wise DataFrame operations (pandas 2.x)
+
+11. **Don't use `iteritems()`** - Use `items()` for pandas Series iteration (pandas 2.x)
+
+12. **Don't use `'rU'` file mode** - Use `'r'` with default newline handling (Python 3)
+
 ## File Dependencies
 
 ### If you change X, also update Y
@@ -201,6 +209,32 @@ naming_rules.get_js_name(upload_obj)         # JavaScript variable name
 ### Shared Query Patterns
 
 `pway/routes.py` and `demo/routes.py` have parallel implementations for many routes (scatter, mds, tree, compare). Changes to one often need mirroring to the other. Demo uses `get_all_demos()` helper instead of user-filtered queries.
+
+## Bokeh JavaScript Callbacks
+
+The scatter plot in `pway/routes.py` and `demo/routes.py` uses Bokeh 3.x with custom JavaScript callbacks:
+
+### Selection API (Bokeh 3.x)
+```javascript
+// Get/set selected indices
+source.selected.indices    // Array of selected glyph indices
+source.change.emit()       // Trigger reactive update
+```
+
+### Q-filtering Callback
+The main callback filters pathways by q-value threshold:
+1. Stores previously selected indices
+2. Filters data where q1 or q2 ≤ cutoff
+3. Updates `scatter_array` (global JS array mapping visible → original indices)
+4. Preserves selection if item still visible after filter
+5. Calls `updateIfSelectionChange_afterWait()` (app-level function that loads pathway images)
+
+### App-defined JavaScript Functions
+The Python-generated CustomJS callbacks interact with app-level JavaScript functions:
+- `selectPathwaysByGenes()` - Called by gene inclusion/exclusion callbacks
+- `updateIfSelectionChange_afterWait()` - Loads pathway images on selection change
+
+These functions are defined in the HTML templates, not in Python code.
 
 ## Known Gotchas
 
@@ -222,17 +256,13 @@ naming_rules.get_js_name(upload_obj)         # JavaScript variable name
 
 ## Technical Debt
 
-1. **Bokeh 3.x migration incomplete** - `plot_fns.py` and route files still use old Bokeh API (`plot_width` instead of `width`)
+1. **No test suite** - Phase 6 planned but not implemented
 
-2. **Celery 5.x migration incomplete** - Config namespace not updated (`CELERY_BROKER_URL` should be `broker_url`)
+2. **MDS visualization deprioritized** - Works but uses older patterns
 
-3. **No test suite** - Phase 6 planned but not implemented
+3. **Compare feature complexity** - `compare.py` and comparison routes are complex and fragile
 
-4. **MDS visualization deprioritized** - Works but uses older patterns
-
-5. **Compare feature complexity** - `compare.py` and comparison routes are complex and fragile
-
-6. **Mixed raw SQL and ORM** - `db_lookups.py` uses raw SQL for `refs`, ORM for `pway`
+4. **Mixed raw SQL and ORM** - `db_lookups.py` uses raw SQL for `refs`, ORM for `pway`
 
 ## Common Tasks
 

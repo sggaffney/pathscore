@@ -65,7 +65,8 @@ class GeneMatrix:
             m.loc[gene, patient] = annot_dict_use[(gene, patient)]
 
         # m_status = ~(m == False)
-        m_status = m.applymap(lambda x: x is not False)
+        # pandas 2.x: applymap renamed to map for element-wise operations
+        m_status = m.map(lambda x: x is not False)
 
         # RE-SORT BY WEIGHT (powers of 2)
         self.n_genes = len(use_genes)
@@ -128,7 +129,8 @@ class MatrixPlotter(object):
         self.matrix_df = matrix_df
 
         # self.m_status = ~(matrix_df == False)
-        self.m_status = matrix_df.applymap(lambda x: x is not False)
+        # pandas 2.x: applymap renamed to map for element-wise operations
+        self.m_status = matrix_df.map(lambda x: x is not False)
         # assert isinstance(self.m_status, pd.DataFrame)
         self.use_genes = list(matrix_df.index)
         self.use_patients = list(matrix_df.columns)

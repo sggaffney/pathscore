@@ -34,7 +34,8 @@ class BasicFile(object):
 
     def _check_headers_data(self):
         ind = -1
-        with open(self.temp_path, 'rU') as tempfile:
+        # Python 3: 'rU' mode is deprecated, use 'r' with newline=None (default)
+        with open(self.temp_path, 'r') as tempfile:
             line = tempfile.readline()
             # want at least 2 lines now. 1 for header, 1 for data.
             headers = [i.lower() for i in line.strip('\n').split('\t')]
@@ -82,7 +83,7 @@ class BasicFile(object):
         if self.line_endings == '\n':
             os.rename(self.temp_path, file_path)
         else:  # rewrite file with \n line endings
-            with open(self.temp_path, 'rU') as tempfile:
+            with open(self.temp_path, 'r') as tempfile:
                 with open(file_path, 'w') as out:
                     for line in tempfile:
                         out.write(line)

@@ -47,7 +47,7 @@ def create_svgs(txt_path):
     # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
     cmd = 'matlab -nosplash -nodesktop -r \"plot_pway_targets({txtpath!r},' \
           '\'--svg\',\'--skipfew\');\"'.format(txtpath=txt_path)
-    print cmd
+    print(cmd)
     with open(os.devnull, "r") as fnullin:
         with open(os.devnull, "w") as fnullout:
             subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
@@ -60,7 +60,7 @@ def create_matrix_svgs(txt_path):
     # ORIG cmd = """matlab -nosplash -nodesktop -r "plot_pway_targets('{txtpath}');" < /dev/null >{root_dir}tempstdout.txt 2>{root_dir}tempstderr.txt &"""
     cmd = 'matlab -nosplash -nodesktop -r \"plot_patient_genes(' \
           '{txtpath!r});\"'.format(txtpath=txt_path)
-    print cmd
+    print(cmd)
     with open(os.devnull, "r") as fnullin:
         with open(os.devnull, "w") as fnullout:
             subprocess.check_call(cmd, stdin=fnullin, stdout=fnullout,
