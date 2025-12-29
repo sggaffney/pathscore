@@ -18,7 +18,8 @@ from .get_effective_pathways import load_pathway_list_from_file
 
 tools = ("hover,tap,previewsave,pan,wheel_zoom,"
          "box_zoom,box_select,reset,crosshair")  # poly_select,lasso_select
-plot_config = dict(plot_height=400, plot_width=600, tools=tools,
+# Bokeh 3.x uses 'height' and 'width' instead of 'plot_height' and 'plot_width'
+plot_config = dict(height=400, width=600, tools=tools,
                    toolbar_location='right',
                    min_border=0, outline_line_width=0)
 scatter_config = dict(name='scattered', line_alpha=0.9, alpha=0.7)
@@ -125,7 +126,7 @@ def get_tree_data(upload_obj):
     names_path = naming_rules.get_tree_score_paths(upload_obj)[1]
     # tree_path = naming_rules.get_apache_path(tree_path)
     names_odict = OrderedDict()  # ordered dictionary of path_id: name
-    with open(names_path, 'rU') as f:
+    with open(names_path, 'r') as f:
         for line in f:
             vals = line.strip('\n').split('\t')
             if len(vals) != 2:
@@ -285,7 +286,7 @@ class MDSPlotter(object):
         """Create multi-line comma-separated string with n items per line."""
         vals = list(vals)
         out_lines = []
-        for group in range(len(vals)/n + 1):
+        for group in range(len(vals) // n + 1):
             start = group * n
             line_str = ', '.join(vals[start:start + n])
             out_lines.append(line_str)
@@ -314,9 +315,9 @@ def get_mds_dict(upload_obj, metric='jaccard', mds_alg='NMDS'):
             js_inds.append(js_ids.index(i))
         except ValueError:
             js_inds.append(-1)
-    assert js_inds == range(len(all_ids))
+    assert js_inds == list(range(len(all_ids)))
     # INDICES IN PLOT OF JS_OBJECT ITEMS (A SUBSET)
-    plot_inds = range(len(all_ids))
+    plot_inds = list(range(len(all_ids)))
     proj_dir = naming_rules.get_project_folder(upload_obj)
     if os.path.exists(os.path.join(proj_dir, 'matrix_svg_cnv')):
         has_cnv = True

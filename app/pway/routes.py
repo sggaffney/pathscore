@@ -286,17 +286,17 @@ def compare():
         TOOLS = "lasso_select,box_select,hover,crosshair,pan,wheel_zoom,"\
                 "box_zoom,reset,tap,help" # poly_select,lasso_select, previewsave
 
-        # SUPLOTS
-        p = figure(plot_width=DIM_COMP_W, plot_height=DIM_COMP_H, tools=TOOLS,
+        # SUBPLOTS (Bokeh 3.x uses width/height instead of plot_width/plot_height)
+        p = figure(width=DIM_COMP_W, height=DIM_COMP_H, tools=TOOLS,
                    title=None, toolbar_location="above",
                    x_range=Range1d(minx, maxx), y_range=Range1d(miny, maxy),
                    x_axis_type="log", y_axis_type="log"
                    )
-        pb = figure(plot_width=DIM_COMP_SM, plot_height=DIM_COMP_H, tools=TOOLS,
+        pb = figure(width=DIM_COMP_SM, height=DIM_COMP_H, tools=TOOLS,
                     y_range=p.y_range, x_axis_type="log", y_axis_type="log")
-        pa = figure(plot_width=DIM_COMP_W, plot_height=DIM_COMP_SM, tools=TOOLS,
+        pa = figure(width=DIM_COMP_W, height=DIM_COMP_SM, tools=TOOLS,
                     x_range=p.x_range, x_axis_type="log", y_axis_type="log")
-        pp = figure(plot_width=DIM_COMP_SM, plot_height=DIM_COMP_SM,
+        pp = figure(width=DIM_COMP_SM, height=DIM_COMP_SM,
                     tools=TOOLS, outline_line_color=None)
 
         # SPANS
@@ -363,9 +363,11 @@ def compare():
             ])
 
         # ADD Q FILTERING CALLBACK
+        # Bokeh 3.x: source.selected.indices replaces source.selected['1d'].indices
+        # Bokeh 3.x: source.change.emit() replaces source.trigger('change')
         callback = CustomJS(args=dict(source=source, full=source_full), code="""
             // get old selection indices, if any
-            var prv_selected = source.selected['1d'].indices;
+            var prv_selected = source.selected.indices;
             var prv_select_full = []
             for(var i=0; i<prv_selected.length; i++){
                 prv_select_full.push(scatter_array[prv_selected[i]])
@@ -398,8 +400,8 @@ def compare():
                     }
                 }
             }
-            source.selected['1d'].indices = new_selected;
-            source.trigger('change');
+            source.selected.indices = new_selected;
+            source.change.emit();
             updateIfSelectionChange_afterWait();
             """ % columns)
 
@@ -475,7 +477,7 @@ def load_comparison():
 
 def get_effect_at_index(path_list, index):
     if index < 0:
-        return pd.np.nan
+        return np.nan
     else:
         temp_path = path_list[index]
         return get_effect(temp_path)
@@ -487,7 +489,7 @@ def get_effect(pway_obj):
 
 def get_q_at_index(path_list, index):
     if index < 0:
-        return pd.np.nan
+        return np.nan
     else:
         temp_path = path_list[index]
         return min(1, float(temp_path.p_value) * g.n_pathways)
