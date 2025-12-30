@@ -93,7 +93,8 @@ def create_app(config_name):
     celery = celery_init_app(app)
 
     from . import get_effective_pathways
-    get_effective_pathways.set_refs(app)
+    if not app.config.get('SKIP_REF_LOADING'):
+        get_effective_pathways.set_refs(app)
 
     from .pway import pway as pway_blueprint
     app.register_blueprint(pway_blueprint)

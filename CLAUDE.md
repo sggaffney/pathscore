@@ -22,8 +22,14 @@ docker compose logs flask --tail 50
 # Rebuild and restart single service
 docker compose build flask && docker compose up -d flask
 
-# Run tests (not yet configured - Phase 6)
-docker compose exec flask pytest
+# Run tests (19 unit tests, 5 integration stubs)
+docker compose run --rm flask pytest -v
+
+# Run only unit tests (skip integration tests that need refs database)
+docker compose run --rm flask pytest -v -m "not integration"
+
+# Run with coverage
+docker compose run --rm flask pytest --cov=app
 
 # Stop everything
 docker compose down
@@ -256,13 +262,11 @@ These functions are defined in the HTML templates, not in Python code.
 
 ## Technical Debt
 
-1. **No test suite** - Phase 6 planned but not implemented
+1. **MDS visualization deprioritized** - Works but uses older patterns
 
-2. **MDS visualization deprioritized** - Works but uses older patterns
+2. **Compare feature complexity** - `compare.py` and comparison routes are complex and fragile
 
-3. **Compare feature complexity** - `compare.py` and comparison routes are complex and fragile
-
-4. **Mixed raw SQL and ORM** - `db_lookups.py` uses raw SQL for `refs`, ORM for `pway`
+3. **Mixed raw SQL and ORM** - `db_lookups.py` uses raw SQL for `refs`, ORM for `pway`
 
 ## Common Tasks
 

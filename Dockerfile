@@ -33,8 +33,10 @@ RUN mkdir -p /data/temp /data/logs /data/.matplotlib \
 COPY pathscore.py .
 COPY celery_worker.py .
 COPY setup_cython.py .
+COPY pytest.ini .
 COPY app app/
 COPY helpers helpers/
+COPY tests tests/
 
 # Compile Cython extension if present (using setup script for proper numpy includes)
 RUN if [ -f app/comb_functions.pyx ]; then \

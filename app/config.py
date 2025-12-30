@@ -98,6 +98,7 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or \
                               'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
     DB_NAME = os.environ.get('MYSQLDB_DB_TEST')
+    SKIP_REF_LOADING = True  # Skip loading refs database for unit tests
 
 
 class ProductionConfig(Config):
