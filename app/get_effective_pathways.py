@@ -2,8 +2,6 @@
 from flask import current_app
 import pandas as pd
 import numpy as np
-from scipy import stats
-from scipy.optimize import minimize_scalar, brentq
 import timeit
 from collections import OrderedDict
 import json
@@ -31,6 +29,7 @@ from .db_lookups import lookup_path_sizes, lookup_background_size, \
 from . import plot
 from . import misc
 from . import naming_rules
+from .computation import analyze_pathway
 # from .decorators import make_async
 
 ref_info = None
@@ -454,182 +453,6 @@ class PathwaySummary(PathwaySummaryBasic):
         return
 
 
-class LCalculator():
-    """Calculates likelihood of observing pathway mutations in patients, and
-    MLE pathway size from these observations. Takes a pathwaySummary object."""
-
-    def __init__(self, pway, genome_size=18852):
-        self.G = genome_size  # genes in genome
-        self.pway = pway
-        self.likelihood = None
-        self.p_array = None  # p_value for each patient (pway.patients)
-        self.ne = None
-        self.ne_ll = None
-        self.D = None
-        self.pvalue = None
-        self.ne_low = None
-        self.ne_high = None
-        # self.max_mutations = pway.max_mutations
-
-        self.n_patients, self.n_mutated_array, self.is_mutated_array = \
-            self._get_patient_arrays()
-
-    def run(self):
-        """ Calculate likelihood and maximum likelihood estimate."""
-        (self.likelihood, self.p_array) = self._get_pway_likelihood(self.pway.n_actual)
-        (ne, lastll) = self._get_ne()
-        self.ne = ne
-        self.ne_ll = lastll
-        upper_CI, lower_CI = self._get_ne_CI()
-        self.ne_low = int(upper_CI)
-        self.ne_high = int(lower_CI)
-        self.D = -2 * self.likelihood + 2 * self.ne_ll
-        self.pvalue = 1 - stats.chi2.cdf(self.D, 1)
-        self.pway.n_effective = self.ne
-        self.pway.p_value = self.pvalue
-
-    def _get_patient_arrays(self):
-        """converts list of Patient objects (with n_mutated and is_mutated
-        attributes) to is_mutated boolean array and n_mutated int array.
-        Returns n_patients, n_mutated, is_mutated."""
-        patients = self.pway.patients
-        n_patients = len(patients)
-        n_mutated_array = np.array([p.n_mutated for p in patients], dtype=int)
-        is_mutated_array = np.array([p.is_mutated for p in patients],
-                                    dtype=int)
-        return n_patients, n_mutated_array, is_mutated_array
-
-    def _get_pway_likelihood(self, pway_size=None):
-        """Calculate pathway log likelihood at stated size."""
-        return get_pway_likelihood_cython(self.G, pway_size,
-                                          self.n_patients, self.n_mutated_array,
-                                          self.is_mutated_array, get_pvals=1)
-
-    def _get_pway_likelihood_neg(self, pway_size=None):
-        """Calculate pathway log likelihood at stated size."""
-        ll = get_pway_likelihood_cython(self.G, pway_size,
-                                        self.n_patients, self.n_mutated_array,
-                                        self.is_mutated_array, get_pvals=0)
-        ll = np.nan if ll == -np.inf else ll
-        return -1 * ll
-
-    def _get_ne_CI(self):
-        # if everyone has mutation in the pathway, set CI_low and high to be G
-        CI_low = None
-        CI_high = None
-        if 0 not in self.is_mutated_array:  # everyone has mutation in pathway
-            CI_high = self.G
-        if 1 not in self.is_mutated_array:  # no one has a mutation in pathway
-            CI_low = 1
-        if self.ne == self.G:
-            CI_high = self.G
-
-        # we know there is at least one patient without a mutation, so ne
-        #     should exist, and be 1 or above.
-        if CI_low is None:
-            try:
-                CI_low = np.floor(brentq(self._get_pway_likelihood_CI, 1, self.ne))
-            except ValueError:  # if signs don't change, 1 is within CI
-                CI_low = 1
-
-        if CI_high is None:  # ne is below genome size, so find maximum
-            try:
-                CI_high = np.ceil(brentq(self._get_pway_likelihood_CI, self.ne,
-                                         self.G - self.pway.n_actual))
-            except ValueError:  # if signs don't change, G is within CI
-                CI_high = self.G
-        return CI_low, CI_high
-
-    def _get_pway_likelihood_CI(self, pway_size=None):
-        """Calculate pathway log likelihood at stated size."""
-        ll = get_pway_likelihood_cython(self.G, pway_size,
-                                        self.n_patients, self.n_mutated_array,
-                                        self.is_mutated_array, get_pvals=0)
-        return ll - self.ne_ll + 1.92
-
-    def _get_ne_old(self):
-        last_ll = None
-        # improved = False
-        ne = None
-        # profile = list()
-        # if pathway_size is zero, effective size is zero.
-        if not self.pway.n_actual:
-            ne = 0
-            ult = np.float64(0)
-            current_app.logger.debug(
-                "Pathway {} contains zero genes. ".format(self.pway.path_id))
-            return ne, ult
-        # if all patients mutated, use ne=genome_size - max_mutations
-        if False not in [patient.is_mutated for patient in self.pway.patients]:
-            ne = self.G
-            ult = np.float64(0)
-            # current_app.logger.debug("All patients have mutation in pathway {}. ".format(
-            #     self.pway.path_id) + "Effective size is full genome.")
-            return (ne, ult)
-        # check last 2 vals to check for decline:
-        penult = self._get_pway_likelihood(
-            pway_size=self.G - self.pway.n_actual - 2)  # WAS self.G - self.max_mutations - 1
-        ult = self._get_pway_likelihood(
-            pway_size=self.G - self.pway.n_actual - 1)  # WAS self.G - self.max_mutations
-        if ult > penult:
-            ne = self.G
-            return (ne, ult)
-        # at this stage, there will be a max before Genome size
-        for pway_size in range(1, self.G):
-            # WAS range(1,self.G - self.max_mutations):
-            this_ll = self._get_pway_likelihood(pway_size=pway_size)
-            # profile.append(this_ll)
-            # if mod(pway_size,100)==0:
-            # print this_ll
-            if last_ll is None:
-                last_ll = this_ll
-            # if improved is False and (this_ll > self.likelihood or
-            # pway_size >= self.pway_size):
-            # improved = True
-            if this_ll < last_ll or this_ll == 0:
-                ne = pway_size - 1
-                if this_ll == 0:
-                    current_app.logger.debug("Premature stop for pway {}.".format(
-                        self.pway.path_id))
-                break
-            last_ll = this_ll
-        return ne, last_ll
-
-    def _get_ne(self):
-        """Find maximum likelihood pathway size and corresponding
-        log likelihood."""
-
-        # INITIAL BOUNDARY TESTS
-        # if pathway_size is zero, effective size is zero.
-        if not self.pway.n_actual:
-            ne = 0
-            final_ll = np.float64(0)
-            current_app.logger.debug("Pathway {} contains zero genes. ".format(
-                self.pway.path_id))
-            return ne, final_ll
-        # if all patients mutated, use ne=genome_size - max_mutations
-        if False not in [patient.is_mutated for patient in self.pway.patients]:
-            ne = self.G
-            final_ll = np.float64(0)
-            current_app.logger.debug("All patients have mutation in pathway {}. ".format(
-                self.pway.path_id) + "Effective size is full genome.")
-            return ne, final_ll
-
-        result = minimize_scalar(self._get_pway_likelihood_neg, method='Brent',
-                                 bounds=[1, self.G])
-        # res2 = minimize_scalar(self._get_pway_likelihood_neg, method='Bounded',
-        #                        bounds=[1, 17000000])
-        try_integers = [np.floor(result.x), np.ceil(result.x)]
-        out = [self._get_pway_likelihood_neg(i) for i in try_integers]
-        if out[1] < out[0]:
-            use_ind = 1
-        else:
-            use_ind = 0
-        ne = int(try_integers[use_ind])
-        final_ll = -1 * out[use_ind]
-        return ne, final_ll
-
-
 class GenericPathwayFileProcessor():
     """Generic object that can convert yale_proj_ids and tcga_proj_abbrvs
     to file_name."""
@@ -654,20 +477,31 @@ class GenericPathwayFileProcessor():
 class PathwayBasicFileWriter(GenericPathwayFileProcessor):
     """Writes initial p-value file."""
 
-    def write_pvalue_file(self, lcalc, runtime):
-        """Write initial processing file with p-value and MLE estimate."""
+    def write_pvalue_file(self, result, runtime):
+        """Write initial processing file with p-value and MLE estimate.
+
+        Args:
+            result: PathwayAnalysisResult from app.computation
+            runtime: Computation time in seconds
+        """
         bufsize = 1  # line buffered output
         outfile_name = self.root_name + '.txt'
-        path_id = lcalc.pway.path_id
-        n_mutated = sum(lcalc.is_mutated_array)
-        pc_mutated = 100 * float(n_mutated) / len(lcalc.is_mutated_array)
         with open(outfile_name, 'a', bufsize) as out:
             out_str = '{}\t{:.3e}\t{}\t{}\t{:.3g}\t{:.3g}\t{:.3g}\t{}\t{}' \
                       '\t{:g}\t{:.2f}\n'
-            out.write(out_str.format(path_id, lcalc.pvalue, lcalc.pway.n_actual,
-                                     lcalc.ne, lcalc.likelihood, lcalc.ne_ll,
-                                     lcalc.D, lcalc.ne_low, lcalc.ne_high,
-                                     n_mutated, runtime))
+            out.write(out_str.format(
+                result.pathway_id,
+                result.p_value,
+                int(result.n_actual),
+                int(result.n_effective),
+                result.log_likelihood_actual,
+                result.log_likelihood_effective,
+                result.d_statistic,
+                int(result.ci_low),
+                int(result.ci_high),
+                result.patients_covered,
+                runtime
+            ))
 
 
 class PathwayListAssembler(GenericPathwayFileProcessor):
@@ -997,22 +831,30 @@ def generate_initial_text_output(user_upload, genome_size=None,
     basic_writer = PathwayBasicFileWriter(dir_path, file_id,
                                           name_suffix=proj_suffix)
     for pathway_number in all_path_ids:
-        # Populate pathway object, and time pvalue calculation
+        # Time pvalue calculation
         start = timeit.default_timer()
-        pway = PathwaySummary(pathway_number, table_list,
-                              # max_mutations=max_mutations,
-                              expressed_table=None,
-                              ignore_genes=ignore_genes)
-        pway.set_pathway_size(path_size_dict)
-        pway.patients = get_patient_list(pathway_number, patient_size_dict,
-                                         path_patient_dict)
-        current_patient_names = [pa.patient_id for pa in pway.patients]
-        lcalc = LCalculator(pway, genome_size)  # include optional genome_size
-        lcalc.run()
+
+        # Get patient list and build arrays for computation
+        patients = get_patient_list(pathway_number, patient_size_dict,
+                                    path_patient_dict)
+        current_patient_names = [p.patient_id for p in patients]
+        n_mutated_array = np.array([p.n_mutated for p in patients], dtype=np.int_)
+        is_mutated_array = np.array([p.is_mutated for p in patients], dtype=np.int_)
+
+        # Run analysis using pure computation function
+        result = analyze_pathway(
+            pathway_id=pathway_number,
+            pathway_size=path_size_dict[pathway_number],
+            genome_size=genome_size,
+            n_mutated_array=n_mutated_array,
+            is_mutated_array=is_mutated_array,
+            include_patient_probs=True
+        )
+
         runtime = timeit.default_timer() - start
-        df_p.loc[pathway_number, current_patient_names] = lcalc.p_array
+        df_p.loc[pathway_number, current_patient_names] = result.p_array
         # Write results to 'basic' file
-        basic_writer.write_pvalue_file(lcalc, runtime)
+        basic_writer.write_pvalue_file(result, runtime)
 
     df_p['pathway'] = df_p.index.map(
             lambda x: ref_info.path_name_dict.get(x, '?'))

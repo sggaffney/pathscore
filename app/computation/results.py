@@ -86,6 +86,13 @@ class PathwayAnalysisResult:
         """Coverage as percentage (0-100)."""
         return self.coverage_fraction * 100
 
+    @property
+    def p_array(self) -> Optional[np.ndarray]:
+        """Per-patient probabilities as numpy array."""
+        if self.patient_probabilities is not None:
+            return self.patient_probabilities.probabilities
+        return None
+
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""
         return {
