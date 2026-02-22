@@ -95,16 +95,6 @@ def test_user(db_session):
     return user
 
 
-@pytest.fixture(scope='function')
-def authenticated_client(client, test_user, app):
-    """Create an authenticated test client."""
-    with app.test_request_context():
-        with client.session_transaction() as sess:
-            # Flask-Security uses fs_uniquifier for session identification
-            sess['_user_id'] = test_user.fs_uniquifier
-    return client
-
-
 @pytest.fixture
 def sample_mutation_file():
     """Create a sample mutation file for testing."""
