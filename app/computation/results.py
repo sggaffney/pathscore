@@ -76,7 +76,6 @@ class PathwayAnalysisResult:
             return 0.0
         return self.n_effective / self.n_actual
 
-    @property
     def is_significant(self, alpha: float = 0.05) -> bool:
         """Check if result is statistically significant at given alpha."""
         return self.p_value < alpha

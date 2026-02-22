@@ -1,4 +1,5 @@
 """Runs pathway pipeline on CancerDB tables or TCGA tables."""
+import ast
 from flask import current_app
 import pandas as pd
 import numpy as np
@@ -316,14 +317,14 @@ class PathwaySummary(PathwaySummaryBasic):
     """Holds pathway information, and can fetch info from db."""
 
     def __init__(self, pathway_number, proj_abbrvs,
-                 patient_ids=list(), expressed_table=None,
-                 ignore_genes=list()):
+                 patient_ids=None, expressed_table=None,
+                 ignore_genes=None):
         PathwaySummaryBasic.__init__(self, pathway_number)
         # above gives path_id, n_actual, n_effective, p_value
         self.patients = list()  # tuples. (patient_id, n_mutations, is_mutated)
-        self.filter_patient_ids = patient_ids
+        self.filter_patient_ids = patient_ids if patient_ids is not None else []
         self.filter_expressed = expressed_table
-        self.ignore_genes = ignore_genes
+        self.ignore_genes = ignore_genes if ignore_genes is not None else []
         self.proj_abbrvs = proj_abbrvs
         self.gene_coverage = OrderedDict()
         self.exclusive_genes = list()
@@ -507,16 +508,16 @@ class PathwayBasicFileWriter(GenericPathwayFileProcessor):
 class PathwayListAssembler(GenericPathwayFileProcessor):
     """Builds ordered list of pathways from basic p-value file."""
 
-    def __init__(self, dir_path, file_id, proj_abbrvs, patient_ids=list(),
+    def __init__(self, dir_path, file_id, proj_abbrvs, patient_ids=None,
                  name_suffix=None, expressed_table=None,
-                 ignore_genes=list()):
+                 ignore_genes=None):
         # create self.root_name
         GenericPathwayFileProcessor.__init__(self, dir_path, file_id,
                                              name_suffix=name_suffix)
         self.proj_abbrvs = proj_abbrvs
-        self.filter_patient_ids = patient_ids
+        self.filter_patient_ids = patient_ids if patient_ids is not None else []
         self.expressed_table = expressed_table
-        self.ignore_genes = ignore_genes
+        self.ignore_genes = ignore_genes if ignore_genes is not None else []
 
     def get_ordered_pway_list(self):
         file_name = self.root_name + '.txt'
@@ -970,12 +971,12 @@ def load_pathway_list_from_file(results_path):
             pway.D = float(vals[7])
             pway.ne_low = int(vals[8])
             pway.ne_high = int(vals[9])
-            pway.exclusive = set(eval(vals[11]))
-            pway.cooccurring = set(eval(vals[12]))
+            pway.exclusive = set(ast.literal_eval(vals[11]))
+            pway.cooccurring = set(ast.literal_eval(vals[12]))
             gene_set = set.union(pway.exclusive, pway.cooccurring)
             pway.gene_set = gene_set
             pc_str = vals[13]  # e.g. struct('ACADS',2.44,'ACADVL',2.44)
-            pc_list = list(eval(pc_str.lstrip('struct')))
+            pc_list = list(ast.literal_eval(pc_str.lstrip('struct')))
             pway.gene_coverage = OrderedDict(zip(pc_list[0::2], pc_list[1::2]))
             # pc_str = "{" + pc_str.lstrip('struct(').rstrip(')')\
             #     .replace("',", "':") + "}"  # eg {'ACADS':2.44,'ACADVL':2.44}

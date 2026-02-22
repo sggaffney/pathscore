@@ -84,7 +84,10 @@ def test_user(db_session):
     db_session.commit()
 
     # Add general role
-    general_role = db_session.query(Role).filter_by(name='general').first()
+    from sqlalchemy import select
+    general_role = db_session.execute(
+        select(Role).where(Role.name == 'general')
+    ).scalar_one_or_none()
     if general_role:
         user.roles.append(general_role)
         db_session.commit()
