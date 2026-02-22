@@ -22,7 +22,7 @@ docker compose logs flask --tail 50
 # Rebuild and restart single service
 docker compose build flask && docker compose up -d flask
 
-# Run tests (19 unit tests, 5 integration stubs)
+# Run tests (62 unit tests, 5 integration stubs)
 docker compose run --rm flask pytest -v
 
 # Run only unit tests (skip integration tests that need refs database)
@@ -46,8 +46,40 @@ docker compose down -v
 2. **Routing**: Blueprints (`pway/`, `demo/`, `api/`, `auth/`) handle requests
 3. **Authentication**: Flask-Security-Too manages users/roles via `models.py`
 4. **Analysis Pipeline**: Upload triggers `get_effective_pathways.run_analysis()`
-5. **Async Execution**: `decorators.make_async` routes to threads or Celery based on `PARALLEL_MODE`
-6. **Database**: SQLAlchemy ORM for `pway` database; raw SQL for `refs` database queries
+5. **Computation**: Main loop builds numpy arrays per pathway, calls `analyze_pathway()` from `app.computation`
+6. **Async Execution**: `decorators.make_async` routes to threads or Celery based on `PARALLEL_MODE`
+7. **Database**: SQLAlchemy ORM for `pway` database; raw SQL for `refs` database queries
+
+### Layered Architecture (Phase 7/7b)
+
+The codebase has a new layered architecture alongside the legacy code:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DOMAIN LAYER (app/domain/)                    │
+│  Gene, GeneSet, Pathway, PathwayMetadata, SizeAlgorithm         │
+│  MutationDataset, PatientAnalysisData                           │
+│  - Immutable frozen dataclasses                                 │
+│  - No database or Flask dependencies                            │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              PURE COMPUTATION LAYER (app/computation/)           │
+│  analyze_pathway(), compute_effective_size()                     │
+│  → PathwayAnalysisResult, PatientProbabilities                  │
+│  - Pure functions: primitives in, dataclasses out               │
+│  - No side effects, no database access                          │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              DATA ACCESS LAYER (app/repositories/)              │
+│  GeneRepository, PathwayRepository                              │
+│  - Load domain objects from refs database                       │
+│  - Currently use Flask-SQLAlchemy db.session                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Migration status**: `analyze_pathway()` is integrated into the main analysis loop (replaced `LCalculator`). Legacy classes `PathwaySummary`/`PathwaySummaryParsed` and `RefInfo` still exist but are slated for replacement.
 
 ### Databases
 
@@ -61,11 +93,14 @@ docker compose down -v
 | `app/__init__.py` | App factory, extension init, blueprint registration | Medium |
 | `app/config.py` | Environment-based config classes | Low |
 | `app/models.py` | SQLAlchemy models, user loader, BMR processor | High |
-| `app/get_effective_pathways.py` | Core analysis pipeline (~1200 lines) | Very High |
+| `app/get_effective_pathways.py` | Analysis pipeline: MutationTable, main loop, file I/O | Very High |
 | `app/db_lookups.py` | Raw SQL queries against `refs` database | Medium |
 | `app/plot_fns.py` | Bokeh visualizations | High |
 | `app/decorators.py` | `make_async`, upload limiting | Medium |
 | `app/comb_functions.pyx` | Cython likelihood calculations | Low (don't modify) |
+| `app/domain/` | Immutable domain objects: Gene, GeneSet, Pathway, SizeAlgorithm | Medium |
+| `app/computation/` | Pure functions: `analyze_pathway()`, PathwayAnalysisResult | Medium |
+| `app/repositories/` | GeneRepository, PathwayRepository (data access layer) | Medium |
 
 ## Directory Structure
 
@@ -74,12 +109,13 @@ pway_app/
 ├── pathscore.py              # Entry point, loads .env
 ├── celery_worker.py          # Celery app creation (when PARALLEL_MODE=celery)
 ├── setup_cython.py           # Cython build script with NumPy includes
+├── pytest.ini                # Pytest config with markers (integration)
 ├── app/
 │   ├── __init__.py           # create_app factory, celery init
-│   ├── config.py             # Config, DevelopmentConfig, ProductionConfig
+│   ├── config.py             # Config, DevelopmentConfig, ProductionConfig, TestingConfig
 │   ├── models.py             # User, Role, UserFile, CustomBMR, BmrProcessor
 │   ├── decorators.py         # make_async (off/threads/celery), limit_user_uploads
-│   ├── get_effective_pathways.py  # run_analysis, MutationTable, pathway scoring
+│   ├── get_effective_pathways.py  # run_analysis, MutationTable, main loop, file I/O
 │   ├── db_lookups.py         # SQL queries for pathway/gene lookups
 │   ├── plot_fns.py           # Bokeh scatter, MDS plots
 │   ├── emails.py             # Celery mail tasks
@@ -90,6 +126,18 @@ pway_app/
 │   ├── misc.py               # Utility functions
 │   ├── compare.py            # Project comparison features
 │   ├── comb_functions.pyx    # Cython: get_pway_likelihood_cython
+│   ├── domain/               # Immutable domain objects (Phase 7)
+│   │   ├── gene.py           # Gene dataclass (frozen)
+│   │   ├── geneset.py        # GeneSet with algorithm-aware size
+│   │   ├── pathway.py        # Pathway, PathwayMetadata
+│   │   ├── mutations.py      # MutationDataset, PatientAnalysisData
+│   │   └── enums.py          # SizeAlgorithm enum
+│   ├── computation/          # Pure computation functions (Phase 7)
+│   │   ├── likelihood.py     # analyze_pathway(), compute_effective_size()
+│   │   └── results.py        # PathwayAnalysisResult, PatientProbabilities
+│   ├── repositories/         # Data access layer (Phase 7)
+│   │   ├── gene_repository.py    # GeneRepository
+│   │   └── pathway_repository.py # PathwayRepository
 │   ├── plot/                 # matplotlib gene matrix plotting
 │   ├── pway/                 # Main blueprint (authenticated users)
 │   │   ├── routes.py         # /upload, /scatter, /results, /mds
@@ -103,10 +151,18 @@ pway_app/
 │   │   └── decorators.py     # @json, @etag, @collection
 │   └── auth/                 # Auth blueprint (legacy, mostly Flask-Security now)
 │       └── routes.py         # /alogin, /alogout
+├── tests/                    # Pytest test suite (Phase 6+7)
+│   ├── conftest.py           # Fixtures: app, db_session, test_user, sample files
+│   ├── test_models.py        # SQLAlchemy model tests
+│   ├── test_routes.py        # Route/blueprint tests
+│   ├── test_uploads.py       # File validation tests
+│   ├── test_domain.py        # Domain object tests (Gene, GeneSet, Pathway, etc.)
+│   └── test_computation.py   # Pure computation tests (likelihood, analysis)
 ├── data/                     # Reference SQL files (loaded into MySQL)
 │   ├── refs_*.sql.gz         # Gene/pathway reference data
 │   ├── create_dbs.sql        # Database creation script
 │   └── refs_pathways.sql     # Minimal pathways for testing
+├── docs/                     # Architecture docs and proposals
 ├── helpers/                  # Compare projects utilities
 │   └── compare_projects.py
 ├── docker-compose.yml        # Service orchestration
@@ -163,6 +219,54 @@ def some_task():
 # - 'celery': queues as Celery task
 ```
 
+### Domain Objects (frozen dataclasses)
+
+New code should use immutable domain objects from `app.domain`:
+
+```python
+from app.domain import Gene, GeneSet, Pathway, SizeAlgorithm
+
+# Gene with mutational properties
+braf = Gene(entrez_id=673, symbol='BRAF', length_bp=2301, mutation_rate=5.0)
+
+# GeneSet with algorithm-aware sizing
+genes = GeneSet([braf, kras])
+genes.get_size(SizeAlgorithm.GENE_COUNT)   # 2.0
+genes.get_size(SizeAlgorithm.BMR_LENGTH)   # sum of effective_bp
+
+# Pathway as named gene collection
+pathway = Pathway(path_id=1, name='MAPK_SIGNALING', genes=genes)
+```
+
+### Pure Computation Functions
+
+Use `analyze_pathway()` for likelihood calculations (replaced `LCalculator`):
+
+```python
+from app.computation import analyze_pathway
+
+result = analyze_pathway(
+    pathway_id=123,
+    pathway_size=100,
+    genome_size=18000,
+    n_mutated_array=np.array([50, 30, 20, 40]),
+    is_mutated_array=np.array([1, 0, 1, 0])
+)
+# Returns PathwayAnalysisResult with p_value, n_effective, effect_size, etc.
+```
+
+### Repository Pattern
+
+Database access for domain objects goes through repositories:
+
+```python
+from app.repositories import GeneRepository, PathwayRepository
+
+gene_repo = GeneRepository()
+pathway_repo = PathwayRepository(gene_repo)
+pathway = pathway_repo.get_pathway(path_id=123)
+```
+
 ### File Paths
 
 All project files go through `naming_rules.py`:
@@ -199,6 +303,10 @@ naming_rules.get_js_name(upload_obj)         # JavaScript variable name
 
 12. **Don't use `'rU'` file mode** - Use `'r'` with default newline handling (Python 3)
 
+13. **Don't create new classes wrapping computation** - Use `analyze_pathway()` from `app.computation` directly. `LCalculator` was deleted in Phase 7b.
+
+14. **Don't add mutable state to domain objects** - `Gene`, `GeneSet`, `Pathway` are `@dataclass(frozen=True)`. Keep them immutable.
+
 ## File Dependencies
 
 ### If you change X, also update Y
@@ -211,6 +319,9 @@ naming_rules.get_js_name(upload_obj)         # JavaScript variable name
 | `app/comb_functions.pyx` | Run `python setup_cython.py build_ext --inplace` |
 | `data/*.sql` | Rebuild `Dockerfile.mysql` |
 | Blueprint routes | Check both `pway/` and `demo/` for parallel routes |
+| `app/domain/` classes | Update `tests/test_domain.py`, check `app/computation/` |
+| `app/computation/` functions | Update `tests/test_computation.py`, check `get_effective_pathways.py` |
+| `app/repositories/` | Check callers in routes and `get_effective_pathways.py` |
 
 ### Shared Query Patterns
 
@@ -262,11 +373,15 @@ These functions are defined in the HTML templates, not in Python code.
 
 ## Technical Debt
 
-1. **MDS visualization deprioritized** - Works but uses older patterns
+1. **Legacy classes coexist with new architecture** - `PathwaySummary`, `PathwaySummaryParsed`, and `RefInfo` still exist in `get_effective_pathways.py`. `LCalculator` has been deleted and replaced by `analyze_pathway()`. Next steps: replace `PathwaySummary` classes and `RefInfo` with domain/repository equivalents.
 
-2. **Compare feature complexity** - `compare.py` and comparison routes are complex and fragile
+2. **Repositories not yet wired into main pipeline** - `GeneRepository` and `PathwayRepository` exist but `get_effective_pathways.py` still uses `RefInfo` and `db_lookups.py` for data access.
 
-3. **Mixed raw SQL and ORM** - `db_lookups.py` uses raw SQL for `refs`, ORM for `pway`
+3. **MDS visualization deprioritized** - Works but uses older patterns
+
+4. **Compare feature complexity** - `compare.py` and comparison routes are complex and fragile
+
+5. **Mixed raw SQL and ORM** - `db_lookups.py` uses raw SQL for `refs`, ORM for `pway`
 
 ## Common Tasks
 
