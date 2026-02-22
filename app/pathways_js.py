@@ -7,8 +7,6 @@ def make_js_file(results_path, out_path):
     # BUILD JS FILE
     allPathways = list()  # will hold pathway objects
     ignoreList = ['CANCER', 'GLIOMA', 'MELANOMA', 'LEUKEMIA', 'CARCINOMA']
-    # project_id = raw_input("Project id? ")  # <TODO:sgg> change to input in python3
-    # 'pathways_pvalues_{}_pretty.txt'.format(project_id)
     with open(results_path, 'r') as file:
         for line in file:
             vals = line.strip("\n").split('\t')

@@ -10,17 +10,9 @@ import os
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy import text
 
-# Try to import pre-compiled Cython extension first, fall back to pyximport
-try:
-    from .comb_functions import get_pway_likelihood_cython
-except ImportError:
-    import pyximport
-    pyximport.install(setup_args={'include_dirs': np.get_include()})
-    from .comb_functions import get_pway_likelihood_cython
 from . import db, celery
 from . import emails
 from .models import UserFile
-# import app
 from .db_lookups import lookup_path_sizes, lookup_background_size, \
     lookup_patient_counts, lookup_patient_lengths, build_path_patient_dict, \
     lookup_path_lengths, fetch_path_ids_interest_genes, get_pathway_name_dict, \
@@ -350,60 +342,9 @@ class PathwaySummary(PathwaySummaryBasic):
         self.n_cov = n_cov
         # self.pc_cov = pc_cov
         self.runtime = runtime
-        # # fetch gene_coverage, exclusive_genes, cooccurring genes
-        # self._populate_exclusive_cooccurring()
-        # self._update_gene_coverage()
 
     def set_pathway_size(self, path_size_dict):
         self.n_actual = path_size_dict[self.path_id]
-
-    def _build_patient_filter_str(self, form="WHERE"):
-        """build SQL substring to filter patients by ids in mutation lookup."""
-        if form == 'WHERE':
-            prepend = "WHERE "
-        elif form == 'AND':
-            prepend = "AND "
-        else:
-            raise Exception("Unrecognized form in patient filter.")
-        if self.filter_patient_ids:
-            filter_str = (prepend + "patient_id IN " +
-                      str(self.filter_patient_ids).replace("[", "(").replace(
-                          "]", ")"))
-        else:
-            filter_str = ""
-        return filter_str
-
-    def _build_ignore_gene_filter_str(self, form="WHERE"):
-        """build SQL substring to filter genes in mutation lookup.
-        e.g. (WHERE/AND) hugo_symbol in ('BRAF')"""
-        if form == 'WHERE':
-            prepend = "WHERE "
-        elif form == 'AND':
-            prepend = "AND "
-        else:
-            raise Exception("Unrecognized form in 'ignore gene' filter.")
-        if self.ignore_genes:
-            filter = (prepend + "NOT hugo_symbol IN " +
-                      str(self.ignore_genes).replace("[", "(").replace("]",
-                                                                       ")"))
-        else:
-            filter = ""
-        return filter
-
-    def _build_expressed_filter_str(self, join_ref):
-        """build SQL substring to filter genes by entrez_id in mutation lookup.
-        join_ref is abbreviation of table and column to join to expression
-        table, e.g. m.entrez_id or pwg.entrez_gene_id.
-        Assumes expression table is in tcga database.
-        """
-        if self.filter_expressed:
-            filter_str = "INNER JOIN {filter_expressed} e " \
-                "ON {join_ref} = e.entrez_id" \
-                .format(filter_expressed=self.filter_expressed,
-                        join_ref=join_ref)
-        else:
-            filter_str = ""
-        return filter_str
 
     def update_exclusive_cooccurring_coverage(self, genelists, n_patients,
                                               gene_patients):
@@ -669,8 +610,6 @@ class PathwaySummaryParsed(PathwaySummaryBasic):
         self.description = ref_info.path_info_dict[pathway_number]['desc']
         self.contrib = ref_info.path_info_dict[pathway_number]['contrib']
         self.gene_set = set()
-        self.gene_coverage = OrderedDict()
-        # self.gene_pc = dict()
         self.gene_coverage = OrderedDict()
         self.n_genes_mutated = None
         self.n_genes_total = None
